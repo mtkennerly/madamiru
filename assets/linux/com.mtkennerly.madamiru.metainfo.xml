@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop">
+    <id>com.mtkennerly.madamiru</id>
+    <metadata_license>CC0-1.0</metadata_license>
+    <project_license>MIT</project_license>
+    <name>madamiru</name>
+    <developer_name>mtkennerly</developer_name>
+    <summary>Multi-video player</summary>
+    <url type="homepage">https://github.com/mtkennerly/madamiru/</url>
+    <url type="bugtracker">https://github.com/mtkennerly/madamiru/issues</url>
+    <url type="translate">https://crowdin.com/project/madamiru</url>
+    <description>
+        <p>Madamiru is a cross-platform video player that can automatically play and shuffle multiple videos at once in a grid layout.</p>
+    </description>
+    <categories>
+        <category>AudioVideo</category>
+        <category>Player</category>
+        <category>Music</category>
+    </categories>
+    <keywords>
+        <keyword>media</keyword>
+        <keyword>multimedia</keyword>
+        <keyword>video</keyword>
+        <keyword>videos</keyword>
+
+        <keyword>grid</keyword>
+        <keyword>player</keyword>
+        <keyword>random</keyword>
+        <keyword>shuffle</keyword>
+
+        <keyword>CLI</keyword>
+        <keyword>GUI</keyword>
+    </keywords>
+    <content_rating type="oars-1.1" />
+    <launchable type="desktop-id">com.mtkennerly.madamiru.desktop</launchable>
+    <releases>
+        <release version="0.1.0" date="2024-11-26"/>
+    </releases>
+</component>

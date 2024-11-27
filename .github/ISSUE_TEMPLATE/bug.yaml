@@ -1,0 +1,49 @@
+name: Problem
+description: Report a problem.
+labels: ["bug"]
+body:
+  - type: dropdown
+    attributes:
+      label: Application version
+      description: If you're not using the latest version, please update and make sure the problem still occurs.
+      options:
+        - v0.1.0
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - Mac
+        - Linux
+        - Linux (Steam Deck)
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Installation method
+      options:
+        - Standalone
+        - Cargo
+        - Flatpak
+        - Scoop
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Description
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >-
+        Please provide any relevant screenshots, CLI output, or log files.
+        Refer to the documentation to
+        [find your config file](https://github.com/mtkennerly/madamiru/blob/master/docs/help/configuration-file.md)
+        and/or [enable verbose logging](https://github.com/mtkennerly/madamiru/blob/master/docs/help/logging.md).

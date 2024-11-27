@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Encoding=UTF-8
+Name=Madamiru
+Comment=Multi-video player
+Exec=madamiru
+Icon=com.mtkennerly.madamiru
+Terminal=false
+Categories=AudioVideo;
+Keywords=video;videos;play;shuffle;grid;

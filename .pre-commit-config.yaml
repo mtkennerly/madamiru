@@ -1,0 +1,16 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+        exclude: ^tests/
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.1.7
+    hooks:
+      - id: forbid-tabs
+  - repo: https://github.com/mtkennerly/pre-commit-hooks
+    rev: v0.2.0
+    hooks:
+      - id: cargo-fmt
+      - id: cargo-clippy
