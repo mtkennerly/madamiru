@@ -32,6 +32,7 @@ pub static STEAM_DECK: LazyLock<bool> =
 
 pub static CONFIG_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 
+#[allow(unused)]
 pub const ENV_DEBUG: &str = "MADAMIRU_DEBUG";
 
 #[derive(Clone, Debug, PartialEq, Eq)]

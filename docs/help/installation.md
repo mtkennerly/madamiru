@@ -36,7 +36,7 @@ You can install Madamiru one of these ways:
   On Linux, this requires the following system packages, or their equivalents
   for your distribution:
 
-  * Ubuntu: `sudo apt-get install -y gcc cmake libx11-dev libxcb-composite0-dev libfreetype6-dev libexpat1-dev libfontconfig1-dev libgtk-3-dev`
+  * Ubuntu: `sudo apt-get install -y gcc cmake libx11-dev libxcb-composite0-dev libfreetype6-dev libexpat1-dev libfontconfig1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav libgstrtspserver-1.0-dev libges-1.0-dev`
 
 ## Notes
 If you are on Windows:
