@@ -3,11 +3,11 @@
 mod cli;
 mod gui;
 mod lang;
+mod media;
 mod metadata;
 mod path;
 mod prelude;
 mod resource;
-mod scan;
 
 #[cfg(test)]
 mod testing;

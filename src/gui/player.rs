@@ -16,6 +16,7 @@ use crate::{
         widget::{text, Column, Container, Element, Row, Stack},
     },
     lang,
+    media::Media,
     path::StrictPath,
     resource::config::Playback,
 };
@@ -89,27 +90,29 @@ pub enum Player {
 }
 
 impl Player {
-    pub fn video(source: &StrictPath, playback: &Playback) -> Self {
-        match Self::load_video(source) {
-            Ok(mut video) => {
-                video.set_paused(playback.paused);
-                video.set_muted(playback.muted);
+    pub fn new(media: &Media, playback: &Playback) -> Self {
+        match media {
+            Media::Video { path } => match Self::load_video(path) {
+                Ok(mut video) => {
+                    video.set_paused(playback.paused);
+                    video.set_muted(playback.muted);
 
-                Self::Video {
-                    source: source.clone(),
-                    video,
-                    position: 0.0,
-                    dragging: false,
-                    hovered: false,
+                    Self::Video {
+                        source: path.clone(),
+                        video,
+                        position: 0.0,
+                        dragging: false,
+                        hovered: false,
+                    }
                 }
-            }
-            Err(e) => Self::Error {
-                source: source.clone(),
-                message: match e {
-                    Error::Io(error) => error.to_string(),
-                    Error::Path(error) => format!("{error:?}"),
-                    Error::Url => "url".to_string(),
-                    Error::Video(error) => error.to_string(),
+                Err(e) => Self::Error {
+                    source: path.clone(),
+                    message: match e {
+                        Error::Io(error) => error.to_string(),
+                        Error::Path(error) => format!("{error:?}"),
+                        Error::Url => "url".to_string(),
+                        Error::Video(error) => error.to_string(),
+                    },
                 },
             },
         }
@@ -121,8 +124,8 @@ impl Player {
         )?)
     }
 
-    pub fn swap_video(&mut self, source: &StrictPath, playback: &Playback) {
-        *self = Self::video(source, playback)
+    pub fn swap_media(&mut self, media: &Media, playback: &Playback) {
+        *self = Self::new(media, playback)
     }
 
     pub fn restart(&mut self) {

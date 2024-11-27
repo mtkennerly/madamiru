@@ -157,7 +157,7 @@ pub fn field(text: &str) -> String {
 pub fn handle_error(error: &Error) -> String {
     let error = match error {
         Error::ConfigInvalid { why } => format!("{}\n\n{why}", tell::config_is_invalid()),
-        Error::NoMoreVideos => tell::no_media_found(),
+        Error::NoMediaFound => tell::no_media_found(),
         Error::UnableToOpenDir(path) => format!("{}\n\n{}", tell::unable_to_open_directory(), path.render()),
         Error::UnableToOpenUrl(url) => format!("{}\n\n{}", tell::unable_to_open_url(), url),
     };

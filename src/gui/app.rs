@@ -359,7 +359,7 @@ impl App {
                 Ok(_) => Task::none(),
                 Err(e) => match e {
                     grid::Error::NoMediaAvailable => self.show_modal(Modal::Error {
-                        variant: Error::NoMoreVideos,
+                        variant: Error::NoMediaFound,
                     }),
                 },
             },

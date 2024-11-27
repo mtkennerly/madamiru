@@ -6,9 +6,9 @@ use crate::{
         style,
         widget::{Column, Container, Element, Row},
     },
+    media,
     path::StrictPath,
     resource::config::Playback,
-    scan,
 };
 
 #[derive(Debug)]
@@ -35,10 +35,10 @@ pub struct Grid {
 
 impl Grid {
     pub fn new(sources: &[StrictPath], playback: &Playback) -> Self {
-        match scan::find_videos(sources, playback.max) {
-            Some(videos) => Self {
+        match media::find_media(sources, playback.max) {
+            Some(media) => Self {
                 sources: sources.to_vec(),
-                players: videos.into_iter().map(|x| Player::video(&x, playback)).collect(),
+                players: media.into_iter().map(|x| Player::new(&x, playback)).collect(),
             },
             None => Grid {
                 sources: sources.to_vec(),
@@ -95,11 +95,11 @@ impl Grid {
             self.players.len()
         };
 
-        if let Some(videos) = scan::find_new_videos_first(&self.sources, usize::MAX, total, self.active_sources()) {
+        if let Some(media) = media::find_new_media_first(&self.sources, usize::MAX, total, self.active_sources()) {
             self.players.clear();
 
-            for video in videos {
-                let player = Player::video(&video, playback);
+            for item in media {
+                let player = Player::new(&item, playback);
                 self.players.push(player);
             }
         } else {
@@ -109,7 +109,7 @@ impl Grid {
     }
 
     pub fn add_player(&mut self, playback: &Playback) -> Result<(), Error> {
-        let Some(video) = scan::find_new_video(&self.sources, usize::MAX, self.active_sources()) else {
+        let Some(media) = media::find_new_media(&self.sources, usize::MAX, self.active_sources()) else {
             return Err(Error::NoMediaAvailable);
         };
 
@@ -117,7 +117,7 @@ impl Grid {
             self.players.clear();
         }
 
-        let player = Player::video(&video, playback);
+        let player = Player::new(&media, playback);
         self.players.push(player);
 
         Ok(())
@@ -143,13 +143,13 @@ impl Grid {
                     player::Update::MuteChanged => Some(Update::MuteChanged),
                     player::Update::PauseChanged => Some(Update::PauseChanged),
                     player::Update::EndOfStream => {
-                        let video = scan::find_new_video(&self.sources, usize::MAX, self.active_sources());
+                        let media = media::find_new_media(&self.sources, usize::MAX, self.active_sources());
                         let player = &mut self.players[id.0];
 
-                        match video {
-                            Some(video) => {
+                        match media {
+                            Some(media) => {
                                 let playback = playback.with_muted_maybe(player.is_muted());
-                                player.swap_video(&video, &playback);
+                                player.swap_media(&media, &playback);
                             }
                             None => {
                                 player.restart();

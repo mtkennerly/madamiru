@@ -38,7 +38,7 @@ pub const ENV_DEBUG: &str = "MADAMIRU_DEBUG";
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Error {
     ConfigInvalid { why: String },
-    NoMoreVideos,
+    NoMediaFound,
     UnableToOpenDir(StrictPath),
     UnableToOpenUrl(String),
 }
