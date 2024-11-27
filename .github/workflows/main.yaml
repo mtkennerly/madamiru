@@ -77,7 +77,8 @@ jobs:
         os:
           - windows-latest
           - ubuntu-latest
-          - macos-latest
+          # Mac temporarily disabled: https://github.com/blinemedical/setup-gstreamer/issues/209
+          # - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
