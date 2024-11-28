@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use iced::{
     padding,
-    widget::{horizontal_space, mouse_area, vertical_space},
+    widget::{horizontal_space, mouse_area, vertical_space, Image},
     Length,
 };
 use iced_video_player::{Video, VideoPlayer};
@@ -56,6 +56,7 @@ pub enum Event {
     SetLoop(bool),
     SetMute(bool),
     Seek(f64),
+    SeekStop,
     SeekRandom,
     EndOfStream,
     NewFrame,
@@ -80,6 +81,15 @@ pub enum Player {
         source: StrictPath,
         message: String,
     },
+    Image {
+        source: StrictPath,
+        handle_path: std::path::PathBuf,
+        position: f64,
+        duration: Duration,
+        looping: bool,
+        dragging: bool,
+        hovered: bool,
+    },
     Video {
         source: StrictPath,
         video: Video,
@@ -92,6 +102,26 @@ pub enum Player {
 impl Player {
     pub fn new(media: &Media, playback: &Playback) -> Self {
         match media {
+            Media::Image { path } => match Self::load_image(path) {
+                Ok(handle_path) => Self::Image {
+                    source: path.clone(),
+                    handle_path,
+                    position: 0.0,
+                    duration: Duration::from_secs(10),
+                    looping: false,
+                    dragging: false,
+                    hovered: false,
+                },
+                Err(e) => Self::Error {
+                    source: path.clone(),
+                    message: match e {
+                        Error::Io(error) => error.to_string(),
+                        Error::Path(error) => format!("{error:?}"),
+                        Error::Url => "URL".to_string(),
+                        Error::Video(error) => error.to_string(),
+                    },
+                },
+            },
             Media::Video { path } => match Self::load_video(path) {
                 Ok(mut video) => {
                     video.set_paused(playback.paused);
@@ -110,7 +140,7 @@ impl Player {
                     message: match e {
                         Error::Io(error) => error.to_string(),
                         Error::Path(error) => format!("{error:?}"),
-                        Error::Url => "url".to_string(),
+                        Error::Url => "URL".to_string(),
                         Error::Video(error) => error.to_string(),
                     },
                 },
@@ -124,6 +154,10 @@ impl Player {
         )?)
     }
 
+    fn load_image(source: &StrictPath) -> Result<std::path::PathBuf, Error> {
+        Ok(source.as_std_path_buf()?)
+    }
+
     pub fn swap_media(&mut self, media: &Media, playback: &Playback) {
         *self = Self::new(media, playback)
     }
@@ -132,6 +166,9 @@ impl Player {
         match self {
             Player::Idle => {}
             Player::Error { .. } => {}
+            Player::Image { position, .. } => {
+                *position = 0.0;
+            }
             Player::Video { video, position, .. } => {
                 *position = 0.0;
                 let _ = video.seek(Duration::from_secs_f64(*position), false);
@@ -144,6 +181,7 @@ impl Player {
         match self {
             Player::Idle => None,
             Player::Error { source, .. } => Some(source),
+            Player::Image { source, .. } => Some(source),
             Player::Video { source, .. } => Some(source),
         }
     }
@@ -152,6 +190,7 @@ impl Player {
         match self {
             Player::Idle => None,
             Player::Error { .. } => None,
+            Player::Image { .. } => None,
             Player::Video { video, .. } => Some(video.paused()),
         }
     }
@@ -160,7 +199,38 @@ impl Player {
         match self {
             Player::Idle => None,
             Player::Error { .. } => None,
+            Player::Image { .. } => None,
             Player::Video { video, .. } => Some(video.muted()),
+        }
+    }
+
+    pub fn tick(&mut self, elapsed: Duration) -> Option<Update> {
+        match self {
+            Player::Idle => None,
+            Player::Error { .. } => None,
+            Player::Image {
+                position,
+                duration,
+                looping,
+                dragging,
+                ..
+            } => {
+                if !*dragging {
+                    *position += elapsed.as_secs_f64();
+                }
+
+                if *position >= duration.as_secs_f64() {
+                    if *looping {
+                        *position = 0.0;
+                        None
+                    } else {
+                        Some(Update::EndOfStream)
+                    }
+                } else {
+                    None
+                }
+            }
+            Player::Video { .. } => None,
         }
     }
 
@@ -169,6 +239,42 @@ impl Player {
         match self {
             Player::Idle => None,
             Player::Error { .. } => None,
+            Player::Image {
+                position,
+                duration,
+                looping,
+                dragging,
+                hovered,
+                ..
+            } => match event {
+                Event::SetPause(_) => None,
+                Event::SetLoop(flag) => {
+                    *looping = flag;
+                    None
+                }
+                Event::SetMute(_) => None,
+                Event::Seek(offset) => {
+                    *dragging = true;
+                    *position = offset.min(duration.as_secs_f64());
+                    None
+                }
+                Event::SeekStop => {
+                    *dragging = false;
+                    None
+                }
+                Event::SeekRandom => None,
+                Event::EndOfStream => Some(Update::EndOfStream),
+                Event::NewFrame => None,
+                Event::MouseEnter => {
+                    *hovered = true;
+                    None
+                }
+                Event::MouseExit => {
+                    *hovered = false;
+                    None
+                }
+                Event::Close => Some(Update::Close),
+            },
             Player::Video {
                 video,
                 position,
@@ -189,9 +295,14 @@ impl Player {
                     Some(Update::MuteChanged)
                 }
                 Event::Seek(offset) => {
+                    *dragging = true;
                     *position = offset;
                     // video.seek(Duration::from_secs_f64(*position)).expect("seek");
                     video.seek(Duration::from_secs_f64(*position), false).expect("seek");
+                    None
+                }
+                Event::SeekStop => {
+                    *dragging = false;
                     None
                 }
                 Event::SeekRandom => {
@@ -202,9 +313,7 @@ impl Player {
                 }
                 Event::EndOfStream => (!video.looping()).then_some(Update::EndOfStream),
                 Event::NewFrame => {
-                    if !*dragging {
-                        *position = video.position().as_secs_f64();
-                    }
+                    *position = video.position().as_secs_f64();
                     None
                 }
                 Event::MouseEnter => {
@@ -221,7 +330,7 @@ impl Player {
     }
 
     pub fn view(&self, pane: Id, obscured: bool) -> Element {
-        match self {
+        let content: Element = match self {
             Player::Idle => Container::new("")
                 .align_x(iced::Alignment::Center)
                 .align_y(iced::Alignment::Center)
@@ -234,178 +343,300 @@ impl Player {
                 .width(iced::Length::Fill)
                 .height(iced::Length::Fill)
                 .into(),
-            Player::Video {
+            Player::Image {
                 source,
-                video,
+                handle_path,
                 position,
+                duration,
+                looping,
+                dragging,
                 hovered,
                 ..
             } => {
-                mouse_area(
-                    Stack::new()
-                        .push(
-                            Container::new(
-                                VideoPlayer::new(video)
-                                    // .width(iced::Length::Fill)
-                                    // .height(iced::Length::Fill)
-                                    // .content_fit(iced::ContentFit::Contain)
-                                    .on_end_of_stream(Message::Player {
-                                        pane,
-                                        event: Event::EndOfStream,
-                                    })
-                                    .on_new_frame(Message::Player {
-                                        pane,
-                                        event: Event::NewFrame,
-                                    }),
-                            )
+                let overlay = *hovered || *dragging;
+
+                Stack::new()
+                    .push(
+                        Container::new(Image::new(handle_path))
                             .align_x(iced::Alignment::Center)
                             .align_y(iced::Alignment::Center)
                             .width(iced::Length::Fill)
                             .height(iced::Length::Fill),
-                        )
-                        .push_maybe(
-                            hovered.then_some(
-                                Container::new("")
-                                    .center(Length::Fill)
-                                    .class(style::Container::ModalBackground),
-                            ),
-                        )
-                        .push_maybe(
-                            hovered.then_some(
-                                Container::new(text(source.render()).size(15))
-                                    .padding(padding::right(30))
-                                    .align_top(Length::Fill)
-                                    .align_left(Length::Fill),
-                            ),
-                        )
-                        .push_maybe(
-                            hovered.then_some(
-                                Container::new(
-                                    Row::new().push(
-                                        button::icon(Icon::Close)
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new("")
+                                .center(Length::Fill)
+                                .class(style::Container::ModalBackground),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new(text(source.render()).size(15))
+                                .padding(padding::right(30))
+                                .align_top(Length::Fill)
+                                .align_left(Length::Fill),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new(
+                                Row::new().push(
+                                    button::icon(Icon::Close)
+                                        .on_press(Message::Player {
+                                            pane,
+                                            event: Event::Close,
+                                        })
+                                        .tooltip(lang::action::close()),
+                                ),
+                            )
+                            .align_top(Length::Fill)
+                            .align_right(Length::Fill),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new(
+                                Row::new()
+                                    .spacing(5)
+                                    .align_y(iced::alignment::Vertical::Center)
+                                    .padding(padding::all(10.0))
+                                    .push(
+                                        button::big_icon(if *looping { Icon::Loop } else { Icon::Shuffle })
                                             .on_press(Message::Player {
                                                 pane,
-                                                event: Event::Close,
+                                                event: Event::SetLoop(!*looping),
                                             })
-                                            .tooltip(lang::action::close()),
+                                            .tooltip(if *looping {
+                                                lang::tell::player_will_loop()
+                                            } else {
+                                                lang::tell::player_will_shuffle()
+                                            }),
                                     ),
-                                )
-                                .align_top(Length::Fill)
-                                .align_right(Length::Fill),
-                            ),
-                        )
-                        .push_maybe(
-                            hovered.then_some(
-                                Container::new(
-                                    Row::new()
-                                        .spacing(5)
-                                        .align_y(iced::alignment::Vertical::Center)
-                                        .padding(padding::all(10.0))
-                                        .push(
-                                            button::icon(if video.muted() { Icon::Mute } else { Icon::VolumeHigh })
-                                                .on_press(Message::Player {
-                                                    pane,
-                                                    event: Event::SetMute(!video.muted()),
-                                                })
-                                                .tooltip(if video.muted() {
-                                                    lang::action::unmute()
-                                                } else {
-                                                    lang::action::mute()
-                                                }),
-                                        )
-                                        .push(
-                                            button::big_icon(if video.paused() { Icon::Play } else { Icon::Pause })
-                                                .on_press(Message::Player {
-                                                    pane,
-                                                    event: Event::SetPause(!video.paused()),
-                                                })
-                                                .tooltip(if video.paused() {
-                                                    lang::action::play()
-                                                } else {
-                                                    lang::action::pause()
-                                                }),
-                                        )
-                                        .push(
-                                            button::icon(if video.looping() { Icon::Loop } else { Icon::Shuffle })
-                                                .on_press(Message::Player {
-                                                    pane,
-                                                    event: Event::SetLoop(!video.looping()),
-                                                })
-                                                .tooltip(if video.looping() {
-                                                    lang::tell::player_will_loop()
-                                                } else {
-                                                    lang::tell::player_will_shuffle()
-                                                }),
-                                        ),
-                                )
-                                .center(Length::Fill),
-                            ),
-                        )
-                        .push_maybe(
-                            hovered.then_some(
-                                Container::new(
-                                    Column::new()
-                                        .padding(padding::left(10).right(10).bottom(5))
-                                        .push(vertical_space())
-                                        .push(
-                                            Row::new()
-                                                .push(text(format!(
-                                                    "{:02}:{:02}",
-                                                    *position as u64 / 60,
-                                                    *position as u64 % 60
-                                                )))
-                                                .push(horizontal_space())
-                                                .push(text(format!(
-                                                    "{:02}:{:02}",
-                                                    video.duration().as_secs() / 60,
-                                                    video.duration().as_secs() % 60
-                                                ))),
-                                        )
-                                        .push(Container::new(
-                                            iced::widget::slider(
-                                                0.0..=video.duration().as_secs_f64(),
-                                                *position,
-                                                move |x| Message::Player {
-                                                    pane,
-                                                    event: Event::Seek(x),
-                                                },
-                                            )
-                                            .step(0.1),
-                                        )),
-                                )
-                                .align_bottom(Length::Fill)
-                                .center_x(Length::Fill),
-                            ),
+                            )
+                            .center(Length::Fill),
                         ),
-                )
-                .on_enter(if obscured {
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new(
+                                Column::new()
+                                    .padding(padding::left(10).right(10).bottom(5))
+                                    .push(vertical_space())
+                                    .push(
+                                        Row::new()
+                                            .push(text(format!(
+                                                "{:02}:{:02}",
+                                                *position as u64 / 60,
+                                                *position as u64 % 60
+                                            )))
+                                            .push(horizontal_space())
+                                            .push(text(format!(
+                                                "{:02}:{:02}",
+                                                duration.as_secs() / 60,
+                                                duration.as_secs() % 60
+                                            ))),
+                                    )
+                                    .push(Container::new(
+                                        iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
+                                            Message::Player {
+                                                pane,
+                                                event: Event::Seek(x),
+                                            }
+                                        })
+                                        .step(0.1)
+                                        .on_release(Message::Player {
+                                            pane,
+                                            event: Event::SeekStop,
+                                        }),
+                                    )),
+                            )
+                            .align_bottom(Length::Fill)
+                            .center_x(Length::Fill),
+                        ),
+                    )
+                    .into()
+            }
+            Player::Video {
+                source,
+                video,
+                position,
+                dragging,
+                hovered,
+                ..
+            } => {
+                let overlay = *hovered || *dragging;
+
+                Stack::new()
+                    .push(
+                        Container::new(
+                            VideoPlayer::new(video)
+                                // .width(iced::Length::Fill)
+                                // .height(iced::Length::Fill)
+                                // .content_fit(iced::ContentFit::Contain)
+                                .on_end_of_stream(Message::Player {
+                                    pane,
+                                    event: Event::EndOfStream,
+                                })
+                                .on_new_frame(Message::Player {
+                                    pane,
+                                    event: Event::NewFrame,
+                                }),
+                        )
+                        .align_x(iced::Alignment::Center)
+                        .align_y(iced::Alignment::Center)
+                        .width(iced::Length::Fill)
+                        .height(iced::Length::Fill),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new("")
+                                .center(Length::Fill)
+                                .class(style::Container::ModalBackground),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new(text(source.render()).size(15))
+                                .padding(padding::right(30))
+                                .align_top(Length::Fill)
+                                .align_left(Length::Fill),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new(
+                                Row::new().push(
+                                    button::icon(Icon::Close)
+                                        .on_press(Message::Player {
+                                            pane,
+                                            event: Event::Close,
+                                        })
+                                        .tooltip(lang::action::close()),
+                                ),
+                            )
+                            .align_top(Length::Fill)
+                            .align_right(Length::Fill),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new(
+                                Row::new()
+                                    .spacing(5)
+                                    .align_y(iced::alignment::Vertical::Center)
+                                    .padding(padding::all(10.0))
+                                    .push(
+                                        button::icon(if video.muted() { Icon::Mute } else { Icon::VolumeHigh })
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::SetMute(!video.muted()),
+                                            })
+                                            .tooltip(if video.muted() {
+                                                lang::action::unmute()
+                                            } else {
+                                                lang::action::mute()
+                                            }),
+                                    )
+                                    .push(
+                                        button::big_icon(if video.paused() { Icon::Play } else { Icon::Pause })
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::SetPause(!video.paused()),
+                                            })
+                                            .tooltip(if video.paused() {
+                                                lang::action::play()
+                                            } else {
+                                                lang::action::pause()
+                                            }),
+                                    )
+                                    .push(
+                                        button::icon(if video.looping() { Icon::Loop } else { Icon::Shuffle })
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::SetLoop(!video.looping()),
+                                            })
+                                            .tooltip(if video.looping() {
+                                                lang::tell::player_will_loop()
+                                            } else {
+                                                lang::tell::player_will_shuffle()
+                                            }),
+                                    ),
+                            )
+                            .center(Length::Fill),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new(
+                                Column::new()
+                                    .padding(padding::left(10).right(10).bottom(5))
+                                    .push(vertical_space())
+                                    .push(
+                                        Row::new()
+                                            .push(text(format!(
+                                                "{:02}:{:02}",
+                                                *position as u64 / 60,
+                                                *position as u64 % 60
+                                            )))
+                                            .push(horizontal_space())
+                                            .push(text(format!(
+                                                "{:02}:{:02}",
+                                                video.duration().as_secs() / 60,
+                                                video.duration().as_secs() % 60
+                                            ))),
+                                    )
+                                    .push(Container::new(
+                                        iced::widget::slider(
+                                            0.0..=video.duration().as_secs_f64(),
+                                            *position,
+                                            move |x| Message::Player {
+                                                pane,
+                                                event: Event::Seek(x),
+                                            },
+                                        )
+                                        .step(0.1)
+                                        .on_release(Message::Player {
+                                            pane,
+                                            event: Event::SeekStop,
+                                        }),
+                                    )),
+                            )
+                            .align_bottom(Length::Fill)
+                            .center_x(Length::Fill),
+                        ),
+                    )
+                    .into()
+            }
+        };
+
+        mouse_area(content)
+            .on_enter(if obscured {
+                Message::Ignore
+            } else {
+                Message::Player {
+                    pane,
+                    event: Event::MouseEnter,
+                }
+            })
+            .on_move(move |_| {
+                if obscured {
                     Message::Ignore
                 } else {
                     Message::Player {
                         pane,
                         event: Event::MouseEnter,
                     }
-                })
-                .on_move(move |_| {
-                    if obscured {
-                        Message::Ignore
-                    } else {
-                        Message::Player {
-                            pane,
-                            event: Event::MouseEnter,
-                        }
-                    }
-                })
-                .on_exit(if obscured {
-                    Message::Ignore
-                } else {
-                    Message::Player {
-                        pane,
-                        event: Event::MouseExit,
-                    }
-                })
-                .into()
-            }
-        }
+                }
+            })
+            .on_exit(if obscured {
+                Message::Ignore
+            } else {
+                Message::Player {
+                    pane,
+                    event: Event::MouseExit,
+                }
+            })
+            .into()
     }
 }

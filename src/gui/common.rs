@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::{
     gui::{modal, player},
     lang::Language,
@@ -15,6 +17,7 @@ pub struct Flags {
 pub enum Message {
     Ignore,
     Exit,
+    Tick(Instant),
     Save,
     CloseModal,
     AppReleaseToggle(bool),

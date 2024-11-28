@@ -36,6 +36,7 @@ pub struct App {
     pending_save: HashMap<SaveKind, Instant>,
     modifiers: keyboard::Modifiers,
     grid: Grid,
+    last_tick: Instant,
 }
 
 impl App {
@@ -155,6 +156,7 @@ impl App {
                 pending_save: Default::default(),
                 modifiers: Default::default(),
                 grid,
+                last_tick: Instant::now(),
             },
             Task::batch(commands),
         )
@@ -189,6 +191,12 @@ impl App {
                 self.grid
                     .update_all_players(player::Event::SetPause(true), &self.config.playback);
                 std::process::exit(0)
+            }
+            Message::Tick(instant) => {
+                let elapsed = instant - self.last_tick;
+                self.last_tick = instant;
+                self.grid.tick(elapsed, &self.config.playback);
+                Task::none()
             }
             Message::Save => {
                 self.save();
@@ -432,11 +440,14 @@ impl App {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        let mut subscriptions = vec![iced::event::listen_with(|event, _status, _window| match event {
-            iced::Event::Keyboard(event) => Some(Message::KeyboardEvent(event)),
-            iced::Event::Window(iced::window::Event::CloseRequested) => Some(Message::Exit),
-            _ => None,
-        })];
+        let mut subscriptions = vec![
+            iced::event::listen_with(|event, _status, _window| match event {
+                iced::Event::Keyboard(event) => Some(Message::KeyboardEvent(event)),
+                iced::Event::Window(iced::window::Event::CloseRequested) => Some(Message::Exit),
+                _ => None,
+            }),
+            iced::time::every(Duration::from_millis(100)).map(Message::Tick),
+        ];
 
         if !self.pending_save.is_empty() {
             subscriptions.push(iced::time::every(Duration::from_millis(200)).map(|_| Message::Save));

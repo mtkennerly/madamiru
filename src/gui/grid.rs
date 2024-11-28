@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Duration};
 
 use crate::{
     gui::{
@@ -53,6 +53,40 @@ impl Grid {
 
     pub fn is_idle(&self) -> bool {
         self.players.is_empty() || (self.players.len() == 1 && matches!(self.players[0], Player::Idle))
+    }
+
+    pub fn tick(&mut self, elapsed: Duration, playback: &Playback) {
+        let updates: Vec<_> = self
+            .players
+            .iter_mut()
+            .enumerate()
+            .rev()
+            .map(|(index, player)| (index, player.tick(elapsed)))
+            .collect();
+
+        for (index, update) in updates {
+            if let Some(update) = update {
+                match update {
+                    player::Update::PauseChanged => {}
+                    player::Update::MuteChanged => {}
+                    player::Update::EndOfStream => {
+                        let media = media::find_new_media(&self.sources, usize::MAX, self.active_sources());
+                        let player = &mut self.players[index];
+
+                        match media {
+                            Some(media) => {
+                                let playback = playback.with_muted_maybe(player.is_muted());
+                                player.swap_media(&media, &playback);
+                            }
+                            None => {
+                                player.restart();
+                            }
+                        }
+                    }
+                    player::Update::Close => {}
+                }
+            }
+        }
     }
 
     pub fn remove(&mut self, id: player::Id) {
@@ -140,9 +174,9 @@ impl Grid {
         match event {
             Event::Player { id, event } => match self.players[id.0].update(event) {
                 Some(update) => match update {
-                    player::Update::MuteChanged => Some(Update::MuteChanged),
-                    player::Update::PauseChanged => Some(Update::PauseChanged),
-                    player::Update::EndOfStream => {
+                    player::Update::MuteChanged { .. } => Some(Update::MuteChanged),
+                    player::Update::PauseChanged { .. } => Some(Update::PauseChanged),
+                    player::Update::EndOfStream { .. } => {
                         let media = media::find_new_media(&self.sources, usize::MAX, self.active_sources());
                         let player = &mut self.players[id.0];
 
@@ -158,7 +192,7 @@ impl Grid {
 
                         None
                     }
-                    player::Update::Close => {
+                    player::Update::Close { .. } => {
                         self.remove(id);
                         if self.players.is_empty() {
                             self.players.push(Player::Idle);

@@ -17,7 +17,7 @@ flexi_logger = { version = "0.29.3", features = ["async"] }
 fluent = "0.16.1"
 globetter = "0.2.0"
 globset = "0.4.15"
-iced = { version = "0.13.1", features = ["advanced", "lazy", "tiny-skia", "tokio", "wgpu"], default-features = false }
+iced = { version = "0.13.1", features = ["advanced", "image", "lazy", "tiny-skia", "tokio", "wgpu"], default-features = false }
 # iced_video_player = "0.5.0"
 iced_video_player = { git = "https://github.com/jazzfool/iced_video_player.git", rev = "5aca2468289e3bcd157969aace8860b753f9c634" }
 image = { version = "0.25.2", features = ["ico"], default-features = false }
