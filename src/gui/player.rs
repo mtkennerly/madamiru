@@ -109,6 +109,7 @@ pub enum Player {
         handle_path: std::path::PathBuf,
         position: f64,
         duration: Duration,
+        paused: bool,
         looping: bool,
         dragging: bool,
         hovered: bool,
@@ -116,8 +117,10 @@ pub enum Player {
     Gif {
         source: StrictPath,
         frames: gif::Frames,
+        handle_path: std::path::PathBuf,
         position: f64,
         duration: Duration,
+        paused: bool,
         looping: bool,
         dragging: bool,
         hovered: bool,
@@ -140,6 +143,7 @@ impl Player {
                     handle_path,
                     position: 0.0,
                     duration: Duration::from_secs(10),
+                    paused: false,
                     looping: false,
                     dragging: false,
                     hovered: false,
@@ -150,11 +154,13 @@ impl Player {
                 },
             },
             Media::Gif { path } => match Self::load_gif(path) {
-                Ok(frames) => Self::Gif {
+                Ok((frames, handle_path)) => Self::Gif {
                     source: path.clone(),
                     frames,
+                    handle_path,
                     position: 0.0,
                     duration: Duration::from_secs(10),
+                    paused: false,
                     looping: false,
                     dragging: false,
                     hovered: false,
@@ -195,9 +201,11 @@ impl Player {
         Ok(source.as_std_path_buf()?)
     }
 
-    fn load_gif(source: &StrictPath) -> Result<gif::Frames, Error> {
+    fn load_gif(source: &StrictPath) -> Result<(gif::Frames, std::path::PathBuf), Error> {
         let bytes = source.try_read_bytes()?;
-        Ok(gif::Frames::from_bytes(bytes)?)
+        let frames = gif::Frames::from_bytes(bytes)?;
+        let handle_path = source.as_std_path_buf()?;
+        Ok((frames, handle_path))
     }
 
     pub fn swap_media(&mut self, media: &Media, playback: &Playback) {
@@ -236,8 +244,8 @@ impl Player {
         match self {
             Player::Idle => None,
             Player::Error { .. } => None,
-            Player::Image { .. } => None,
-            Player::Gif { .. } => None,
+            Player::Image { paused, .. } => Some(*paused),
+            Player::Gif { paused, .. } => Some(*paused),
             Player::Video { video, .. } => Some(video.paused()),
         }
     }
@@ -259,11 +267,12 @@ impl Player {
             Player::Image {
                 position,
                 duration,
+                paused,
                 looping,
                 dragging,
                 ..
             } => {
-                if !*dragging {
+                if !*paused && !*dragging {
                     *position += elapsed.as_secs_f64();
                 }
 
@@ -281,11 +290,12 @@ impl Player {
             Player::Gif {
                 position,
                 duration,
+                paused,
                 looping,
                 dragging,
                 ..
             } => {
-                if !*dragging {
+                if !*paused && !*dragging {
                     *position += elapsed.as_secs_f64();
                 }
 
@@ -312,12 +322,16 @@ impl Player {
             Player::Image {
                 position,
                 duration,
+                paused,
                 looping,
                 dragging,
                 hovered,
                 ..
             } => match event {
-                Event::SetPause(_) => None,
+                Event::SetPause(flag) => {
+                    *paused = flag;
+                    None
+                }
                 Event::SetLoop(flag) => {
                     *looping = flag;
                     None
@@ -348,12 +362,16 @@ impl Player {
             Player::Gif {
                 position,
                 duration,
+                paused,
                 looping,
                 dragging,
                 hovered,
                 ..
             } => match event {
-                Event::SetPause(_) => None,
+                Event::SetPause(flag) => {
+                    *paused = flag;
+                    None
+                }
                 Event::SetLoop(flag) => {
                     *looping = flag;
                     None
@@ -454,6 +472,7 @@ impl Player {
                 handle_path,
                 position,
                 duration,
+                paused,
                 looping,
                 dragging,
                 hovered,
@@ -508,7 +527,19 @@ impl Player {
                                     .align_y(iced::alignment::Vertical::Center)
                                     .padding(padding::all(10.0))
                                     .push(
-                                        button::big_icon(if *looping { Icon::Loop } else { Icon::Shuffle })
+                                        button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::SetPause(!*paused),
+                                            })
+                                            .tooltip(if *paused {
+                                                lang::action::play()
+                                            } else {
+                                                lang::action::pause()
+                                            }),
+                                    )
+                                    .push(
+                                        button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
                                             .on_press(Message::Player {
                                                 pane,
                                                 event: Event::SetLoop(!*looping),
@@ -566,8 +597,10 @@ impl Player {
             Player::Gif {
                 source,
                 frames,
+                handle_path,
                 position,
                 duration,
+                paused,
                 looping,
                 dragging,
                 hovered,
@@ -576,13 +609,19 @@ impl Player {
                 let overlay = *hovered || *dragging;
 
                 Stack::new()
-                    .push(
-                        Container::new(gif(frames))
+                    .push({
+                        let media = if *paused {
+                            Container::new(Image::new(handle_path))
+                        } else {
+                            Container::new(gif(frames))
+                        };
+
+                        media
                             .align_x(iced::Alignment::Center)
                             .align_y(iced::Alignment::Center)
                             .width(iced::Length::Fill)
-                            .height(iced::Length::Fill),
-                    )
+                            .height(iced::Length::Fill)
+                    })
                     .push_maybe(
                         overlay.then_some(
                             Container::new("")
@@ -622,7 +661,19 @@ impl Player {
                                     .align_y(iced::alignment::Vertical::Center)
                                     .padding(padding::all(10.0))
                                     .push(
-                                        button::big_icon(if *looping { Icon::Loop } else { Icon::Shuffle })
+                                        button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::SetPause(!*paused),
+                                            })
+                                            .tooltip(if *paused {
+                                                lang::action::play()
+                                            } else {
+                                                lang::action::pause()
+                                            }),
+                                    )
+                                    .push(
+                                        button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
                                             .on_press(Message::Player {
                                                 pane,
                                                 event: Event::SetLoop(!*looping),
