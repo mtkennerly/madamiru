@@ -20,7 +20,7 @@ pub struct CustomButton<'a> {
     tooltip_position: tooltip::Position,
 }
 
-impl<'a> CustomButton<'a> {
+impl CustomButton<'_> {
     pub fn on_press(mut self, message: Message) -> Self {
         self.on_press = Some(message);
         self
