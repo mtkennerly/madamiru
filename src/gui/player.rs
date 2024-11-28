@@ -5,6 +5,7 @@ use iced::{
     widget::{horizontal_space, mouse_area, vertical_space, Image},
     Length,
 };
+use iced_gif::gif;
 use iced_video_player::{Video, VideoPlayer};
 
 use crate::{
@@ -26,10 +27,23 @@ pub struct Id(pub usize);
 
 #[derive(Debug)]
 pub enum Error {
+    Image(String),
     Io(std::io::Error),
     Path(crate::path::StrictPathError),
     Url,
     Video(iced_video_player::Error),
+}
+
+impl Error {
+    pub fn message(&self) -> String {
+        match self {
+            Self::Image(error) => error.to_string(),
+            Self::Io(error) => error.to_string(),
+            Self::Path(error) => format!("{error:?}"),
+            Self::Url => "URL".to_string(),
+            Self::Video(error) => error.to_string(),
+        }
+    }
 }
 
 impl From<std::io::Error> for Error {
@@ -47,6 +61,15 @@ impl From<crate::path::StrictPathError> for Error {
 impl From<iced_video_player::Error> for Error {
     fn from(value: iced_video_player::Error) -> Self {
         Self::Video(value)
+    }
+}
+
+impl From<gif::Error> for Error {
+    fn from(value: gif::Error) -> Self {
+        match value {
+            gif::Error::Image(error) => Self::Image(error.to_string()),
+            gif::Error::Io(error) => Self::Io(error),
+        }
     }
 }
 
@@ -90,6 +113,15 @@ pub enum Player {
         dragging: bool,
         hovered: bool,
     },
+    Gif {
+        source: StrictPath,
+        frames: gif::Frames,
+        position: f64,
+        duration: Duration,
+        looping: bool,
+        dragging: bool,
+        hovered: bool,
+    },
     Video {
         source: StrictPath,
         video: Video,
@@ -114,12 +146,22 @@ impl Player {
                 },
                 Err(e) => Self::Error {
                     source: path.clone(),
-                    message: match e {
-                        Error::Io(error) => error.to_string(),
-                        Error::Path(error) => format!("{error:?}"),
-                        Error::Url => "URL".to_string(),
-                        Error::Video(error) => error.to_string(),
-                    },
+                    message: e.message(),
+                },
+            },
+            Media::Gif { path } => match Self::load_gif(path) {
+                Ok(frames) => Self::Gif {
+                    source: path.clone(),
+                    frames,
+                    position: 0.0,
+                    duration: Duration::from_secs(10),
+                    looping: false,
+                    dragging: false,
+                    hovered: false,
+                },
+                Err(e) => Self::Error {
+                    source: path.clone(),
+                    message: e.message(),
                 },
             },
             Media::Video { path } => match Self::load_video(path) {
@@ -137,12 +179,7 @@ impl Player {
                 }
                 Err(e) => Self::Error {
                     source: path.clone(),
-                    message: match e {
-                        Error::Io(error) => error.to_string(),
-                        Error::Path(error) => format!("{error:?}"),
-                        Error::Url => "URL".to_string(),
-                        Error::Video(error) => error.to_string(),
-                    },
+                    message: e.message(),
                 },
             },
         }
@@ -158,6 +195,11 @@ impl Player {
         Ok(source.as_std_path_buf()?)
     }
 
+    fn load_gif(source: &StrictPath) -> Result<gif::Frames, Error> {
+        let bytes = source.try_read_bytes()?;
+        Ok(gif::Frames::from_bytes(bytes)?)
+    }
+
     pub fn swap_media(&mut self, media: &Media, playback: &Playback) {
         *self = Self::new(media, playback)
     }
@@ -167,6 +209,9 @@ impl Player {
             Player::Idle => {}
             Player::Error { .. } => {}
             Player::Image { position, .. } => {
+                *position = 0.0;
+            }
+            Player::Gif { position, .. } => {
                 *position = 0.0;
             }
             Player::Video { video, position, .. } => {
@@ -182,6 +227,7 @@ impl Player {
             Player::Idle => None,
             Player::Error { source, .. } => Some(source),
             Player::Image { source, .. } => Some(source),
+            Player::Gif { source, .. } => Some(source),
             Player::Video { source, .. } => Some(source),
         }
     }
@@ -191,6 +237,7 @@ impl Player {
             Player::Idle => None,
             Player::Error { .. } => None,
             Player::Image { .. } => None,
+            Player::Gif { .. } => None,
             Player::Video { video, .. } => Some(video.paused()),
         }
     }
@@ -200,6 +247,7 @@ impl Player {
             Player::Idle => None,
             Player::Error { .. } => None,
             Player::Image { .. } => None,
+            Player::Gif { .. } => None,
             Player::Video { video, .. } => Some(video.muted()),
         }
     }
@@ -209,6 +257,28 @@ impl Player {
             Player::Idle => None,
             Player::Error { .. } => None,
             Player::Image {
+                position,
+                duration,
+                looping,
+                dragging,
+                ..
+            } => {
+                if !*dragging {
+                    *position += elapsed.as_secs_f64();
+                }
+
+                if *position >= duration.as_secs_f64() {
+                    if *looping {
+                        *position = 0.0;
+                        None
+                    } else {
+                        Some(Update::EndOfStream)
+                    }
+                } else {
+                    None
+                }
+            }
+            Player::Gif {
                 position,
                 duration,
                 looping,
@@ -240,6 +310,42 @@ impl Player {
             Player::Idle => None,
             Player::Error { .. } => None,
             Player::Image {
+                position,
+                duration,
+                looping,
+                dragging,
+                hovered,
+                ..
+            } => match event {
+                Event::SetPause(_) => None,
+                Event::SetLoop(flag) => {
+                    *looping = flag;
+                    None
+                }
+                Event::SetMute(_) => None,
+                Event::Seek(offset) => {
+                    *dragging = true;
+                    *position = offset.min(duration.as_secs_f64());
+                    None
+                }
+                Event::SeekStop => {
+                    *dragging = false;
+                    None
+                }
+                Event::SeekRandom => None,
+                Event::EndOfStream => Some(Update::EndOfStream),
+                Event::NewFrame => None,
+                Event::MouseEnter => {
+                    *hovered = true;
+                    None
+                }
+                Event::MouseExit => {
+                    *hovered = false;
+                    None
+                }
+                Event::Close => Some(Update::Close),
+            },
+            Player::Gif {
                 position,
                 duration,
                 looping,
@@ -358,6 +464,120 @@ impl Player {
                 Stack::new()
                     .push(
                         Container::new(Image::new(handle_path))
+                            .align_x(iced::Alignment::Center)
+                            .align_y(iced::Alignment::Center)
+                            .width(iced::Length::Fill)
+                            .height(iced::Length::Fill),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new("")
+                                .center(Length::Fill)
+                                .class(style::Container::ModalBackground),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new(text(source.render()).size(15))
+                                .padding(padding::right(30))
+                                .align_top(Length::Fill)
+                                .align_left(Length::Fill),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new(
+                                Row::new().push(
+                                    button::icon(Icon::Close)
+                                        .on_press(Message::Player {
+                                            pane,
+                                            event: Event::Close,
+                                        })
+                                        .tooltip(lang::action::close()),
+                                ),
+                            )
+                            .align_top(Length::Fill)
+                            .align_right(Length::Fill),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new(
+                                Row::new()
+                                    .spacing(5)
+                                    .align_y(iced::alignment::Vertical::Center)
+                                    .padding(padding::all(10.0))
+                                    .push(
+                                        button::big_icon(if *looping { Icon::Loop } else { Icon::Shuffle })
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::SetLoop(!*looping),
+                                            })
+                                            .tooltip(if *looping {
+                                                lang::tell::player_will_loop()
+                                            } else {
+                                                lang::tell::player_will_shuffle()
+                                            }),
+                                    ),
+                            )
+                            .center(Length::Fill),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new(
+                                Column::new()
+                                    .padding(padding::left(10).right(10).bottom(5))
+                                    .push(vertical_space())
+                                    .push(
+                                        Row::new()
+                                            .push(text(format!(
+                                                "{:02}:{:02}",
+                                                *position as u64 / 60,
+                                                *position as u64 % 60
+                                            )))
+                                            .push(horizontal_space())
+                                            .push(text(format!(
+                                                "{:02}:{:02}",
+                                                duration.as_secs() / 60,
+                                                duration.as_secs() % 60
+                                            ))),
+                                    )
+                                    .push(Container::new(
+                                        iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
+                                            Message::Player {
+                                                pane,
+                                                event: Event::Seek(x),
+                                            }
+                                        })
+                                        .step(0.1)
+                                        .on_release(Message::Player {
+                                            pane,
+                                            event: Event::SeekStop,
+                                        }),
+                                    )),
+                            )
+                            .align_bottom(Length::Fill)
+                            .center_x(Length::Fill),
+                        ),
+                    )
+                    .into()
+            }
+            Player::Gif {
+                source,
+                frames,
+                position,
+                duration,
+                looping,
+                dragging,
+                hovered,
+                ..
+            } => {
+                let overlay = *hovered || *dragging;
+
+                Stack::new()
+                    .push(
+                        Container::new(gif(frames))
                             .align_x(iced::Alignment::Center)
                             .align_y(iced::Alignment::Center)
                             .width(iced::Length::Fill)

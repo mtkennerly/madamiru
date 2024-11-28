@@ -711,6 +711,10 @@ impl StrictPath {
         Ok(std::fs::read_to_string(std::path::Path::new(&self.as_std_path_buf()?))?)
     }
 
+    pub fn try_read_bytes(&self) -> Result<Vec<u8>, std::io::Error> {
+        std::fs::read(self.as_std_path_buf()?)
+    }
+
     pub fn size(&self) -> u64 {
         match self.metadata() {
             Ok(m) => m.len(),

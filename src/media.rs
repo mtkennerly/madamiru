@@ -5,12 +5,14 @@ use crate::path::StrictPath;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Media {
     Image { path: StrictPath },
+    Gif { path: StrictPath },
     Video { path: StrictPath },
 }
 
 impl Media {
     pub fn path(&self) -> &StrictPath {
         match self {
+            Self::Gif { path } => path,
             Self::Image { path } => path,
             Self::Video { path } => path,
         }
@@ -35,12 +37,12 @@ impl Media {
                         Some(Media::Video { path: path.clone() })
                     }
                     "image/bmp"
-                    | "image/gif"
                     | "image/jpeg"
                     | "image/png"
                     | "image/tiff"
                     | "image/vnd.microsoft.icon"
                     | "image/webp" => Some(Media::Image { path: path.clone() }),
+                    "image/gif" => Some(Media::Gif { path: path.clone() }),
                     _ => None,
                 }
             }
