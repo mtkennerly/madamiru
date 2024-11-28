@@ -55,6 +55,94 @@ jobs:
           arch: 'x86'
       - if: ${{ matrix.artifact-name != 'win32' }}
         uses: blinemedical/setup-gstreamer@v1
+        with:
+          # This option is only used on Linux.
+          # References:
+          # https://github.com/blinemedical/setup-gstreamer/blob/47e369a12f1a63f03335c92b5d1aede8c89aa945/action.yml#L20-L43
+          # https://github.com/GStreamer/gst-plugins-base/blob/master/meson_options.txt
+          # https://github.com/GStreamer/gst-plugins-good/blob/master/meson_options.txt
+          # https://github.com/GStreamer/gst-plugins-bad/blob/master/meson_options.txt
+          # https://github.com/GStreamer/gst-plugins-ugly/blob/master/meson_options.txt
+          gstreamerOptions: |-
+            -Dlibnice:tests=disabled
+            -Dlibnice:examples=disabled
+            -Dopenh264:tests=disabled
+            -Dpygobject:tests=false
+            -Dpython=enabled
+            -Dlibav=enabled
+            -Dugly=enabled
+            -Dbad=enabled
+            -Ddevtools=enabled
+            -Dges=enabled
+            -Drtsp_server=enabled
+            -Dvaapi=enabled
+            -Dsharp=disabled
+            -Dgpl=enabled
+            -Dpython=disabled
+            -Dvaapi=disabled
+            -Dgst-plugins-base:pango=enabled
+            -Dgst-plugins-good:cairo=enabled
+            -Dgst-plugins-good:soup=enabled
+            -Dgst-plugins-good:soup-lookup-dep=true
+
+            -Dgst-plugins-base:ogg=enabled
+            -Dgst-plugins-base:opus=enabled
+            -Dgst-plugins-base:theora=enabled
+            -Dgst-plugins-base:tremor=enabled
+            -Dgst-plugins-base:vorbis=enabled
+            -Dgst-plugins-base:x11=enabled
+
+            -Dgst-plugins-good:aalib=enabled
+            -Dgst-plugins-good:bz2=enabled
+            -Dgst-plugins-good:directsound=enabled
+            -Dgst-plugins-good:dv=enabled
+            -Dgst-plugins-good:dv1394=enabled
+            -Dgst-plugins-good:flac=enabled
+            -Dgst-plugins-good:jack=enabled
+            -Dgst-plugins-good:jpeg=enabled
+            -Dgst-plugins-good:lame=enabled
+            -Dgst-plugins-good:mpg123=enabled
+            -Dgst-plugins-good:oss=enabled
+            -Dgst-plugins-good:oss4=enabled
+            -Dgst-plugins-good:osxaudio=enabled
+            -Dgst-plugins-good:osxvideo=enabled
+            -Dgst-plugins-good:png=enabled
+            -Dgst-plugins-good:pulse=enabled
+            -Dgst-plugins-good:speex=enabled
+            -Dgst-plugins-good:vpx=enabled
+            -Dgst-plugins-good:waveform=enabled
+            -Dgst-plugins-good:wavpack=enabled
+
+            -Dgst-plugins-bad:aiff=enabled
+            -Dgst-plugins-bad:midi=enabled
+            -Dgst-plugins-bad:mpegdemux=enabled
+            -Dgst-plugins-bad:mpegtsdemux=enabled
+            -Dgst-plugins-bad:wayland=enabled
+            -Dgst-plugins-bad:x11=enabled
+            -Dgst-plugins-bad:aom=enabled
+            -Dgst-plugins-bad:assrender=enabled
+            -Dgst-plugins-bad:bz2=enabled
+            -Dgst-plugins-bad:closedcaption=enabled
+            -Dgst-plugins-bad:d3d11=enabled
+            -Dgst-plugins-bad:dtls=enabled
+            -Dgst-plugins-bad:dts=enabled
+            -Dgst-plugins-bad:faad=enabled
+            -Dgst-plugins-bad:fdkaac=enabled
+            -Dgst-plugins-bad:fluidsynth=enabled
+            -Dgst-plugins-bad:gsm=enabled
+            -Dgst-plugins-bad:kate=enabled
+            -Dgst-plugins-bad:libde265=enabled
+            -Dgst-plugins-bad:modplug=enabled
+            -Dgst-plugins-bad:openh264=enabled
+            -Dgst-plugins-bad:openjpeg=enabled
+            -Dgst-plugins-bad:rsvg=enabled
+            -Dgst-plugins-bad:ttml=enabled
+            -Dgst-plugins-bad:webp=enabled
+
+            -Dgst-plugins-ugly:realmedia=enabled
+            -Dgst-plugins-ugly:a52dec=enabled
+            -Dgst-plugins-ugly:mpeg2dec=enabled
+            -Dgst-plugins-ugly:x264=enabled
       - run: cargo build --release
       - if: ${{ matrix.tar }}
         run: |
