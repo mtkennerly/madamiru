@@ -5,6 +5,10 @@ Use the latest version of Rust.
 On Linux, you'll need some additional system packages.
 Refer to [the installation guide](/docs/help/installation.md) for the list.
 
+You'll also need to install GStreamer (tested with 1.22.12).
+You can follow the instructions here:
+https://github.com/sdroege/gstreamer-rs#installation
+
 ### Commands
 * Run program:
   * `cargo run`
