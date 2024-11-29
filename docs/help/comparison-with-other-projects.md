@@ -14,7 +14,7 @@
 
 ## Performance
 On the author's system (Windows 11, AMD Ryzen 9 5900HS w/ 16 cores @ 3.3 GHz, Nvidia GeForce RTX 3070 Mobile, 16 GB RAM),
-Madamiru performs better than VLC and GridPlayer with several 1080p videos playing at once:
+Madamiru performs better than VLC (3.0.18) and GridPlayer (0.5.3) with several 1080p videos playing at once:
 
 * RAM usage:
   * Madamiru takes about 100 MB per 1080p video.
