@@ -190,6 +190,14 @@ pub mod thing {
     pub fn theme() -> String {
         translate("thing-theme")
     }
+
+    pub mod key {
+        use super::*;
+
+        pub fn shift() -> String {
+            translate("thing-key-shift")
+        }
+    }
 }
 
 pub mod action {

@@ -113,14 +113,16 @@ pub fn big_icon<'a>(icon: Icon) -> CustomButton<'a> {
 
 pub fn choose_folder<'a>(subject: BrowseSubject, raw: StrictPath, modifiers: &keyboard::Modifiers) -> CustomButton<'a> {
     if modifiers.shift() {
-        icon(Icon::OpenInNew)
-            .on_press(Message::OpenDir { path: raw })
-            .tooltip(lang::action::open_folder())
+        icon(Icon::OpenInNew).on_press(Message::OpenDir { path: raw })
     } else {
-        icon(Icon::FolderOpen)
-            .on_press(Message::BrowseDir(subject))
-            .tooltip(lang::action::select_folder())
+        icon(Icon::FolderOpen).on_press(Message::BrowseDir(subject))
     }
+    .tooltip(format!(
+        "{}\n{} {}",
+        lang::action::select_folder(),
+        lang::field(&lang::thing::key::shift()),
+        lang::action::open_folder()
+    ))
 }
 
 pub fn choose_file<'a>(
@@ -129,14 +131,16 @@ pub fn choose_file<'a>(
     modifiers: &keyboard::Modifiers,
 ) -> CustomButton<'a> {
     if modifiers.shift() {
-        icon(Icon::FileOpen)
-            .on_press(Message::OpenFile { path: raw })
-            .tooltip(lang::action::open_folder_of_file())
+        icon(Icon::FileOpen).on_press(Message::OpenFile { path: raw })
     } else {
-        icon(Icon::File)
-            .on_press(Message::BrowseFile(subject))
-            .tooltip(lang::action::select_file())
+        icon(Icon::File).on_press(Message::BrowseFile(subject))
     }
+    .tooltip(format!(
+        "{}\n{} {}",
+        lang::action::select_file(),
+        lang::field(&lang::thing::key::shift()),
+        lang::action::open_folder_of_file()
+    ))
 }
 
 pub fn move_up<'a>(action: fn(EditAction) -> Message, index: usize) -> CustomButton<'a> {

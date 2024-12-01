@@ -426,6 +426,9 @@ impl App {
                                 self.text_histories = histories;
                                 self.grid.set_sources(sources, &self.config.playback);
                             }
+                            modal::Update::Task(task) => {
+                                return task;
+                            }
                         }
                     }
                 }

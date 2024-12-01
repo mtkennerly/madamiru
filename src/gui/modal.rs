@@ -1,9 +1,11 @@
+use std::sync::LazyLock;
+
 use iced::{
     alignment,
     keyboard::Modifiers,
     padding,
-    widget::{mouse_area, opaque},
-    Alignment, Length,
+    widget::{mouse_area, opaque, scrollable},
+    Alignment, Length, Task,
 };
 use itertools::Itertools;
 
@@ -23,6 +25,7 @@ use crate::{
 };
 
 const RELEASE_URL: &str = "https://github.com/mtkennerly/madamiru/releases";
+static SCROLLABLE: LazyLock<scrollable::Id> = LazyLock::new(scrollable::Id::unique);
 
 #[derive(Debug, Clone)]
 pub enum Event {
@@ -30,12 +33,12 @@ pub enum Event {
     Save,
 }
 
-#[derive(Debug, Clone)]
 pub enum Update {
     SavedSources {
         sources: Vec<StrictPath>,
         histories: TextHistories,
     },
+    Task(Task<Message>),
 }
 
 pub enum ModalVariant {
@@ -238,7 +241,7 @@ impl Modal {
                 .align_x(Alignment::Center)
                 .push_maybe(self.title(config).map(text))
                 .push_maybe(self.body(config, histories, modifiers).map(|body| {
-                    Container::new(Scrollable::new(body.padding([0, 30])))
+                    Container::new(Scrollable::new(body.padding([0, 30])).id((*SCROLLABLE).clone()))
                         .padding(padding::right(5))
                         .max_height(viewport.height - 300.0)
                 }))
@@ -267,6 +270,10 @@ impl Modal {
                             let value = StrictPath::default();
                             histories.sources.push(TextHistory::path(&value));
                             sources.push(value);
+                            return Some(Update::Task(scrollable::scroll_by(
+                                (*SCROLLABLE).clone(),
+                                scrollable::AbsoluteOffset { x: 0.0, y: f32::MAX },
+                            )));
                         }
                         EditAction::Change(index, value) => {
                             histories.sources[index].push(&value);
@@ -284,10 +291,24 @@ impl Modal {
                     }
                     None
                 }
-                Event::Save => Some(Update::SavedSources {
-                    sources: sources.clone(),
-                    histories: histories.clone(),
-                }),
+                Event::Save => {
+                    for index in (0..sources.len()).rev() {
+                        if sources[index].raw_ref().trim().is_empty() {
+                            sources.remove(index);
+                            histories.sources.remove(index);
+                        }
+                    }
+
+                    if sources.is_empty() {
+                        sources.push(StrictPath::default());
+                        histories.sources.push(TextHistory::default())
+                    }
+
+                    Some(Update::SavedSources {
+                        sources: sources.clone(),
+                        histories: histories.clone(),
+                    })
+                }
             },
         }
     }

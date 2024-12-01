@@ -1,4 +1,5 @@
 thing-error = Error
+thing-key-shift = Shift
 thing-language = Language
 thing-settings = Settings
 thing-theme = Theme

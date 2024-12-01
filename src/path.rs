@@ -156,6 +156,10 @@ impl StrictPath {
         self.raw.to_string()
     }
 
+    pub fn raw_ref(&self) -> String {
+        self.raw.to_string()
+    }
+
     /// For any paths that we store the entire time the GUI is running, like in the config,
     /// we sometimes want to refresh in case we have stale data.
     pub fn invalidate_cache(&self) {
