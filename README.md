@@ -16,8 +16,10 @@ If you'd like to help translate Madamiru into other languages,
 Download the executable for Windows or Linux from the
 [releases page](https://github.com/mtkennerly/madamiru/releases).
 It's portable, so you can simply download it and put it anywhere on your system.
+(A Mac version is planned, but not yet available.)
 
-A Mac version is planned, but not yet available.
+You'll also need to install [GStreamer](https://gstreamer.freedesktop.org/download),
+which is a framework that provides various video codecs.
 
 <!--
 If you prefer, Madamiru is also available via
