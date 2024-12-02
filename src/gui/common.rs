@@ -56,7 +56,7 @@ impl Message {
     pub fn browsed_dir(subject: BrowseSubject, choice: Option<std::path::PathBuf>) -> Self {
         match choice {
             Some(path) => match subject {
-                BrowseSubject::Source { index } => Message::Modal {
+                BrowseSubject::Source { index } => Self::Modal {
                     event: modal::Event::EditedSource {
                         action: EditAction::Change(
                             index,
@@ -65,14 +65,14 @@ impl Message {
                     },
                 },
             },
-            None => Message::Ignore,
+            None => Self::Ignore,
         }
     }
 
     pub fn browsed_file(subject: BrowseFileSubject, choice: Option<std::path::PathBuf>) -> Self {
         match choice {
-            Some(path) => Message::SelectedFile(subject, StrictPath::from(path)),
-            None => Message::Ignore,
+            Some(path) => Self::SelectedFile(subject, StrictPath::from(path)),
+            None => Self::Ignore,
         }
     }
 }

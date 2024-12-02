@@ -227,15 +227,15 @@ impl Player {
 
     pub fn restart(&mut self) {
         match self {
-            Player::Idle => {}
-            Player::Error { .. } => {}
-            Player::Image { position, .. } => {
+            Self::Idle => {}
+            Self::Error { .. } => {}
+            Self::Image { position, .. } => {
                 *position = 0.0;
             }
-            Player::Gif { position, .. } => {
+            Self::Gif { position, .. } => {
                 *position = 0.0;
             }
-            Player::Video { video, position, .. } => {
+            Self::Video { video, position, .. } => {
                 *position = 0.0;
                 let _ = video.seek(Duration::from_secs_f64(*position), false);
                 video.set_paused(false);
@@ -245,57 +245,57 @@ impl Player {
 
     pub fn source(&self) -> Option<&StrictPath> {
         match self {
-            Player::Idle => None,
-            Player::Error { source, .. } => Some(source),
-            Player::Image { source, .. } => Some(source),
-            Player::Gif { source, .. } => Some(source),
-            Player::Video { source, .. } => Some(source),
+            Self::Idle => None,
+            Self::Error { source, .. } => Some(source),
+            Self::Image { source, .. } => Some(source),
+            Self::Gif { source, .. } => Some(source),
+            Self::Video { source, .. } => Some(source),
         }
     }
 
     pub fn is_paused(&self) -> Option<bool> {
         match self {
-            Player::Idle => None,
-            Player::Error { .. } => None,
-            Player::Image { paused, .. } => Some(*paused),
-            Player::Gif { paused, .. } => Some(*paused),
-            Player::Video { video, .. } => Some(video.paused()),
+            Self::Idle => None,
+            Self::Error { .. } => None,
+            Self::Image { paused, .. } => Some(*paused),
+            Self::Gif { paused, .. } => Some(*paused),
+            Self::Video { video, .. } => Some(video.paused()),
         }
     }
 
     pub fn is_muted(&self) -> Option<bool> {
         match self {
-            Player::Idle => None,
-            Player::Error { .. } => None,
-            Player::Image { .. } => None,
-            Player::Gif { .. } => None,
-            Player::Video { video, .. } => Some(video.muted()),
+            Self::Idle => None,
+            Self::Error { .. } => None,
+            Self::Image { .. } => None,
+            Self::Gif { .. } => None,
+            Self::Video { video, .. } => Some(video.muted()),
         }
     }
 
     pub fn is_hovered(&self) -> Option<bool> {
         match self {
-            Player::Idle => None,
-            Player::Error { hovered, .. } => Some(*hovered),
-            Player::Image { hovered, .. } => Some(*hovered),
-            Player::Gif { hovered, .. } => Some(*hovered),
-            Player::Video { hovered, .. } => Some(*hovered),
+            Self::Idle => None,
+            Self::Error { hovered, .. } => Some(*hovered),
+            Self::Image { hovered, .. } => Some(*hovered),
+            Self::Gif { hovered, .. } => Some(*hovered),
+            Self::Video { hovered, .. } => Some(*hovered),
         }
     }
 
     pub fn set_hovered(&mut self, flag: bool) {
         match self {
-            Player::Idle => {}
-            Player::Error { hovered, .. } => {
+            Self::Idle => {}
+            Self::Error { hovered, .. } => {
                 *hovered = flag;
             }
-            Player::Image { hovered, .. } => {
+            Self::Image { hovered, .. } => {
                 *hovered = flag;
             }
-            Player::Gif { hovered, .. } => {
+            Self::Gif { hovered, .. } => {
                 *hovered = flag;
             }
-            Player::Video { hovered, .. } => {
+            Self::Video { hovered, .. } => {
                 *hovered = flag;
             }
         }
@@ -303,9 +303,9 @@ impl Player {
 
     pub fn tick(&mut self, elapsed: Duration) -> Option<Update> {
         match self {
-            Player::Idle => None,
-            Player::Error { .. } => None,
-            Player::Image {
+            Self::Idle => None,
+            Self::Error { .. } => None,
+            Self::Image {
                 position,
                 duration,
                 paused,
@@ -328,7 +328,7 @@ impl Player {
                     None
                 }
             }
-            Player::Gif {
+            Self::Gif {
                 position,
                 duration,
                 paused,
@@ -351,15 +351,15 @@ impl Player {
                     None
                 }
             }
-            Player::Video { .. } => None,
+            Self::Video { .. } => None,
         }
     }
 
     #[must_use]
     pub fn update(&mut self, event: Event) -> Option<Update> {
         match self {
-            Player::Idle => None,
-            Player::Error { hovered, .. } => match event {
+            Self::Idle => None,
+            Self::Error { hovered, .. } => match event {
                 Event::SetPause(_) => None,
                 Event::SetLoop(_) => None,
                 Event::SetMute(_) => None,
@@ -379,7 +379,7 @@ impl Player {
                 Event::Refresh => Some(Update::Refresh),
                 Event::Close => Some(Update::Close),
             },
-            Player::Image {
+            Self::Image {
                 position,
                 duration,
                 paused,
@@ -420,7 +420,7 @@ impl Player {
                 Event::Refresh => Some(Update::Refresh),
                 Event::Close => Some(Update::Close),
             },
-            Player::Gif {
+            Self::Gif {
                 position,
                 duration,
                 paused,
@@ -461,7 +461,7 @@ impl Player {
                 Event::Refresh => Some(Update::Refresh),
                 Event::Close => Some(Update::Close),
             },
-            Player::Video {
+            Self::Video {
                 video,
                 position,
                 dragging,
@@ -518,13 +518,13 @@ impl Player {
 
     pub fn view(&self, pane: Id, obscured: bool) -> Element {
         let content: Element = match self {
-            Player::Idle => Container::new("")
+            Self::Idle => Container::new("")
                 .align_x(iced::Alignment::Center)
                 .align_y(iced::Alignment::Center)
                 .width(iced::Length::Fill)
                 .height(iced::Length::Fill)
                 .into(),
-            Player::Error {
+            Self::Error {
                 source,
                 message,
                 hovered,
@@ -591,7 +591,7 @@ impl Player {
                     )
                     .into()
             }
-            Player::Image {
+            Self::Image {
                 source,
                 handle_path,
                 position,
@@ -718,7 +718,7 @@ impl Player {
                     )
                     .into()
             }
-            Player::Gif {
+            Self::Gif {
                 source,
                 frames,
                 handle_path,
@@ -852,7 +852,7 @@ impl Player {
                     )
                     .into()
             }
-            Player::Video {
+            Self::Video {
                 source,
                 video,
                 position,

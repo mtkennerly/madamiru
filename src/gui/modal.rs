@@ -262,8 +262,8 @@ impl Modal {
 
     pub fn apply_shortcut(&mut self, subject: UndoSubject, shortcut: Shortcut) {
         match self {
-            Modal::Settings | Modal::Error { .. } | Modal::Errors { .. } | Modal::AppUpdate { .. } => {}
-            Modal::Sources { sources, histories } => match subject {
+            Self::Settings | Self::Error { .. } | Self::Errors { .. } | Self::AppUpdate { .. } => {}
+            Self::Sources { sources, histories } => match subject {
                 UndoSubject::Source { index } => sources[index].path.reset(histories.sources[index].apply(shortcut)),
             },
         }
@@ -272,8 +272,8 @@ impl Modal {
     #[must_use]
     pub fn update(&mut self, event: Event) -> Option<Update> {
         match self {
-            Modal::Settings | Modal::Error { .. } | Modal::Errors { .. } | Modal::AppUpdate { .. } => None,
-            Modal::Sources { sources, histories } => match event {
+            Self::Settings | Self::Error { .. } | Self::Errors { .. } | Self::AppUpdate { .. } => None,
+            Self::Sources { sources, histories } => match event {
                 Event::EditedSource { action } => {
                     match action {
                         EditAction::Add => {
@@ -326,8 +326,8 @@ impl Modal {
         modifiers: &Modifiers,
     ) -> Element {
         let histories = match self {
-            Modal::Settings | Modal::Error { .. } | Modal::Errors { .. } | Modal::AppUpdate { .. } => histories,
-            Modal::Sources { histories, .. } => histories,
+            Self::Settings | Self::Error { .. } | Self::Errors { .. } | Self::AppUpdate { .. } => histories,
+            Self::Sources { histories, .. } => histories,
         };
 
         Stack::new()

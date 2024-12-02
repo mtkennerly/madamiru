@@ -45,15 +45,15 @@ impl Media {
                 match info.mime_type() {
                     "video/mp4" | "video/mpeg" | "video/quicktime" | "video/webm" | "video/x-flv" | "video/x-m4v"
                     | "video/x-matroska" | "video/x-ms-wmv" | "video/x-msvideo" => {
-                        Some(Media::Video { path: path.clone() })
+                        Some(Self::Video { path: path.clone() })
                     }
                     "image/bmp"
                     | "image/jpeg"
                     | "image/png"
                     | "image/tiff"
                     | "image/vnd.microsoft.icon"
-                    | "image/webp" => Some(Media::Image { path: path.clone() }),
-                    "image/gif" => Some(Media::Gif { path: path.clone() }),
+                    | "image/webp" => Some(Self::Image { path: path.clone() }),
+                    "image/gif" => Some(Self::Gif { path: path.clone() }),
                     _ => None,
                 }
             }
