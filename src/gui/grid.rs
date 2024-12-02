@@ -72,8 +72,7 @@ impl Grid {
 
                         match media {
                             Some(media) => {
-                                let playback = playback.with_muted_maybe(player.is_muted());
-                                player.swap_media(&media, &playback);
+                                player.swap_media(&media, playback);
                             }
                             None => {
                                 player.restart();
@@ -179,8 +178,7 @@ impl Grid {
 
                         match media {
                             Some(media) => {
-                                let playback = playback.with_muted_maybe(player.is_muted());
-                                player.swap_media(&media, &playback);
+                                player.swap_media(&media, playback);
                             }
                             None => {
                                 player.restart();
@@ -201,8 +199,7 @@ impl Grid {
 
                         match media {
                             Some(media) => {
-                                let playback = playback.with_muted_maybe(player.is_muted());
-                                player.swap_media(&media, &playback);
+                                player.swap_media(&media, playback);
                             }
                             None => {
                                 if failed {

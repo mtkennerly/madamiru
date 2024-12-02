@@ -215,7 +215,14 @@ impl Player {
     }
 
     pub fn swap_media(&mut self, media: &Media, playback: &Playback) {
-        *self = Self::new(media, playback)
+        let playback = playback.with_muted_maybe(self.is_muted());
+        let hovered = self.is_hovered();
+
+        *self = Self::new(media, &playback);
+
+        if let Some(hovered) = hovered {
+            self.set_hovered(hovered);
+        }
     }
 
     pub fn restart(&mut self) {
@@ -263,6 +270,34 @@ impl Player {
             Player::Image { .. } => None,
             Player::Gif { .. } => None,
             Player::Video { video, .. } => Some(video.muted()),
+        }
+    }
+
+    pub fn is_hovered(&self) -> Option<bool> {
+        match self {
+            Player::Idle => None,
+            Player::Error { hovered, .. } => Some(*hovered),
+            Player::Image { hovered, .. } => Some(*hovered),
+            Player::Gif { hovered, .. } => Some(*hovered),
+            Player::Video { hovered, .. } => Some(*hovered),
+        }
+    }
+
+    pub fn set_hovered(&mut self, flag: bool) {
+        match self {
+            Player::Idle => {}
+            Player::Error { hovered, .. } => {
+                *hovered = flag;
+            }
+            Player::Image { hovered, .. } => {
+                *hovered = flag;
+            }
+            Player::Gif { hovered, .. } => {
+                *hovered = flag;
+            }
+            Player::Video { hovered, .. } => {
+                *hovered = flag;
+            }
         }
     }
 
