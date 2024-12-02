@@ -6,7 +6,7 @@ use crate::{
         style,
         widget::{Column, Container, Element, Row},
     },
-    media::{self, Source},
+    media,
     path::StrictPath,
     resource::config::Playback,
 };
@@ -30,24 +30,17 @@ pub enum Update {
 
 #[derive(Default)]
 pub struct Grid {
-    sources: Vec<Source>,
+    sources: Vec<media::Source>,
     errored: HashSet<StrictPath>,
     players: Vec<Player>,
 }
 
 impl Grid {
-    pub fn new(sources: &[Source], playback: &Playback) -> Self {
-        match media::find_media(sources, playback.max) {
-            Some(media) => Self {
-                sources: sources.to_vec(),
-                players: media.into_iter().map(|x| Player::new(&x, playback)).collect(),
-                ..Default::default()
-            },
-            None => Grid {
-                sources: sources.to_vec(),
-                players: vec![Player::Idle],
-                ..Default::default()
-            },
+    pub fn new(sources: &[media::Source]) -> Self {
+        Self {
+            sources: sources.to_vec(),
+            players: vec![Player::Idle],
+            ..Default::default()
         }
     }
 
@@ -59,7 +52,7 @@ impl Grid {
         self.players.is_empty() || (self.players.len() == 1 && matches!(self.players[0], Player::Idle))
     }
 
-    pub fn tick(&mut self, elapsed: Duration, playback: &Playback) {
+    pub fn tick(&mut self, elapsed: Duration, collection: &media::Collection, playback: &Playback) {
         let updates: Vec<_> = self
             .players
             .iter_mut()
@@ -74,8 +67,7 @@ impl Grid {
                     player::Update::PauseChanged => {}
                     player::Update::MuteChanged => {}
                     player::Update::EndOfStream => {
-                        let media =
-                            media::find_new_media(&self.sources, usize::MAX, self.active_sources(), &self.errored);
+                        let media = collection.one_new(self.active_sources(), &self.errored);
                         let player = &mut self.players[index];
 
                         match media {
@@ -115,29 +107,26 @@ impl Grid {
         }
     }
 
-    pub fn sources(&self) -> &[Source] {
+    pub fn sources(&self) -> &[media::Source] {
         &self.sources
     }
 
-    pub fn set_sources(&mut self, sources: Vec<Source>, playback: &Playback) {
+    pub fn set_sources(&mut self, sources: Vec<media::Source>) {
         self.sources = sources;
-        self.refresh(playback);
     }
 
     fn active_sources(&self) -> HashSet<&StrictPath> {
         self.players.iter().filter_map(|x| x.source()).collect()
     }
 
-    pub fn refresh(&mut self, playback: &Playback) {
+    pub fn refresh(&mut self, collection: &media::Collection, playback: &Playback) {
         let total = if self.is_idle() {
             playback.max
         } else {
             self.players.len()
         };
 
-        if let Some(media) =
-            media::find_new_media_first(&self.sources, usize::MAX, total, self.active_sources(), &self.errored)
-        {
+        if let Some(media) = collection.new_first(total, self.active_sources(), &self.errored) {
             self.players.clear();
 
             for item in media {
@@ -150,8 +139,8 @@ impl Grid {
         }
     }
 
-    pub fn add_player(&mut self, playback: &Playback) -> Result<(), Error> {
-        let Some(media) = media::find_new_media(&self.sources, usize::MAX, self.active_sources(), &self.errored) else {
+    pub fn add_player(&mut self, collection: &media::Collection, playback: &Playback) -> Result<(), Error> {
+        let Some(media) = collection.one_new(self.active_sources(), &self.errored) else {
             return Err(Error::NoMediaAvailable);
         };
 
@@ -178,15 +167,14 @@ impl Grid {
     }
 
     #[must_use]
-    pub fn update(&mut self, event: Event, playback: &Playback) -> Option<Update> {
+    pub fn update(&mut self, event: Event, collection: &media::Collection, playback: &Playback) -> Option<Update> {
         match event {
             Event::Player { id, event } => match self.players[id.0].update(event) {
                 Some(update) => match update {
                     player::Update::MuteChanged { .. } => Some(Update::MuteChanged),
                     player::Update::PauseChanged { .. } => Some(Update::PauseChanged),
                     player::Update::EndOfStream { .. } => {
-                        let media =
-                            media::find_new_media(&self.sources, usize::MAX, self.active_sources(), &self.errored);
+                        let media = collection.one_new(self.active_sources(), &self.errored);
                         let player = &mut self.players[id.0];
 
                         match media {
@@ -208,8 +196,7 @@ impl Grid {
                             failed = true;
                         }
 
-                        let media =
-                            media::find_new_media(&self.sources, usize::MAX, self.active_sources(), &self.errored);
+                        let media = collection.one_new(self.active_sources(), &self.errored);
                         let player = &mut self.players[id.0];
 
                         match media {
@@ -245,7 +232,7 @@ impl Grid {
         }
     }
 
-    pub fn update_all_players(&mut self, event: player::Event, playback: &Playback) {
+    pub fn update_all_players(&mut self, event: player::Event, collection: &media::Collection, playback: &Playback) {
         let ids: Vec<_> = self
             .players
             .iter()
@@ -259,6 +246,7 @@ impl Grid {
                     id,
                     event: event.clone(),
                 },
+                collection,
                 playback,
             );
         }

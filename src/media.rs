@@ -69,53 +69,60 @@ impl Media {
     }
 }
 
-fn find_media_in_source(source: &Source) -> Vec<Media> {
-    let path = &source.path;
+#[derive(Debug, Default, Clone)]
+pub struct Collection {
+    media: HashSet<Media>,
+}
 
-    if path.is_file() {
-        match Media::identify(path) {
-            Some(source) => vec![source],
-            None => vec![],
+impl Collection {
+    pub fn new(media: HashSet<Media>) -> Self {
+        Self { media }
+    }
+
+    pub fn find(sources: &[Source]) -> Self {
+        let mut media = HashSet::new();
+
+        for source in sources {
+            media.extend(Self::find_in_source(&source.path));
         }
-    } else if path.is_dir() {
-        path.joined("*")
-            .glob()
-            .into_iter()
-            .filter(|x| x.is_file())
-            .filter_map(|path| Media::identify(&path))
-            .collect()
-    } else {
-        path.glob()
-            .into_iter()
-            .filter(|x| x.is_file())
-            .filter_map(|path| Media::identify(&path))
-            .collect()
-    }
-}
 
-pub fn find_media(sources: &[Source], max: usize) -> Option<Vec<Media>> {
-    use rand::seq::SliceRandom;
-
-    let mut media = vec![];
-
-    for path in sources {
-        media.extend(find_media_in_source(path));
+        Self::new(media)
     }
 
-    media.shuffle(&mut rand::thread_rng());
-    (!media.is_empty()).then(|| media.into_iter().take(max).collect())
-}
+    fn find_in_source(path: &StrictPath) -> HashSet<Media> {
+        if path.is_file() {
+            match Media::identify(path) {
+                Some(source) => HashSet::from_iter([source]),
+                None => HashSet::new(),
+            }
+        } else if path.is_dir() {
+            path.joined("*")
+                .glob()
+                .into_iter()
+                .filter(|x| x.is_file())
+                .filter_map(|path| Media::identify(&path))
+                .collect()
+        } else {
+            let mut media = HashSet::new();
+            for path in path.glob() {
+                media.extend(Self::find_in_source(&path));
+            }
+            media
+        }
+    }
 
-pub fn find_new_media_first(
-    sources: &[Source],
-    max: usize,
-    take: usize,
-    old: HashSet<&StrictPath>,
-    ignored: &HashSet<StrictPath>,
-) -> Option<Vec<Media>> {
-    let media = find_media(sources, max)?;
-    Some(
-        media
+    pub fn new_first(
+        &self,
+        take: usize,
+        old: HashSet<&StrictPath>,
+        ignored: &HashSet<StrictPath>,
+    ) -> Option<Vec<Media>> {
+        use rand::seq::SliceRandom;
+
+        let mut media: Vec<_> = self.media.iter().collect();
+        media.shuffle(&mut rand::thread_rng());
+
+        let media: Vec<_> = media
             .iter()
             .filter(|media| !ignored.contains(media.path()) && !old.contains(media.path()))
             .chain(
@@ -125,20 +132,21 @@ pub fn find_new_media_first(
             )
             .take(take)
             .cloned()
-            .collect(),
-    )
-}
+            .cloned()
+            .collect();
 
-pub fn find_new_media(
-    sources: &[Source],
-    max: usize,
-    old: HashSet<&StrictPath>,
-    ignored: &HashSet<StrictPath>,
-) -> Option<Media> {
-    let media = find_media(sources, max)?;
-    media
-        .iter()
-        .filter(|media| !ignored.contains(media.path()))
-        .find(|media| !old.contains(media.path()))
-        .cloned()
+        (!media.is_empty()).then_some(media)
+    }
+
+    pub fn one_new(&self, old: HashSet<&StrictPath>, ignored: &HashSet<StrictPath>) -> Option<Media> {
+        use rand::seq::SliceRandom;
+
+        let mut media: Vec<_> = self.media.iter().collect();
+        media.shuffle(&mut rand::thread_rng());
+
+        media
+            .into_iter()
+            .find(|media| !ignored.contains(media.path()) && !old.contains(media.path()))
+            .cloned()
+    }
 }

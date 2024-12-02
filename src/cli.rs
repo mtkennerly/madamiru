@@ -4,18 +4,17 @@ use clap::CommandFactory;
 
 use crate::{
     cli::parse::{Cli, CompletionShell, Subcommand},
-    lang,
-    media::Source,
+    lang, media,
     path::StrictPath,
     prelude::Error,
     resource::{cache::Cache, config::Config, ResourceFile},
 };
 
-pub fn parse_sources(sources: Vec<StrictPath>) -> Vec<Source> {
+pub fn parse_sources(sources: Vec<StrictPath>) -> Vec<media::Source> {
     if !sources.is_empty() {
         sources
             .into_iter()
-            .filter_map(|path| (!path.is_blank()).then(|| Source::new(path)))
+            .filter_map(|path| (!path.is_blank()).then(|| media::Source::new(path)))
             .collect()
     } else {
         use std::io::IsTerminal;
@@ -27,7 +26,7 @@ pub fn parse_sources(sources: Vec<StrictPath>) -> Vec<Source> {
             let sources: Vec<_> = stdin
                 .lines()
                 .map_while(Result::ok)
-                .filter_map(|raw| (!raw.trim().is_empty()).then(|| Source::new(StrictPath::new(raw))))
+                .filter_map(|raw| (!raw.trim().is_empty()).then(|| media::Source::new(StrictPath::new(raw))))
                 .collect();
             log::debug!("Sources from stdin: {:?}", &sources);
             if sources.is_empty() {

@@ -19,7 +19,7 @@ use crate::{
         widget::{checkbox, pick_list, text, Column, Container, Element, Row, Scrollable, Space, Stack},
     },
     lang::{self, Language},
-    media::Source,
+    media,
     path::StrictPath,
     prelude::Error,
     resource::config::{Config, Theme},
@@ -36,7 +36,7 @@ pub enum Event {
 
 pub enum Update {
     SavedSources {
-        sources: Vec<Source>,
+        sources: Vec<media::Source>,
         histories: TextHistories,
     },
     Task(Task<Message>),
@@ -52,7 +52,7 @@ pub enum ModalVariant {
 pub enum Modal {
     Settings,
     Sources {
-        sources: Vec<Source>,
+        sources: Vec<media::Source>,
         histories: TextHistories,
     },
     Error {
@@ -67,9 +67,9 @@ pub enum Modal {
 }
 
 impl Modal {
-    pub fn new_sources(mut sources: Vec<Source>, mut histories: TextHistories) -> Self {
+    pub fn new_sources(mut sources: Vec<media::Source>, mut histories: TextHistories) -> Self {
         if sources.is_empty() {
-            sources.push(Source::default());
+            sources.push(media::Source::default());
             histories.sources.push(TextHistory::default())
         }
 
@@ -279,7 +279,7 @@ impl Modal {
                         EditAction::Add => {
                             let value = StrictPath::default();
                             histories.sources.push(TextHistory::path(&value));
-                            sources.push(Source::new(value));
+                            sources.push(media::Source::new(value));
                             return Some(Update::Task(scrollable::scroll_by(
                                 (*SCROLLABLE).clone(),
                                 scrollable::AbsoluteOffset { x: 0.0, y: f32::MAX },
@@ -287,7 +287,7 @@ impl Modal {
                         }
                         EditAction::Change(index, value) => {
                             histories.sources[index].push(&value);
-                            sources[index] = Source::new(StrictPath::new(value));
+                            sources[index] = media::Source::new(StrictPath::new(value));
                         }
                         EditAction::Remove(index) => {
                             histories.sources.remove(index);

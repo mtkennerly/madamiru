@@ -17,7 +17,7 @@ use crate::{
         style,
         widget::{Column, Container, Element, Responsive, Row, Stack},
     },
-    lang,
+    lang, media,
     prelude::{Error, STEAM_DECK},
     resource::{cache::Cache, config::Config, ResourceFile, SaveableResourceFile},
 };
@@ -36,6 +36,7 @@ pub struct App {
     pending_save: HashMap<SaveKind, Instant>,
     modifiers: keyboard::Modifiers,
     grid: Grid,
+    media: media::Collection,
     last_tick: Instant,
 }
 
@@ -98,7 +99,7 @@ impl App {
     pub fn new(flags: Flags) -> (Self, Task<Message>) {
         let mut errors = vec![];
 
-        let mut modal = vec![];
+        let mut modals = vec![];
         let mut config = match Config::load() {
             Ok(x) => x,
             Err(x) => {
@@ -109,10 +110,6 @@ impl App {
         };
         let cache = Cache::load().unwrap_or_default().migrate_config(&mut config);
         lang::set(config.language);
-
-        if !errors.is_empty() {
-            modal.push(Modal::Errors { errors });
-        }
 
         let sources = flags.sources.clone();
         if let Some(max) = flags.max {
@@ -138,21 +135,28 @@ impl App {
             }))
         }
 
-        let grid = Grid::new(&sources, &config.playback);
+        let grid = Grid::new(&sources);
 
-        if grid.is_idle() && modal.is_empty() {
-            modal.push(Modal::new_sources(sources.clone(), text_histories.clone()));
+        if sources.is_empty() {
+            modals.push(Modal::new_sources(sources.clone(), text_histories.clone()));
+        } else {
+            commands.push(Self::find_media(sources, true))
+        }
+
+        if !errors.is_empty() {
+            modals.push(Modal::Errors { errors });
         }
 
         (
             Self {
                 config,
                 cache,
-                modals: modal,
+                modals,
                 text_histories,
                 pending_save: Default::default(),
                 modifiers: Default::default(),
                 grid,
+                media: Default::default(),
                 last_tick: Instant::now(),
             },
             Task::batch(commands),
@@ -168,7 +172,7 @@ impl App {
     }
 
     fn refresh(&mut self) -> Task<Message> {
-        self.grid.refresh(&self.config.playback);
+        self.grid.refresh(&self.media, &self.config.playback);
         Task::none()
     }
 
@@ -180,19 +184,38 @@ impl App {
         self.grid.all_muted()
     }
 
+    fn find_media(sources: Vec<media::Source>, refresh: bool) -> Task<Message> {
+        if sources.is_empty() {
+            return Task::none();
+        }
+
+        Task::future(async move {
+            match tokio::task::spawn_blocking(move || media::Collection::find(&sources)).await {
+                Ok(media) => {
+                    log::debug!("Found media: {media:?}");
+                    Message::MediaFound { refresh, media }
+                }
+                Err(e) => {
+                    log::error!("Unable to find media: {e:?}");
+                    Message::Ignore
+                }
+            }
+        })
+    }
+
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Ignore => Task::none(),
             Message::Exit => {
                 // If we don't pause first, you may still hear the videos for a moment after the app closes.
                 self.grid
-                    .update_all_players(player::Event::SetPause(true), &self.config.playback);
+                    .update_all_players(player::Event::SetPause(true), &self.media, &self.config.playback);
                 std::process::exit(0)
             }
             Message::Tick(instant) => {
                 let elapsed = instant - self.last_tick;
                 self.last_tick = instant;
-                self.grid.tick(elapsed, &self.config.playback);
+                self.grid.tick(elapsed, &self.media, &self.config.playback);
                 Task::none()
             }
             Message::Save => {
@@ -360,7 +383,7 @@ impl App {
             Message::OpenUrl(url) => Self::open_url(url),
             Message::OpenUrlAndCloseModal(url) => Task::batch([Self::open_url(url), self.close_modal()]),
             Message::Refresh => self.refresh(),
-            Message::AddPlayer => match self.grid.add_player(&self.config.playback) {
+            Message::AddPlayer => match self.grid.add_player(&self.media, &self.config.playback) {
                 Ok(_) => Task::none(),
                 Err(e) => match e {
                     grid::Error::NoMediaAvailable => self.show_modal(Modal::Error {
@@ -372,7 +395,7 @@ impl App {
                 self.config.playback.paused = flag;
 
                 self.grid
-                    .update_all_players(player::Event::SetPause(flag), &self.config.playback);
+                    .update_all_players(player::Event::SetPause(flag), &self.media, &self.config.playback);
 
                 Task::none()
             }
@@ -381,15 +404,16 @@ impl App {
                 self.save_config();
 
                 self.grid
-                    .update_all_players(player::Event::SetMute(flag), &self.config.playback);
+                    .update_all_players(player::Event::SetMute(flag), &self.media, &self.config.playback);
 
                 Task::none()
             }
             Message::Player { pane, event } => {
-                if let Some(update) = self
-                    .grid
-                    .update(grid::Event::Player { id: pane, event }, &self.config.playback)
-                {
+                if let Some(update) = self.grid.update(
+                    grid::Event::Player { id: pane, event },
+                    &self.media,
+                    &self.config.playback,
+                ) {
                     match update {
                         grid::Update::PauseChanged { .. } => {
                             self.config.playback.paused = self.all_paused();
@@ -411,7 +435,7 @@ impl App {
                 Task::none()
             }
             Message::AllPlayers { event } => {
-                self.grid.update_all_players(event, &self.config.playback);
+                self.grid.update_all_players(event, &self.media, &self.config.playback);
                 Task::none()
             }
             Message::Modal { event } => {
@@ -421,7 +445,8 @@ impl App {
                             modal::Update::SavedSources { sources, histories } => {
                                 self.modals.pop();
                                 self.text_histories = histories;
-                                self.grid.set_sources(sources, &self.config.playback);
+                                self.grid.set_sources(sources.clone());
+                                return Self::find_media(sources, true);
                             }
                             modal::Update::Task(task) => {
                                 return task;
@@ -436,6 +461,15 @@ impl App {
                 self.grid.sources().to_vec(),
                 self.text_histories.clone(),
             )),
+            Message::FindMedia => Self::find_media(self.grid.sources().to_vec(), false),
+            Message::MediaFound { refresh, media } => {
+                self.media = media;
+                if refresh {
+                    self.refresh()
+                } else {
+                    Task::none()
+                }
+            }
         }
     }
 
@@ -447,6 +481,7 @@ impl App {
                 _ => None,
             }),
             iced::time::every(Duration::from_millis(100)).map(Message::Tick),
+            iced::time::every(Duration::from_secs(60 * 10)).map(|_| Message::FindMedia),
         ];
 
         if !self.pending_save.is_empty() {

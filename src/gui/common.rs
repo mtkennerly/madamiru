@@ -3,14 +3,14 @@ use std::time::Instant;
 use crate::{
     gui::{modal, player},
     lang::Language,
-    media::Source,
+    media,
     prelude::StrictPath,
     resource::config::Theme,
 };
 
 #[derive(Clone, Debug, Default)]
 pub struct Flags {
-    pub sources: Vec<Source>,
+    pub sources: Vec<media::Source>,
     pub max: Option<usize>,
 }
 
@@ -48,6 +48,8 @@ pub enum Message {
     Modal { event: modal::Event },
     ShowSettings,
     ShowSources,
+    FindMedia,
+    MediaFound { refresh: bool, media: media::Collection },
 }
 
 impl Message {
