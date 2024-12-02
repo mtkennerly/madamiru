@@ -85,6 +85,7 @@ pub enum Event {
     NewFrame,
     MouseEnter,
     MouseExit,
+    Refresh,
     Close,
 }
 
@@ -93,6 +94,7 @@ pub enum Update {
     PauseChanged,
     MuteChanged,
     EndOfStream,
+    Refresh,
     Close,
 }
 
@@ -103,6 +105,7 @@ pub enum Player {
     Error {
         source: StrictPath,
         message: String,
+        hovered: bool,
     },
     Image {
         source: StrictPath,
@@ -151,6 +154,7 @@ impl Player {
                 Err(e) => Self::Error {
                     source: path.clone(),
                     message: e.message(),
+                    hovered: false,
                 },
             },
             Media::Gif { path } => match Self::load_gif(path) {
@@ -168,6 +172,7 @@ impl Player {
                 Err(e) => Self::Error {
                     source: path.clone(),
                     message: e.message(),
+                    hovered: false,
                 },
             },
             Media::Video { path } => match Self::load_video(path) {
@@ -186,6 +191,7 @@ impl Player {
                 Err(e) => Self::Error {
                     source: path.clone(),
                     message: e.message(),
+                    hovered: false,
                 },
             },
         }
@@ -318,7 +324,26 @@ impl Player {
     pub fn update(&mut self, event: Event) -> Option<Update> {
         match self {
             Player::Idle => None,
-            Player::Error { .. } => None,
+            Player::Error { hovered, .. } => match event {
+                Event::SetPause(_) => None,
+                Event::SetLoop(_) => None,
+                Event::SetMute(_) => None,
+                Event::Seek(_) => None,
+                Event::SeekStop => None,
+                Event::SeekRandom => None,
+                Event::EndOfStream => None,
+                Event::NewFrame => None,
+                Event::MouseEnter => {
+                    *hovered = true;
+                    None
+                }
+                Event::MouseExit => {
+                    *hovered = false;
+                    None
+                }
+                Event::Refresh => Some(Update::Refresh),
+                Event::Close => Some(Update::Close),
+            },
             Player::Image {
                 position,
                 duration,
@@ -357,6 +382,7 @@ impl Player {
                     *hovered = false;
                     None
                 }
+                Event::Refresh => Some(Update::Refresh),
                 Event::Close => Some(Update::Close),
             },
             Player::Gif {
@@ -397,6 +423,7 @@ impl Player {
                     *hovered = false;
                     None
                 }
+                Event::Refresh => Some(Update::Refresh),
                 Event::Close => Some(Update::Close),
             },
             Player::Video {
@@ -448,6 +475,7 @@ impl Player {
                     *hovered = false;
                     None
                 }
+                Event::Refresh => Some(Update::Refresh),
                 Event::Close => Some(Update::Close),
             },
         }
@@ -461,12 +489,73 @@ impl Player {
                 .width(iced::Length::Fill)
                 .height(iced::Length::Fill)
                 .into(),
-            Player::Error { source, message } => Container::new(text(format!("{}\n\n{}", source.render(), message)))
-                .align_x(iced::Alignment::Center)
-                .align_y(iced::Alignment::Center)
-                .width(iced::Length::Fill)
-                .height(iced::Length::Fill)
-                .into(),
+            Player::Error {
+                source,
+                message,
+                hovered,
+            } => {
+                let overlay = *hovered;
+
+                Stack::new()
+                    .push(
+                        Container::new(text(message))
+                            .align_x(iced::Alignment::Center)
+                            .align_y(iced::Alignment::Center)
+                            .width(iced::Length::Fill)
+                            .height(iced::Length::Fill),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new("")
+                                .center(Length::Fill)
+                                .class(style::Container::ModalBackground),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new(text(source.render()).size(15))
+                                .padding(padding::right(30))
+                                .align_top(Length::Fill)
+                                .align_left(Length::Fill),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new(
+                                Row::new().push(
+                                    button::icon(Icon::Close)
+                                        .on_press(Message::Player {
+                                            pane,
+                                            event: Event::Close,
+                                        })
+                                        .tooltip(lang::action::close()),
+                                ),
+                            )
+                            .align_top(Length::Fill)
+                            .align_right(Length::Fill),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.then_some(
+                            Container::new(
+                                Row::new()
+                                    .spacing(5)
+                                    .align_y(iced::alignment::Vertical::Center)
+                                    .padding(padding::all(10.0))
+                                    .push(
+                                        button::big_icon(Icon::Refresh)
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::Refresh,
+                                            })
+                                            .tooltip(lang::action::shuffle_media()),
+                                    ),
+                            )
+                            .center(Length::Fill),
+                        ),
+                    )
+                    .into()
+            }
             Player::Image {
                 source,
                 handle_path,

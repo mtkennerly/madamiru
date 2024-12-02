@@ -111,20 +111,34 @@ pub fn find_new_media_first(
     max: usize,
     take: usize,
     old: HashSet<&StrictPath>,
+    ignored: &HashSet<StrictPath>,
 ) -> Option<Vec<Media>> {
     let media = find_media(sources, max)?;
     Some(
         media
             .iter()
-            .filter(|media| !old.contains(media.path()))
-            .chain(media.iter().filter(|source| old.contains(source.path())))
+            .filter(|media| !ignored.contains(media.path()) && !old.contains(media.path()))
+            .chain(
+                media
+                    .iter()
+                    .filter(|media| !ignored.contains(media.path()) && old.contains(media.path())),
+            )
             .take(take)
             .cloned()
             .collect(),
     )
 }
 
-pub fn find_new_media(sources: &[Source], max: usize, old: HashSet<&StrictPath>) -> Option<Media> {
+pub fn find_new_media(
+    sources: &[Source],
+    max: usize,
+    old: HashSet<&StrictPath>,
+    ignored: &HashSet<StrictPath>,
+) -> Option<Media> {
     let media = find_media(sources, max)?;
-    media.iter().find(|media| !old.contains(media.path())).cloned()
+    media
+        .iter()
+        .filter(|media| !ignored.contains(media.path()))
+        .find(|media| !old.contains(media.path()))
+        .cloned()
 }

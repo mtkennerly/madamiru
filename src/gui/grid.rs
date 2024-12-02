@@ -28,8 +28,10 @@ pub enum Update {
     PlayerClosed,
 }
 
+#[derive(Default)]
 pub struct Grid {
     sources: Vec<Source>,
+    errored: HashSet<StrictPath>,
     players: Vec<Player>,
 }
 
@@ -39,10 +41,12 @@ impl Grid {
             Some(media) => Self {
                 sources: sources.to_vec(),
                 players: media.into_iter().map(|x| Player::new(&x, playback)).collect(),
+                ..Default::default()
             },
             None => Grid {
                 sources: sources.to_vec(),
                 players: vec![Player::Idle],
+                ..Default::default()
             },
         }
     }
@@ -70,7 +74,8 @@ impl Grid {
                     player::Update::PauseChanged => {}
                     player::Update::MuteChanged => {}
                     player::Update::EndOfStream => {
-                        let media = media::find_new_media(&self.sources, usize::MAX, self.active_sources());
+                        let media =
+                            media::find_new_media(&self.sources, usize::MAX, self.active_sources(), &self.errored);
                         let player = &mut self.players[index];
 
                         match media {
@@ -83,6 +88,7 @@ impl Grid {
                             }
                         }
                     }
+                    player::Update::Refresh => {}
                     player::Update::Close => {}
                 }
             }
@@ -129,7 +135,9 @@ impl Grid {
             self.players.len()
         };
 
-        if let Some(media) = media::find_new_media_first(&self.sources, usize::MAX, total, self.active_sources()) {
+        if let Some(media) =
+            media::find_new_media_first(&self.sources, usize::MAX, total, self.active_sources(), &self.errored)
+        {
             self.players.clear();
 
             for item in media {
@@ -143,7 +151,7 @@ impl Grid {
     }
 
     pub fn add_player(&mut self, playback: &Playback) -> Result<(), Error> {
-        let Some(media) = media::find_new_media(&self.sources, usize::MAX, self.active_sources()) else {
+        let Some(media) = media::find_new_media(&self.sources, usize::MAX, self.active_sources(), &self.errored) else {
             return Err(Error::NoMediaAvailable);
         };
 
@@ -177,7 +185,8 @@ impl Grid {
                     player::Update::MuteChanged { .. } => Some(Update::MuteChanged),
                     player::Update::PauseChanged { .. } => Some(Update::PauseChanged),
                     player::Update::EndOfStream { .. } => {
-                        let media = media::find_new_media(&self.sources, usize::MAX, self.active_sources());
+                        let media =
+                            media::find_new_media(&self.sources, usize::MAX, self.active_sources(), &self.errored);
                         let player = &mut self.players[id.0];
 
                         match media {
@@ -187,6 +196,37 @@ impl Grid {
                             }
                             None => {
                                 player.restart();
+                            }
+                        }
+
+                        None
+                    }
+                    player::Update::Refresh => {
+                        let mut failed = false;
+                        if let Player::Error { source, .. } = &self.players[id.0] {
+                            self.errored.insert(source.clone());
+                            failed = true;
+                        }
+
+                        let media =
+                            media::find_new_media(&self.sources, usize::MAX, self.active_sources(), &self.errored);
+                        let player = &mut self.players[id.0];
+
+                        match media {
+                            Some(media) => {
+                                let playback = playback.with_muted_maybe(player.is_muted());
+                                player.swap_media(&media, &playback);
+                            }
+                            None => {
+                                if failed {
+                                    self.remove(id);
+                                    if self.players.is_empty() {
+                                        self.players.push(Player::Idle);
+                                    }
+                                    return Some(Update::PlayerClosed);
+                                } else {
+                                    player.restart();
+                                }
                             }
                         }
 
