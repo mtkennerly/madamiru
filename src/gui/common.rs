@@ -3,13 +3,14 @@ use std::time::Instant;
 use crate::{
     gui::{modal, player},
     lang::Language,
+    media::Source,
     prelude::StrictPath,
     resource::config::Theme,
 };
 
 #[derive(Clone, Debug, Default)]
 pub struct Flags {
-    pub sources: Vec<StrictPath>,
+    pub sources: Vec<Source>,
     pub max: Option<usize>,
 }
 

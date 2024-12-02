@@ -19,6 +19,7 @@ use crate::{
         widget::{checkbox, pick_list, text, Column, Container, Element, Row, Scrollable, Space, Stack},
     },
     lang::{self, Language},
+    media::Source,
     path::StrictPath,
     prelude::Error,
     resource::config::{Config, Theme},
@@ -35,7 +36,7 @@ pub enum Event {
 
 pub enum Update {
     SavedSources {
-        sources: Vec<StrictPath>,
+        sources: Vec<Source>,
         histories: TextHistories,
     },
     Task(Task<Message>),
@@ -51,7 +52,7 @@ pub enum ModalVariant {
 pub enum Modal {
     Settings,
     Sources {
-        sources: Vec<StrictPath>,
+        sources: Vec<Source>,
         histories: TextHistories,
     },
     Error {
@@ -66,6 +67,15 @@ pub enum Modal {
 }
 
 impl Modal {
+    pub fn new_sources(mut sources: Vec<Source>, mut histories: TextHistories) -> Self {
+        if sources.is_empty() {
+            sources.push(Source::default());
+            histories.sources.push(TextHistory::default())
+        }
+
+        Self::Sources { sources, histories }
+    }
+
     pub fn variant(&self) -> ModalVariant {
         match self {
             Self::Error { .. } | Self::Errors { .. } => ModalVariant::Info,
@@ -166,12 +176,12 @@ impl Modal {
                                     .align_y(alignment::Vertical::Center)
                                     .push(button::choose_folder(
                                         BrowseSubject::Source { index },
-                                        source.clone(),
+                                        source.path.clone(),
                                         modifiers,
                                     ))
                                     .push(button::choose_file(
                                         BrowseFileSubject::Source { index },
-                                        source.clone(),
+                                        source.path.clone(),
                                         modifiers,
                                     ))
                                     .push(button::icon(Icon::Close).on_press_maybe((sources.len() > 1).then_some(
@@ -254,7 +264,7 @@ impl Modal {
         match self {
             Modal::Settings | Modal::Error { .. } | Modal::Errors { .. } | Modal::AppUpdate { .. } => {}
             Modal::Sources { sources, histories } => match subject {
-                UndoSubject::Source { index } => sources[index].reset(histories.sources[index].apply(shortcut)),
+                UndoSubject::Source { index } => sources[index].path.reset(histories.sources[index].apply(shortcut)),
             },
         }
     }
@@ -269,7 +279,7 @@ impl Modal {
                         EditAction::Add => {
                             let value = StrictPath::default();
                             histories.sources.push(TextHistory::path(&value));
-                            sources.push(value);
+                            sources.push(Source::new(value));
                             return Some(Update::Task(scrollable::scroll_by(
                                 (*SCROLLABLE).clone(),
                                 scrollable::AbsoluteOffset { x: 0.0, y: f32::MAX },
@@ -277,7 +287,7 @@ impl Modal {
                         }
                         EditAction::Change(index, value) => {
                             histories.sources[index].push(&value);
-                            sources[index] = StrictPath::new(value);
+                            sources[index] = Source::new(StrictPath::new(value));
                         }
                         EditAction::Remove(index) => {
                             histories.sources.remove(index);
@@ -293,15 +303,10 @@ impl Modal {
                 }
                 Event::Save => {
                     for index in (0..sources.len()).rev() {
-                        if sources[index].raw_ref().trim().is_empty() {
+                        if sources[index].path.raw_ref().trim().is_empty() {
                             sources.remove(index);
                             histories.sources.remove(index);
                         }
-                    }
-
-                    if sources.is_empty() {
-                        sources.push(StrictPath::default());
-                        histories.sources.push(TextHistory::default())
                     }
 
                     Some(Update::SavedSources {

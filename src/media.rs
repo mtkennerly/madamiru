@@ -2,6 +2,17 @@ use std::collections::HashSet;
 
 use crate::path::StrictPath;
 
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Source {
+    pub path: StrictPath,
+}
+
+impl Source {
+    pub fn new(path: StrictPath) -> Self {
+        Self { path }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Media {
     Image { path: StrictPath },
@@ -58,7 +69,9 @@ impl Media {
     }
 }
 
-fn find_media_in_path(path: &StrictPath) -> Vec<Media> {
+fn find_media_in_source(source: &Source) -> Vec<Media> {
+    let path = &source.path;
+
     if path.is_file() {
         match Media::identify(path) {
             Some(source) => vec![source],
@@ -80,13 +93,13 @@ fn find_media_in_path(path: &StrictPath) -> Vec<Media> {
     }
 }
 
-pub fn find_media(sources: &[StrictPath], max: usize) -> Option<Vec<Media>> {
+pub fn find_media(sources: &[Source], max: usize) -> Option<Vec<Media>> {
     use rand::seq::SliceRandom;
 
     let mut media = vec![];
 
     for path in sources {
-        media.extend(find_media_in_path(path));
+        media.extend(find_media_in_source(path));
     }
 
     media.shuffle(&mut rand::thread_rng());
@@ -94,7 +107,7 @@ pub fn find_media(sources: &[StrictPath], max: usize) -> Option<Vec<Media>> {
 }
 
 pub fn find_new_media_first(
-    sources: &[StrictPath],
+    sources: &[Source],
     max: usize,
     take: usize,
     old: HashSet<&StrictPath>,
@@ -111,7 +124,7 @@ pub fn find_new_media_first(
     )
 }
 
-pub fn find_new_media(sources: &[StrictPath], max: usize, old: HashSet<&StrictPath>) -> Option<Media> {
+pub fn find_new_media(sources: &[Source], max: usize, old: HashSet<&StrictPath>) -> Option<Media> {
     let media = find_media(sources, max)?;
     media.iter().find(|media| !old.contains(media.path())).cloned()
 }

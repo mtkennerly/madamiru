@@ -11,6 +11,7 @@ use crate::{
         modal, style,
         widget::{Element, TextInput, Undoable},
     },
+    media::Source,
     prelude::StrictPath,
     resource::config::Config,
 };
@@ -110,9 +111,9 @@ pub struct TextHistories {
 }
 
 impl TextHistories {
-    pub fn new(_config: &Config, sources: &[StrictPath]) -> Self {
+    pub fn new(_config: &Config, sources: &[Source]) -> Self {
         Self {
-            sources: sources.iter().map(TextHistory::path).collect(),
+            sources: sources.iter().map(|source| TextHistory::path(&source.path)).collect(),
         }
     }
 

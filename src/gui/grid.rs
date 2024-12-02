@@ -6,7 +6,7 @@ use crate::{
         style,
         widget::{Column, Container, Element, Row},
     },
-    media,
+    media::{self, Source},
     path::StrictPath,
     resource::config::Playback,
 };
@@ -29,12 +29,12 @@ pub enum Update {
 }
 
 pub struct Grid {
-    sources: Vec<StrictPath>,
+    sources: Vec<Source>,
     players: Vec<Player>,
 }
 
 impl Grid {
-    pub fn new(sources: &[StrictPath], playback: &Playback) -> Self {
+    pub fn new(sources: &[Source], playback: &Playback) -> Self {
         match media::find_media(sources, playback.max) {
             Some(media) => Self {
                 sources: sources.to_vec(),
@@ -109,11 +109,11 @@ impl Grid {
         }
     }
 
-    pub fn sources(&self) -> &[StrictPath] {
+    pub fn sources(&self) -> &[Source] {
         &self.sources
     }
 
-    pub fn set_sources(&mut self, sources: Vec<StrictPath>, playback: &Playback) {
+    pub fn set_sources(&mut self, sources: Vec<Source>, playback: &Playback) {
         self.sources = sources;
         self.refresh(playback);
     }

@@ -725,6 +725,10 @@ impl StrictPath {
             _ => 0,
         }
     }
+
+    pub fn is_blank(&self) -> bool {
+        self.raw.trim().is_empty()
+    }
 }
 
 impl From<&str> for StrictPath {

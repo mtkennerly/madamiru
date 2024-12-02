@@ -141,10 +141,7 @@ impl App {
         let grid = Grid::new(&sources, &config.playback);
 
         if grid.is_idle() && modal.is_empty() {
-            modal.push(Modal::Sources {
-                sources: sources.clone(),
-                histories: text_histories.clone(),
-            });
+            modal.push(Modal::new_sources(sources.clone(), text_histories.clone()));
         }
 
         (
@@ -277,7 +274,7 @@ impl App {
             }
             Message::OpenDirSubject(subject) => {
                 let path = match subject {
-                    BrowseSubject::Source { index } => self.grid.sources()[index].clone(),
+                    BrowseSubject::Source { index } => self.grid.sources()[index].path.clone(),
                 };
 
                 match path.parent_if_file() {
@@ -306,7 +303,7 @@ impl App {
             }
             Message::OpenFileSubject(subject) => {
                 let path = match subject {
-                    BrowseFileSubject::Source { index } => self.grid.sources()[index].clone(),
+                    BrowseFileSubject::Source { index } => self.grid.sources()[index].path.clone(),
                 };
 
                 self.update(Message::OpenFile { path })
@@ -403,10 +400,10 @@ impl App {
                         }
                         grid::Update::PlayerClosed => {
                             if self.grid.is_idle() {
-                                return self.show_modal(Modal::Sources {
-                                    sources: self.grid.sources().to_vec(),
-                                    histories: self.text_histories.clone(),
-                                });
+                                return self.show_modal(Modal::new_sources(
+                                    self.grid.sources().to_vec(),
+                                    self.text_histories.clone(),
+                                ));
                             }
                         }
                     }
@@ -435,10 +432,10 @@ impl App {
                 Task::none()
             }
             Message::ShowSettings => self.show_modal(Modal::Settings),
-            Message::ShowSources => self.show_modal(Modal::Sources {
-                sources: self.grid.sources().to_vec(),
-                histories: self.text_histories.clone(),
-            }),
+            Message::ShowSources => self.show_modal(Modal::new_sources(
+                self.grid.sources().to_vec(),
+                self.text_histories.clone(),
+            )),
         }
     }
 
