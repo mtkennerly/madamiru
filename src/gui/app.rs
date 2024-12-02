@@ -461,7 +461,9 @@ impl App {
     }
 
     pub fn view(&self) -> Element {
-        Responsive::new(|viewport| {
+        let obscured = !self.modals.is_empty();
+
+        Responsive::new(move |viewport| {
             let content = Container::new(
                 Column::new()
                     .spacing(5)
@@ -472,6 +474,7 @@ impl App {
                             .push(
                                 button::icon(Icon::PlaylistAdd)
                                     .on_press(Message::ShowSources)
+                                    .obscured(obscured)
                                     .tooltip_below(lang::action::configure_media_sources()),
                             )
                             .push(horizontal_space())
@@ -480,6 +483,7 @@ impl App {
                                     Row::new().spacing(5).push(
                                         button::icon(Icon::Add)
                                             .on_press(Message::AddPlayer)
+                                            .obscured(obscured)
                                             .tooltip_below(lang::action::add_player()),
                                     ),
                                 )
@@ -492,6 +496,7 @@ impl App {
                                         .push(
                                             button::icon(Icon::Add)
                                                 .on_press(Message::AddPlayer)
+                                                .obscured(obscured)
                                                 .tooltip_below(lang::action::add_player()),
                                         )
                                         .push(
@@ -501,6 +506,7 @@ impl App {
                                                 Icon::VolumeHigh
                                             })
                                             .on_press(Message::SetMute(!self.config.playback.muted))
+                                            .obscured(obscured)
                                             .tooltip_below(
                                                 if self.config.playback.muted {
                                                     lang::action::unmute()
@@ -516,6 +522,7 @@ impl App {
                                                 Icon::Pause
                                             })
                                             .on_press(Message::SetPause(!self.config.playback.paused))
+                                            .obscured(obscured)
                                             .tooltip_below(
                                                 if self.config.playback.paused {
                                                     lang::action::play()
@@ -527,6 +534,7 @@ impl App {
                                         .push(
                                             button::icon(Icon::Refresh)
                                                 .on_press(Message::Refresh)
+                                                .obscured(obscured)
                                                 .tooltip_below(lang::action::shuffle_media()),
                                         )
                                         .push(
@@ -534,6 +542,7 @@ impl App {
                                                 .on_press(Message::AllPlayers {
                                                     event: player::Event::SeekRandom,
                                                 })
+                                                .obscured(obscured)
                                                 .tooltip_below(lang::action::jump_position()),
                                         ),
                                 )
@@ -543,15 +552,17 @@ impl App {
                             .push(
                                 button::icon(Icon::Settings)
                                     .on_press(Message::ShowSettings)
+                                    .obscured(obscured)
                                     .tooltip_below(lang::thing::settings()),
                             )
                             .push_maybe(STEAM_DECK.then(|| {
                                 button::icon(Icon::LogOut)
                                     .on_press(Message::Exit)
+                                    .obscured(obscured)
                                     .tooltip_below(lang::action::exit_app())
                             })),
                     )
-                    .push(self.grid.view(!self.modals.is_empty())),
+                    .push(self.grid.view(obscured)),
             );
 
             let stack = Stack::new()

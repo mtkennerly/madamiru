@@ -18,6 +18,7 @@ pub struct CustomButton<'a> {
     padding: Option<Padding>,
     tooltip: Option<String>,
     tooltip_position: tooltip::Position,
+    obscured: bool,
 }
 
 impl CustomButton<'_> {
@@ -41,20 +42,27 @@ impl CustomButton<'_> {
         self.tooltip_position = tooltip::Position::Bottom;
         self
     }
+
+    pub fn obscured(mut self, obscured: bool) -> Self {
+        self.obscured = obscured;
+        self
+    }
 }
 
 impl<'a> From<CustomButton<'a>> for Element<'a> {
     fn from(value: CustomButton<'a>) -> Self {
-        let mut button = Button::new(value.content)
-            .class(value.class)
-            .on_press_maybe(value.on_press);
+        let mut button = Button::new(value.content).class(value.class);
+
+        if !value.obscured {
+            button = button.on_press_maybe(value.on_press);
+        }
 
         if let Some(padding) = value.padding {
             button = button.padding(padding);
         }
 
         match value.tooltip {
-            Some(tooltip) => Tooltip::new(
+            Some(tooltip) if !value.obscured => Tooltip::new(
                 button,
                 Container::new(text(tooltip).size(14)).padding([2, 4]),
                 value.tooltip_position,
@@ -62,7 +70,7 @@ impl<'a> From<CustomButton<'a>> for Element<'a> {
             .gap(5)
             .class(style::Container::Tooltip)
             .into(),
-            None => button.into(),
+            _ => button.into(),
         }
     }
 }
@@ -75,6 +83,7 @@ pub fn primary<'a>(content: String) -> CustomButton<'a> {
         padding: Some([5, 40].into()),
         tooltip: None,
         tooltip_position: tooltip::Position::Top,
+        obscured: false,
     }
 }
 
@@ -86,6 +95,7 @@ pub fn negative<'a>(content: String) -> CustomButton<'a> {
         padding: Some([5, 40].into()),
         tooltip: None,
         tooltip_position: tooltip::Position::Top,
+        obscured: false,
     }
 }
 
@@ -97,6 +107,7 @@ pub fn icon<'a>(icon: Icon) -> CustomButton<'a> {
         padding: None,
         tooltip: None,
         tooltip_position: tooltip::Position::Top,
+        obscured: false,
     }
 }
 
@@ -108,6 +119,7 @@ pub fn big_icon<'a>(icon: Icon) -> CustomButton<'a> {
         padding: None,
         tooltip: None,
         tooltip_position: tooltip::Position::Top,
+        obscured: false,
     }
 }
 
