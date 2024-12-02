@@ -4,11 +4,8 @@ use crate::prelude::StrictPath;
 
 use clap::ValueEnum;
 
-fn parse_existing_strict_path(path: &str) -> Result<StrictPath, std::io::Error> {
-    let cwd = StrictPath::cwd();
-    let sp = StrictPath::relative(path.to_owned(), Some(cwd.raw()));
-    sp.metadata()?;
-    Ok(sp)
+fn parse_strict_path(path: &str) -> Result<StrictPath, std::io::Error> {
+    Ok(StrictPath::relative(path.to_owned(), Some(StrictPath::cwd().raw())))
 }
 
 fn styles() -> clap::builder::styling::Styles {
@@ -76,7 +73,7 @@ pub struct Cli {
 
     /// Sources to load.
     /// Alternatively supports stdin (one value per line).
-    #[clap(value_parser = parse_existing_strict_path)]
+    #[clap(value_parser = parse_strict_path)]
     pub sources: Vec<StrictPath>,
 
     /// How many items to load at most.
