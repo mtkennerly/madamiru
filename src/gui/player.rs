@@ -138,10 +138,11 @@ pub enum Player {
 }
 
 impl Player {
-    pub fn new(media: &Media, playback: &Playback) -> Self {
+    #[allow(clippy::result_large_err)]
+    pub fn new(media: &Media, playback: &Playback) -> Result<Self, Self> {
         match media {
             Media::Image { path } => match Self::load_image(path) {
-                Ok(handle_path) => Self::Image {
+                Ok(handle_path) => Ok(Self::Image {
                     source: path.clone(),
                     handle_path,
                     position: 0.0,
@@ -150,15 +151,15 @@ impl Player {
                     looping: false,
                     dragging: false,
                     hovered: false,
-                },
-                Err(e) => Self::Error {
+                }),
+                Err(e) => Err(Self::Error {
                     source: path.clone(),
                     message: e.message(),
                     hovered: false,
-                },
+                }),
             },
             Media::Gif { path } => match Self::load_gif(path) {
-                Ok((frames, handle_path)) => Self::Gif {
+                Ok((frames, handle_path)) => Ok(Self::Gif {
                     source: path.clone(),
                     frames,
                     handle_path,
@@ -168,31 +169,31 @@ impl Player {
                     looping: false,
                     dragging: false,
                     hovered: false,
-                },
-                Err(e) => Self::Error {
+                }),
+                Err(e) => Err(Self::Error {
                     source: path.clone(),
                     message: e.message(),
                     hovered: false,
-                },
+                }),
             },
             Media::Video { path } => match Self::load_video(path) {
                 Ok(mut video) => {
                     video.set_paused(playback.paused);
                     video.set_muted(playback.muted);
 
-                    Self::Video {
+                    Ok(Self::Video {
                         source: path.clone(),
                         video,
                         position: 0.0,
                         dragging: false,
                         hovered: false,
-                    }
+                    })
                 }
-                Err(e) => Self::Error {
+                Err(e) => Err(Self::Error {
                     source: path.clone(),
                     message: e.message(),
                     hovered: false,
-                },
+                }),
             },
         }
     }
@@ -214,14 +215,27 @@ impl Player {
         Ok((frames, handle_path))
     }
 
-    pub fn swap_media(&mut self, media: &Media, playback: &Playback) {
+    pub fn swap_media(&mut self, media: &Media, playback: &Playback) -> Result<(), ()> {
         let playback = playback.with_muted_maybe(self.is_muted());
         let hovered = self.is_hovered();
 
-        *self = Self::new(media, &playback);
+        let mut error = false;
+        *self = match Self::new(media, &playback) {
+            Ok(player) => player,
+            Err(player) => {
+                error = true;
+                player
+            }
+        };
 
         if let Some(hovered) = hovered {
             self.set_hovered(hovered);
+        }
+
+        if error {
+            Err(())
+        } else {
+            Ok(())
         }
     }
 

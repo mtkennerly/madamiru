@@ -72,7 +72,9 @@ impl Grid {
 
                         match media {
                             Some(media) => {
-                                player.swap_media(&media, playback);
+                                if player.swap_media(&media, playback).is_err() {
+                                    self.errored.insert(media.path().clone());
+                                }
                             }
                             None => {
                                 player.restart();
@@ -129,8 +131,15 @@ impl Grid {
             self.players.clear();
 
             for item in media {
-                let player = Player::new(&item, playback);
-                self.players.push(player);
+                match Player::new(&item, playback) {
+                    Ok(player) => {
+                        self.players.push(player);
+                    }
+                    Err(player) => {
+                        self.errored.insert(item.path().clone());
+                        self.players.push(player);
+                    }
+                }
             }
         } else {
             self.players.clear();
@@ -147,8 +156,15 @@ impl Grid {
             self.players.clear();
         }
 
-        let player = Player::new(&media, playback);
-        self.players.push(player);
+        match Player::new(&media, playback) {
+            Ok(player) => {
+                self.players.push(player);
+            }
+            Err(player) => {
+                self.errored.insert(media.path().clone());
+                self.players.push(player);
+            }
+        }
 
         Ok(())
     }
@@ -178,7 +194,9 @@ impl Grid {
 
                         match media {
                             Some(media) => {
-                                player.swap_media(&media, playback);
+                                if player.swap_media(&media, playback).is_err() {
+                                    self.errored.insert(media.path().clone());
+                                }
                             }
                             None => {
                                 player.restart();
@@ -188,18 +206,22 @@ impl Grid {
                         None
                     }
                     player::Update::Refresh => {
-                        let mut failed = false;
-                        if let Player::Error { source, .. } = &self.players[id.0] {
-                            self.errored.insert(source.clone());
-                            failed = true;
-                        }
+                        let failed = match &self.players[id.0] {
+                            Player::Idle => false,
+                            Player::Error { .. } => true,
+                            Player::Image { .. } => false,
+                            Player::Gif { .. } => false,
+                            Player::Video { .. } => false,
+                        };
 
                         let media = collection.one_new(self.active_sources(), &self.errored);
                         let player = &mut self.players[id.0];
 
                         match media {
                             Some(media) => {
-                                player.swap_media(&media, playback);
+                                if player.swap_media(&media, playback).is_err() {
+                                    self.errored.insert(media.path().clone());
+                                }
                             }
                             None => {
                                 if failed {
