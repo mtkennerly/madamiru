@@ -644,14 +644,23 @@ impl Player {
                     .push_maybe(
                         overlay.then_some(
                             Container::new(
-                                Row::new().push(
-                                    button::icon(Icon::Close)
-                                        .on_press(Message::Player {
-                                            pane,
-                                            event: Event::Close,
-                                        })
-                                        .tooltip(lang::action::close()),
-                                ),
+                                Row::new()
+                                    .push(
+                                        button::icon(Icon::Refresh)
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::Refresh,
+                                            })
+                                            .tooltip(lang::action::shuffle_media()),
+                                    )
+                                    .push(
+                                        button::icon(Icon::Close)
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::Close,
+                                            })
+                                            .tooltip(lang::action::close()),
+                                    ),
                             )
                             .align_top(Length::Fill)
                             .align_right(Length::Fill),
@@ -778,14 +787,23 @@ impl Player {
                     .push_maybe(
                         overlay.then_some(
                             Container::new(
-                                Row::new().push(
-                                    button::icon(Icon::Close)
-                                        .on_press(Message::Player {
-                                            pane,
-                                            event: Event::Close,
-                                        })
-                                        .tooltip(lang::action::close()),
-                                ),
+                                Row::new()
+                                    .push(
+                                        button::icon(Icon::Refresh)
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::Refresh,
+                                            })
+                                            .tooltip(lang::action::shuffle_media()),
+                                    )
+                                    .push(
+                                        button::icon(Icon::Close)
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::Close,
+                                            })
+                                            .tooltip(lang::action::close()),
+                                    ),
                             )
                             .align_top(Length::Fill)
                             .align_right(Length::Fill),
@@ -915,14 +933,23 @@ impl Player {
                     .push_maybe(
                         overlay.then_some(
                             Container::new(
-                                Row::new().push(
-                                    button::icon(Icon::Close)
-                                        .on_press(Message::Player {
-                                            pane,
-                                            event: Event::Close,
-                                        })
-                                        .tooltip(lang::action::close()),
-                                ),
+                                Row::new()
+                                    .push(
+                                        button::icon(Icon::Refresh)
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::Refresh,
+                                            })
+                                            .tooltip(lang::action::shuffle_media()),
+                                    )
+                                    .push(
+                                        button::icon(Icon::Close)
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::Close,
+                                            })
+                                            .tooltip(lang::action::close()),
+                                    ),
                             )
                             .align_top(Length::Fill)
                             .align_right(Length::Fill),
