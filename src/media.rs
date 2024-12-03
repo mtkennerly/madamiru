@@ -1,15 +1,100 @@
 use std::collections::HashSet;
 
-use crate::path::StrictPath;
+use crate::{lang, path::StrictPath};
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Source {
-    pub path: StrictPath,
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Source {
+    Path { path: StrictPath },
+    Glob { pattern: String },
 }
 
 impl Source {
-    pub fn new(path: StrictPath) -> Self {
-        Self { path }
+    pub fn new_path(path: StrictPath) -> Self {
+        Self::Path { path }
+    }
+
+    pub fn new_glob(pattern: String) -> Self {
+        Self::Glob { pattern }
+    }
+
+    pub fn kind(&self) -> SourceKind {
+        match self {
+            Self::Path { .. } => SourceKind::Path,
+            Self::Glob { .. } => SourceKind::Glob,
+        }
+    }
+
+    pub fn set_kind(&mut self, kind: SourceKind) {
+        let raw = self.raw();
+
+        match kind {
+            SourceKind::Path => {
+                *self = Self::new_path(StrictPath::new(raw));
+            }
+            SourceKind::Glob => {
+                *self = Self::new_glob(raw.to_string());
+            }
+        }
+    }
+
+    pub fn path(&self) -> Option<&StrictPath> {
+        match self {
+            Self::Path { path } => Some(path),
+            Self::Glob { .. } => None,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::Path { path } => path.raw_ref().trim().is_empty(),
+            Self::Glob { pattern } => pattern.trim().is_empty(),
+        }
+    }
+
+    pub fn raw(&self) -> &str {
+        match self {
+            Self::Path { path } => path.raw_ref(),
+            Self::Glob { pattern } => pattern,
+        }
+    }
+
+    pub fn reset(&mut self, raw: String) {
+        match self {
+            Self::Path { path } => {
+                path.reset(raw);
+            }
+            Self::Glob { pattern } => {
+                *pattern = raw;
+            }
+        }
+    }
+}
+
+impl Default for Source {
+    fn default() -> Self {
+        Self::Path {
+            path: Default::default(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SourceKind {
+    #[default]
+    Path,
+    Glob,
+}
+
+impl SourceKind {
+    pub const ALL: &'static [Self] = &[Self::Path, Self::Glob];
+}
+
+impl ToString for SourceKind {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Path => lang::thing::path(),
+            Self::Glob => lang::thing::glob(),
+        }
     }
 }
 
@@ -83,31 +168,38 @@ impl Collection {
         let mut media = HashSet::new();
 
         for source in sources {
-            media.extend(Self::find_in_source(&source.path));
+            media.extend(Self::find_in_source(source));
         }
 
         Self::new(media)
     }
 
-    fn find_in_source(path: &StrictPath) -> HashSet<Media> {
-        if path.is_file() {
-            match Media::identify(path) {
-                Some(source) => HashSet::from_iter([source]),
-                None => HashSet::new(),
+    fn find_in_source(source: &Source) -> HashSet<Media> {
+        match source {
+            Source::Path { path } => {
+                if path.is_file() {
+                    match Media::identify(path) {
+                        Some(source) => HashSet::from_iter([source]),
+                        None => HashSet::new(),
+                    }
+                } else if path.is_dir() {
+                    path.joined("*")
+                        .glob()
+                        .into_iter()
+                        .filter(|x| x.is_file())
+                        .filter_map(|path| Media::identify(&path))
+                        .collect()
+                } else {
+                    HashSet::new()
+                }
             }
-        } else if path.is_dir() {
-            path.joined("*")
-                .glob()
-                .into_iter()
-                .filter(|x| x.is_file())
-                .filter_map(|path| Media::identify(&path))
-                .collect()
-        } else {
-            let mut media = HashSet::new();
-            for path in path.glob() {
-                media.extend(Self::find_in_source(&path));
+            Source::Glob { pattern } => {
+                let mut media = HashSet::new();
+                for path in StrictPath::new(pattern).glob() {
+                    media.extend(Self::find_in_source(&Source::new_path(path)));
+                }
+                media
             }
-            media
         }
     }
 

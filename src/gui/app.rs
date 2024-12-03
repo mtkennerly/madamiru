@@ -274,15 +274,6 @@ impl App {
 
                 Message::browsed_file(subject, choice.map(|x| x.path().to_path_buf()))
             }),
-            Message::SelectedFile(subject, path) => {
-                match subject {
-                    BrowseFileSubject::Source { index } => {
-                        self.text_histories.sources[index].push(&path.raw());
-                    }
-                }
-                self.save_config();
-                Task::none()
-            }
             Message::OpenDir { path } => {
                 let path2 = path.clone();
                 Task::future(async move {
@@ -299,7 +290,11 @@ impl App {
             }
             Message::OpenDirSubject(subject) => {
                 let path = match subject {
-                    BrowseSubject::Source { index } => self.grid.sources()[index].path.clone(),
+                    BrowseSubject::Source { index } => self.grid.sources()[index].path().cloned(),
+                };
+
+                let Some(path) = path else {
+                    return Task::none();
                 };
 
                 match path.parent_if_file() {
@@ -334,7 +329,11 @@ impl App {
             }
             Message::OpenFileSubject(subject) => {
                 let path = match subject {
-                    BrowseFileSubject::Source { index } => self.grid.sources()[index].path.clone(),
+                    BrowseFileSubject::Source { index } => self.grid.sources()[index].path().cloned(),
+                };
+
+                let Some(path) = path else {
+                    return Task::none();
                 };
 
                 self.update(Message::OpenFile { path })
@@ -499,7 +498,7 @@ impl App {
             Message::FileDragDrop(path) => match self.modals.last_mut() {
                 Some(Modal::Sources { sources, histories }) => {
                     histories.sources.push(TextHistory::path(&path));
-                    sources.push(media::Source::new(path));
+                    sources.push(media::Source::new_path(path));
                     modal::scroll_down()
                 }
                 _ => {
@@ -507,7 +506,7 @@ impl App {
                     let mut histories = self.text_histories.clone();
 
                     histories.sources.push(TextHistory::path(&path));
-                    sources.push(media::Source::new(path));
+                    sources.push(media::Source::new_path(path));
 
                     self.show_modal(Modal::new_sources(sources, histories));
                     modal::scroll_down()

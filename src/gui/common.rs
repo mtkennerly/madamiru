@@ -26,7 +26,6 @@ pub enum Message {
     AppReleaseChecked(Result<crate::metadata::Release, String>),
     BrowseDir(BrowseSubject),
     BrowseFile(BrowseFileSubject),
-    SelectedFile(BrowseFileSubject, StrictPath),
     OpenDir { path: StrictPath },
     OpenDirSubject(BrowseSubject),
     OpenFile { path: StrictPath },
@@ -59,10 +58,7 @@ impl Message {
             Some(path) => match subject {
                 BrowseSubject::Source { index } => Self::Modal {
                     event: modal::Event::EditedSource {
-                        action: EditAction::Change(
-                            index,
-                            globetter::Pattern::escape(&crate::path::render_pathbuf(&path)),
-                        ),
+                        action: EditAction::Change(index, crate::path::render_pathbuf(&path)),
                     },
                 },
             },
@@ -72,7 +68,13 @@ impl Message {
 
     pub fn browsed_file(subject: BrowseFileSubject, choice: Option<std::path::PathBuf>) -> Self {
         match choice {
-            Some(path) => Self::SelectedFile(subject, StrictPath::from(path)),
+            Some(path) => match subject {
+                BrowseFileSubject::Source { index } => Self::Modal {
+                    event: modal::Event::EditedSource {
+                        action: EditAction::Change(index, crate::path::render_pathbuf(&path)),
+                    },
+                },
+            },
             None => Self::Ignore,
         }
     }

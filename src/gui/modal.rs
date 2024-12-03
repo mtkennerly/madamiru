@@ -38,6 +38,7 @@ pub fn scroll_down() -> Task<Message> {
 #[derive(Debug, Clone)]
 pub enum Event {
     EditedSource { action: EditAction },
+    EditedSourceKind { index: usize, kind: media::SourceKind },
     Save,
 }
 
@@ -174,21 +175,26 @@ impl Modal {
                                         },
                                         index,
                                         sources.len(),
-                                    )),
+                                    ))
+                                    .push(pick_list(media::SourceKind::ALL, Some(source.kind()), move |kind| {
+                                        Message::Modal {
+                                            event: Event::EditedSourceKind { index, kind },
+                                        }
+                                    })),
                             )
                             .push(histories.input(UndoSubject::Source { index }))
-                            .push(
-                                Row::new()
+                            .push(match source {
+                                media::Source::Path { path } => Row::new()
                                     .spacing(10)
                                     .align_y(alignment::Vertical::Center)
                                     .push(button::choose_folder(
                                         BrowseSubject::Source { index },
-                                        source.path.clone(),
+                                        path.clone(),
                                         modifiers,
                                     ))
                                     .push(button::choose_file(
                                         BrowseFileSubject::Source { index },
-                                        source.path.clone(),
+                                        path.clone(),
                                         modifiers,
                                     ))
                                     .push(button::icon(Icon::Close).on_press_maybe((sources.len() > 1).then_some(
@@ -198,7 +204,17 @@ impl Modal {
                                             },
                                         },
                                     ))),
-                            ),
+                                media::Source::Glob { .. } => Row::new()
+                                    .spacing(10)
+                                    .align_y(alignment::Vertical::Center)
+                                    .push(button::icon(Icon::Close).on_press_maybe((sources.len() > 1).then_some(
+                                        Message::Modal {
+                                            event: Event::EditedSource {
+                                                action: EditAction::Remove(index),
+                                            },
+                                        },
+                                    ))),
+                            }),
                     );
                 }
 
@@ -271,7 +287,7 @@ impl Modal {
         match self {
             Self::Settings | Self::Error { .. } | Self::Errors { .. } | Self::AppUpdate { .. } => {}
             Self::Sources { sources, histories, .. } => match subject {
-                UndoSubject::Source { index } => sources[index].path.reset(histories.sources[index].apply(shortcut)),
+                UndoSubject::Source { index } => sources[index].reset(histories.sources[index].apply(shortcut)),
             },
         }
     }
@@ -286,12 +302,12 @@ impl Modal {
                         EditAction::Add => {
                             let value = StrictPath::default();
                             histories.sources.push(TextHistory::path(&value));
-                            sources.push(media::Source::new(value));
+                            sources.push(media::Source::new_path(value));
                             return Some(Update::Task(scroll_down()));
                         }
                         EditAction::Change(index, value) => {
                             histories.sources[index].push(&value);
-                            sources[index] = media::Source::new(StrictPath::new(value));
+                            sources[index].reset(value);
                         }
                         EditAction::Remove(index) => {
                             histories.sources.remove(index);
@@ -305,9 +321,13 @@ impl Modal {
                     }
                     None
                 }
+                Event::EditedSourceKind { index, kind } => {
+                    sources[index].set_kind(kind);
+                    None
+                }
                 Event::Save => {
                     for index in (0..sources.len()).rev() {
-                        if sources[index].path.raw_ref().trim().is_empty() {
+                        if sources[index].is_empty() {
                             sources.remove(index);
                             histories.sources.remove(index);
                         }
@@ -348,7 +368,11 @@ impl Modal {
 
                 area
             })
-            .push(Container::new(opaque(self.content(viewport, config, histories, modifiers))).center(Length::Fill))
+            .push(
+                Container::new(opaque(self.content(viewport, config, histories, modifiers)))
+                    .center(Length::Fill)
+                    .padding([0.0, (100.0 + viewport.width - 640.0).clamp(0.0, 100.0)]),
+            )
             .into()
     }
 }

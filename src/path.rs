@@ -156,8 +156,8 @@ impl StrictPath {
         self.raw.to_string()
     }
 
-    pub fn raw_ref(&self) -> String {
-        self.raw.to_string()
+    pub fn raw_ref(&self) -> &str {
+        &self.raw
     }
 
     /// For any paths that we store the entire time the GUI is running, like in the config,

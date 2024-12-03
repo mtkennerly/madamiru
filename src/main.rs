@@ -118,7 +118,8 @@ fn main() {
     match args.sub {
         None => {
             // Do any extra CLI parsing before we detach the console.
-            let sources = cli::parse_sources(args.sources);
+            let mut sources = cli::parse_sources(args.sources);
+            sources.extend(args.glob.into_iter().map(media::Source::new_glob));
 
             #[cfg(target_os = "windows")]
             if std::env::var(crate::prelude::ENV_DEBUG).is_err() {

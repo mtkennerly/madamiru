@@ -1,6 +1,8 @@
 thing-error = Error
+thing-glob = Glob
 thing-key-shift = Shift
 thing-language = Language
+thing-path = Path
 thing-settings = Settings
 thing-theme = Theme
 thing-theme-dark = Dark

@@ -179,8 +179,16 @@ pub mod thing {
         translate("thing-error")
     }
 
+    pub fn glob() -> String {
+        translate("thing-glob")
+    }
+
     pub fn language() -> String {
         translate("thing-language")
+    }
+
+    pub fn path() -> String {
+        translate("thing-path")
     }
 
     pub fn settings() -> String {

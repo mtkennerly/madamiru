@@ -113,14 +113,13 @@ pub struct TextHistories {
 impl TextHistories {
     pub fn new(_config: &Config, sources: &[Source]) -> Self {
         Self {
-            sources: sources.iter().map(|source| TextHistory::path(&source.path)).collect(),
+            sources: sources.iter().map(|source| TextHistory::raw(source.raw())).collect(),
         }
     }
 
     pub fn input<'a>(&self, subject: UndoSubject) -> Element<'a> {
         let current = match &subject {
             UndoSubject::Source { index } => self.sources[*index].current(),
-            // UndoSubject::Source(i) => self.sources.get(*i).map(|x| x.current()).unwrap_or_default(),
         };
 
         let event: Box<dyn Fn(String) -> Message> = match subject.clone() {
@@ -129,7 +128,6 @@ impl TextHistories {
                     action: EditAction::Change(index, value),
                 },
             }),
-            // UndoSubject::Source(i) => Box::new(move |value| Message::EditedSource(EditAction::Change(i, value))),
         };
 
         let placeholder = match &subject {
@@ -151,8 +149,6 @@ impl TextHistories {
                 let mut input = TextInput::new(&placeholder, &current)
                     .on_input(event)
                     .class(style::TextInput)
-                    // TODO: Would like to fill up to a max width, but fill always overrides parent's max width.
-                    .width(400)
                     .padding(5);
 
                 if let Some(icon) = icon {
