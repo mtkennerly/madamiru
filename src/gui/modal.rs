@@ -28,6 +28,13 @@ use crate::{
 const RELEASE_URL: &str = "https://github.com/mtkennerly/madamiru/releases";
 static SCROLLABLE: LazyLock<scrollable::Id> = LazyLock::new(scrollable::Id::unique);
 
+pub fn scroll_down() -> Task<Message> {
+    scrollable::scroll_by(
+        (*SCROLLABLE).clone(),
+        scrollable::AbsoluteOffset { x: 0.0, y: f32::MAX },
+    )
+}
+
 #[derive(Debug, Clone)]
 pub enum Event {
     EditedSource { action: EditAction },
@@ -263,7 +270,7 @@ impl Modal {
     pub fn apply_shortcut(&mut self, subject: UndoSubject, shortcut: Shortcut) {
         match self {
             Self::Settings | Self::Error { .. } | Self::Errors { .. } | Self::AppUpdate { .. } => {}
-            Self::Sources { sources, histories } => match subject {
+            Self::Sources { sources, histories, .. } => match subject {
                 UndoSubject::Source { index } => sources[index].path.reset(histories.sources[index].apply(shortcut)),
             },
         }
@@ -273,17 +280,14 @@ impl Modal {
     pub fn update(&mut self, event: Event) -> Option<Update> {
         match self {
             Self::Settings | Self::Error { .. } | Self::Errors { .. } | Self::AppUpdate { .. } => None,
-            Self::Sources { sources, histories } => match event {
+            Self::Sources { sources, histories, .. } => match event {
                 Event::EditedSource { action } => {
                     match action {
                         EditAction::Add => {
                             let value = StrictPath::default();
                             histories.sources.push(TextHistory::path(&value));
                             sources.push(media::Source::new(value));
-                            return Some(Update::Task(scrollable::scroll_by(
-                                (*SCROLLABLE).clone(),
-                                scrollable::AbsoluteOffset { x: 0.0, y: f32::MAX },
-                            )));
+                            return Some(Update::Task(scroll_down()));
                         }
                         EditAction::Change(index, value) => {
                             histories.sources[index].push(&value);

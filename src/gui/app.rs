@@ -13,11 +13,12 @@ use crate::{
         icon::Icon,
         modal::{self, Modal},
         player::{self},
-        shortcuts::{Shortcut, TextHistories},
+        shortcuts::{Shortcut, TextHistories, TextHistory},
         style,
         widget::{Column, Container, Element, Responsive, Row, Stack},
     },
     lang, media,
+    path::StrictPath,
     prelude::{Error, STEAM_DECK},
     resource::{cache::Cache, config::Config, ResourceFile, SaveableResourceFile},
 };
@@ -41,17 +42,15 @@ pub struct App {
 }
 
 impl App {
-    fn show_modal(&mut self, modal: Modal) -> Task<Message> {
+    fn show_modal(&mut self, modal: Modal) {
         self.modals.push(modal);
-        Task::none()
     }
 
-    fn close_modal(&mut self) -> Task<Message> {
+    fn close_modal(&mut self) {
         self.modals.pop();
-        Task::none()
     }
 
-    fn show_error(&mut self, error: Error) -> Task<Message> {
+    fn show_error(&mut self, error: Error) {
         self.show_modal(Modal::Error { variant: error })
     }
 
@@ -222,7 +221,10 @@ impl App {
                 self.save();
                 Task::none()
             }
-            Message::CloseModal => self.close_modal(),
+            Message::CloseModal => {
+                self.close_modal();
+                Task::none()
+            }
             Message::AppReleaseToggle(enabled) => {
                 self.config.release.check = enabled;
                 self.save_config();
@@ -251,7 +253,7 @@ impl App {
                         if previous_latest.as_ref() != Some(&release.version) {
                             // The latest available version has changed (or this is our first time checking)
                             if release.is_update() {
-                                return self.show_modal(Modal::AppUpdate { release });
+                                self.show_modal(Modal::AppUpdate { release });
                             }
                         }
                     }
@@ -302,13 +304,19 @@ impl App {
 
                 match path.parent_if_file() {
                     Ok(path) => self.update(Message::OpenDir { path }),
-                    Err(_) => self.show_error(Error::UnableToOpenDir(path)),
+                    Err(_) => {
+                        self.show_error(Error::UnableToOpenDir(path));
+                        Task::none()
+                    }
                 }
             }
             Message::OpenFile { path } => {
                 let path = match path.parent_if_file() {
                     Ok(path) => path,
-                    Err(_) => return self.show_error(Error::UnableToOpenDir(path)),
+                    Err(_) => {
+                        self.show_error(Error::UnableToOpenDir(path));
+                        return Task::none();
+                    }
                 };
 
                 let path2 = path.clone();
@@ -331,12 +339,18 @@ impl App {
 
                 self.update(Message::OpenFile { path })
             }
-            Message::OpenDirFailure { path } => self.show_modal(Modal::Error {
-                variant: Error::UnableToOpenDir(path),
-            }),
-            Message::OpenUrlFailure { url } => self.show_modal(Modal::Error {
-                variant: Error::UnableToOpenUrl(url),
-            }),
+            Message::OpenDirFailure { path } => {
+                self.show_modal(Modal::Error {
+                    variant: Error::UnableToOpenDir(path),
+                });
+                Task::none()
+            }
+            Message::OpenUrlFailure { url } => {
+                self.show_modal(Modal::Error {
+                    variant: Error::UnableToOpenUrl(url),
+                });
+                Task::none()
+            }
             Message::KeyboardEvent(event) => {
                 if let iced::keyboard::Event::ModifiersChanged(modifiers) = event {
                     self.modifiers = modifiers;
@@ -381,14 +395,20 @@ impl App {
                 Task::none()
             }
             Message::OpenUrl(url) => Self::open_url(url),
-            Message::OpenUrlAndCloseModal(url) => Task::batch([Self::open_url(url), self.close_modal()]),
+            Message::OpenUrlAndCloseModal(url) => {
+                self.close_modal();
+                Self::open_url(url)
+            }
             Message::Refresh => self.refresh(),
             Message::AddPlayer => match self.grid.add_player(&self.media, &self.config.playback) {
                 Ok(_) => Task::none(),
                 Err(e) => match e {
-                    grid::Error::NoMediaAvailable => self.show_modal(Modal::Error {
-                        variant: Error::NoMediaFound,
-                    }),
+                    grid::Error::NoMediaAvailable => {
+                        self.show_modal(Modal::Error {
+                            variant: Error::NoMediaFound,
+                        });
+                        Task::none()
+                    }
                 },
             },
             Message::SetPause(flag) => {
@@ -424,7 +444,7 @@ impl App {
                         }
                         grid::Update::PlayerClosed => {
                             if self.grid.is_idle() {
-                                return self.show_modal(Modal::new_sources(
+                                self.show_modal(Modal::new_sources(
                                     self.grid.sources().to_vec(),
                                     self.text_histories.clone(),
                                 ));
@@ -456,11 +476,17 @@ impl App {
                 }
                 Task::none()
             }
-            Message::ShowSettings => self.show_modal(Modal::Settings),
-            Message::ShowSources => self.show_modal(Modal::new_sources(
-                self.grid.sources().to_vec(),
-                self.text_histories.clone(),
-            )),
+            Message::ShowSettings => {
+                self.show_modal(Modal::Settings);
+                Task::none()
+            }
+            Message::ShowSources => {
+                self.show_modal(Modal::new_sources(
+                    self.grid.sources().to_vec(),
+                    self.text_histories.clone(),
+                ));
+                Task::none()
+            }
             Message::FindMedia => Self::find_media(self.grid.sources().to_vec(), false),
             Message::MediaFound { refresh, media } => {
                 self.media = media;
@@ -470,6 +496,23 @@ impl App {
                     Task::none()
                 }
             }
+            Message::FileDragDrop(path) => match self.modals.last_mut() {
+                Some(Modal::Sources { sources, histories }) => {
+                    histories.sources.push(TextHistory::path(&path));
+                    sources.push(media::Source::new(path));
+                    modal::scroll_down()
+                }
+                _ => {
+                    let mut sources = self.grid.sources().to_vec();
+                    let mut histories = self.text_histories.clone();
+
+                    histories.sources.push(TextHistory::path(&path));
+                    sources.push(media::Source::new(path));
+
+                    self.show_modal(Modal::new_sources(sources, histories));
+                    modal::scroll_down()
+                }
+            },
         }
     }
 
@@ -478,6 +521,9 @@ impl App {
             iced::event::listen_with(|event, _status, _window| match event {
                 iced::Event::Keyboard(event) => Some(Message::KeyboardEvent(event)),
                 iced::Event::Window(iced::window::Event::CloseRequested) => Some(Message::Exit),
+                iced::Event::Window(iced::window::Event::FileDropped(path)) => {
+                    Some(Message::FileDragDrop(StrictPath::from(path)))
+                }
                 _ => None,
             }),
             iced::time::every(Duration::from_millis(100)).map(Message::Tick),

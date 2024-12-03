@@ -543,7 +543,7 @@ impl Player {
                 message,
                 hovered,
             } => {
-                let overlay = *hovered;
+                let overlay = !obscured && *hovered;
 
                 Stack::new()
                     .push(
@@ -616,7 +616,7 @@ impl Player {
                 hovered,
                 ..
             } => {
-                let overlay = *hovered || *dragging;
+                let overlay = !obscured && (*hovered || *dragging);
 
                 Stack::new()
                     .push(
@@ -744,7 +744,7 @@ impl Player {
                 hovered,
                 ..
             } => {
-                let overlay = *hovered || *dragging;
+                let overlay = !obscured && (*hovered || *dragging);
 
                 Stack::new()
                     .push({
@@ -874,7 +874,7 @@ impl Player {
                 hovered,
                 ..
             } => {
-                let overlay = *hovered || *dragging;
+                let overlay = !obscured && (*hovered || *dragging);
 
                 Stack::new()
                     .push(

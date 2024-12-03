@@ -50,6 +50,7 @@ pub enum Message {
     ShowSources,
     FindMedia,
     MediaFound { refresh: bool, media: media::Collection },
+    FileDragDrop(StrictPath),
 }
 
 impl Message {
