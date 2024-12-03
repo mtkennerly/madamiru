@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use iced::{
     padding,
-    widget::{horizontal_space, mouse_area, vertical_space, Image},
+    widget::{horizontal_space, mouse_area, vertical_space, Image, Responsive},
     Length,
 };
 use iced_gif::gif;
@@ -96,6 +96,15 @@ pub enum Update {
     EndOfStream,
     Refresh,
     Close,
+}
+
+#[derive(Default)]
+struct Overlay {
+    show: bool,
+    center_controls: bool,
+    top_controls: bool,
+    bottom_controls: bool,
+    timestamps: bool,
 }
 
 #[derive(Default)]
@@ -369,6 +378,28 @@ impl Player {
         }
     }
 
+    fn overlay(&self, viewport: iced::Size, obscured: bool, hovered: bool) -> Overlay {
+        let show = !obscured && hovered;
+
+        match self {
+            Self::Idle => Overlay::default(),
+            Self::Error { .. } => Overlay {
+                show,
+                center_controls: show && viewport.height > 40.0 && viewport.width > 80.0,
+                top_controls: show && viewport.width > 80.0,
+                bottom_controls: false,
+                timestamps: false,
+            },
+            Self::Image { .. } | Self::Gif { .. } | Self::Video { .. } => Overlay {
+                show,
+                center_controls: show && viewport.height > 100.0 && viewport.width > 150.0,
+                top_controls: show && viewport.width > 100.0,
+                bottom_controls: show && viewport.height > 40.0,
+                timestamps: show && viewport.height > 60.0 && viewport.width > 150.0,
+            },
+        }
+    }
+
     #[must_use]
     pub fn update(&mut self, event: Event) -> Option<Update> {
         match self {
@@ -531,7 +562,41 @@ impl Player {
     }
 
     pub fn view(&self, pane: Id, obscured: bool) -> Element {
-        let content: Element = match self {
+        Responsive::new(move |viewport| {
+            mouse_area(self.view_inner(pane, obscured, viewport))
+                .on_enter(if obscured {
+                    Message::Ignore
+                } else {
+                    Message::Player {
+                        pane,
+                        event: Event::MouseEnter,
+                    }
+                })
+                .on_move(move |_| {
+                    if obscured {
+                        Message::Ignore
+                    } else {
+                        Message::Player {
+                            pane,
+                            event: Event::MouseEnter,
+                        }
+                    }
+                })
+                .on_exit(if obscured {
+                    Message::Ignore
+                } else {
+                    Message::Player {
+                        pane,
+                        event: Event::MouseExit,
+                    }
+                })
+                .into()
+        })
+        .into()
+    }
+
+    fn view_inner(&self, pane: Id, obscured: bool, viewport: iced::Size) -> Element {
+        match self {
             Self::Idle => Container::new("")
                 .align_x(iced::Alignment::Center)
                 .align_y(iced::Alignment::Center)
@@ -543,7 +608,7 @@ impl Player {
                 message,
                 hovered,
             } => {
-                let overlay = !obscured && *hovered;
+                let overlay = self.overlay(viewport, obscured, *hovered);
 
                 Stack::new()
                     .push(
@@ -554,14 +619,14 @@ impl Player {
                             .height(iced::Length::Fill),
                     )
                     .push_maybe(
-                        overlay.then_some(
+                        overlay.show.then_some(
                             Container::new("")
                                 .center(Length::Fill)
                                 .class(style::Container::ModalBackground),
                         ),
                     )
                     .push_maybe(
-                        overlay.then_some(
+                        overlay.top_controls.then_some(
                             Container::new(
                                 Row::new()
                                     .push(
@@ -584,7 +649,7 @@ impl Player {
                         ),
                     )
                     .push_maybe(
-                        overlay.then_some(
+                        overlay.center_controls.then_some(
                             Container::new(
                                 Row::new()
                                     .spacing(5)
@@ -615,7 +680,7 @@ impl Player {
                 hovered,
                 ..
             } => {
-                let overlay = !obscured && (*hovered || *dragging);
+                let overlay = self.overlay(viewport, obscured, *hovered || *dragging);
 
                 Stack::new()
                     .push(
@@ -626,14 +691,14 @@ impl Player {
                             .height(iced::Length::Fill),
                     )
                     .push_maybe(
-                        overlay.then_some(
+                        overlay.show.then_some(
                             Container::new("")
                                 .center(Length::Fill)
                                 .class(style::Container::ModalBackground),
                         ),
                     )
                     .push_maybe(
-                        overlay.then_some(
+                        overlay.top_controls.then_some(
                             Container::new(
                                 Row::new()
                                     .push(
@@ -664,7 +729,7 @@ impl Player {
                         ),
                     )
                     .push_maybe(
-                        overlay.then_some(
+                        overlay.center_controls.then_some(
                             Container::new(
                                 Row::new()
                                     .spacing(5)
@@ -699,24 +764,26 @@ impl Player {
                         ),
                     )
                     .push_maybe(
-                        overlay.then_some(
+                        overlay.bottom_controls.then_some(
                             Container::new(
                                 Column::new()
                                     .padding(padding::left(10).right(10).bottom(5))
                                     .push(vertical_space())
-                                    .push(
-                                        Row::new()
-                                            .push(text(format!(
-                                                "{:02}:{:02}",
-                                                *position as u64 / 60,
-                                                *position as u64 % 60
-                                            )))
-                                            .push(horizontal_space())
-                                            .push(text(format!(
-                                                "{:02}:{:02}",
-                                                duration.as_secs() / 60,
-                                                duration.as_secs() % 60
-                                            ))),
+                                    .push_maybe(
+                                        overlay.timestamps.then_some(
+                                            Row::new()
+                                                .push(text(format!(
+                                                    "{:02}:{:02}",
+                                                    *position as u64 / 60,
+                                                    *position as u64 % 60
+                                                )))
+                                                .push(horizontal_space())
+                                                .push(text(format!(
+                                                    "{:02}:{:02}",
+                                                    duration.as_secs() / 60,
+                                                    duration.as_secs() % 60
+                                                ))),
+                                        ),
                                     )
                                     .push(Container::new(
                                         iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
@@ -750,7 +817,7 @@ impl Player {
                 hovered,
                 ..
             } => {
-                let overlay = !obscured && (*hovered || *dragging);
+                let overlay = self.overlay(viewport, obscured, *hovered || *dragging);
 
                 Stack::new()
                     .push({
@@ -767,14 +834,14 @@ impl Player {
                             .height(iced::Length::Fill)
                     })
                     .push_maybe(
-                        overlay.then_some(
+                        overlay.show.then_some(
                             Container::new("")
                                 .center(Length::Fill)
                                 .class(style::Container::ModalBackground),
                         ),
                     )
                     .push_maybe(
-                        overlay.then_some(
+                        overlay.top_controls.then_some(
                             Container::new(
                                 Row::new()
                                     .push(
@@ -805,7 +872,7 @@ impl Player {
                         ),
                     )
                     .push_maybe(
-                        overlay.then_some(
+                        overlay.center_controls.then_some(
                             Container::new(
                                 Row::new()
                                     .spacing(5)
@@ -840,24 +907,26 @@ impl Player {
                         ),
                     )
                     .push_maybe(
-                        overlay.then_some(
+                        overlay.bottom_controls.then_some(
                             Container::new(
                                 Column::new()
                                     .padding(padding::left(10).right(10).bottom(5))
                                     .push(vertical_space())
-                                    .push(
-                                        Row::new()
-                                            .push(text(format!(
-                                                "{:02}:{:02}",
-                                                *position as u64 / 60,
-                                                *position as u64 % 60
-                                            )))
-                                            .push(horizontal_space())
-                                            .push(text(format!(
-                                                "{:02}:{:02}",
-                                                duration.as_secs() / 60,
-                                                duration.as_secs() % 60
-                                            ))),
+                                    .push_maybe(
+                                        overlay.timestamps.then_some(
+                                            Row::new()
+                                                .push(text(format!(
+                                                    "{:02}:{:02}",
+                                                    *position as u64 / 60,
+                                                    *position as u64 % 60
+                                                )))
+                                                .push(horizontal_space())
+                                                .push(text(format!(
+                                                    "{:02}:{:02}",
+                                                    duration.as_secs() / 60,
+                                                    duration.as_secs() % 60
+                                                ))),
+                                        ),
                                     )
                                     .push(Container::new(
                                         iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
@@ -887,7 +956,7 @@ impl Player {
                 hovered,
                 ..
             } => {
-                let overlay = !obscured && (*hovered || *dragging);
+                let overlay = self.overlay(viewport, obscured, *hovered || *dragging);
 
                 Stack::new()
                     .push(
@@ -911,14 +980,14 @@ impl Player {
                         .height(iced::Length::Fill),
                     )
                     .push_maybe(
-                        overlay.then_some(
+                        overlay.show.then_some(
                             Container::new("")
                                 .center(Length::Fill)
                                 .class(style::Container::ModalBackground),
                         ),
                     )
                     .push_maybe(
-                        overlay.then_some(
+                        overlay.top_controls.then_some(
                             Container::new(
                                 Row::new()
                                     .push(
@@ -949,7 +1018,7 @@ impl Player {
                         ),
                     )
                     .push_maybe(
-                        overlay.then_some(
+                        overlay.center_controls.then_some(
                             Container::new(
                                 Row::new()
                                     .spacing(5)
@@ -996,24 +1065,26 @@ impl Player {
                         ),
                     )
                     .push_maybe(
-                        overlay.then_some(
+                        overlay.bottom_controls.then_some(
                             Container::new(
                                 Column::new()
                                     .padding(padding::left(10).right(10).bottom(5))
                                     .push(vertical_space())
-                                    .push(
-                                        Row::new()
-                                            .push(text(format!(
-                                                "{:02}:{:02}",
-                                                *position as u64 / 60,
-                                                *position as u64 % 60
-                                            )))
-                                            .push(horizontal_space())
-                                            .push(text(format!(
-                                                "{:02}:{:02}",
-                                                video.duration().as_secs() / 60,
-                                                video.duration().as_secs() % 60
-                                            ))),
+                                    .push_maybe(
+                                        overlay.timestamps.then_some(
+                                            Row::new()
+                                                .push(text(format!(
+                                                    "{:02}:{:02}",
+                                                    *position as u64 / 60,
+                                                    *position as u64 % 60
+                                                )))
+                                                .push(horizontal_space())
+                                                .push(text(format!(
+                                                    "{:02}:{:02}",
+                                                    video.duration().as_secs() / 60,
+                                                    video.duration().as_secs() % 60
+                                                ))),
+                                        ),
                                     )
                                     .push(Container::new(
                                         iced::widget::slider(
@@ -1037,35 +1108,6 @@ impl Player {
                     )
                     .into()
             }
-        };
-
-        mouse_area(content)
-            .on_enter(if obscured {
-                Message::Ignore
-            } else {
-                Message::Player {
-                    pane,
-                    event: Event::MouseEnter,
-                }
-            })
-            .on_move(move |_| {
-                if obscured {
-                    Message::Ignore
-                } else {
-                    Message::Player {
-                        pane,
-                        event: Event::MouseEnter,
-                    }
-                }
-            })
-            .on_exit(if obscured {
-                Message::Ignore
-            } else {
-                Message::Player {
-                    pane,
-                    event: Event::MouseExit,
-                }
-            })
-            .into()
+        }
     }
 }
