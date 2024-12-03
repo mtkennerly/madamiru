@@ -49,6 +49,7 @@ winres = "0.1.12"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
+test-case = "3.3.1"
 velcro = "0.5.4"
 
 [profile.dev]

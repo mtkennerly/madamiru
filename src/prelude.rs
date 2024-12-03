@@ -59,3 +59,47 @@ pub fn app_dir() -> StrictPath {
 
     StrictPath::new(format!("{}/{}", CommonPath::Config.get().unwrap(), APP_DIR_NAME))
 }
+
+pub fn timestamp_mmss(seconds: u64) -> String {
+    let minutes = seconds / 60;
+    let seconds = seconds % 60;
+
+    format!("{minutes:02}:{seconds:02}")
+}
+
+pub fn timestamp_hhmmss(mut seconds: u64) -> String {
+    let hours = seconds / (60 * 60);
+    seconds %= 60 * 60;
+
+    let minutes = seconds / 60;
+    seconds %= 60;
+
+    format!("{hours:02}:{minutes:02}:{seconds:02}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use test_case::test_case;
+
+    #[test_case(0, "00:00")]
+    #[test_case(9, "00:09")]
+    #[test_case(10, "00:10")]
+    #[test_case(60, "01:00")]
+    #[test_case(60 * 60 + 1, "60:01")]
+    pub fn can_format_timestamp_mmss(seconds: u64, formatted: &str) {
+        assert_eq!(formatted, timestamp_mmss(seconds));
+    }
+
+    #[test_case(0, "00:00:00")]
+    #[test_case(9, "00:00:09")]
+    #[test_case(10, "00:00:10")]
+    #[test_case(60, "00:01:00")]
+    #[test_case(60 * 60, "01:00:00")]
+    #[test_case(60 * 60 + 1, "01:00:01")]
+    #[test_case(60 * 60 * 2 - 1, "01:59:59")]
+    pub fn can_format_timestamp_hhmmss(seconds: u64, formatted: &str) {
+        assert_eq!(formatted, timestamp_hhmmss(seconds));
+    }
+}

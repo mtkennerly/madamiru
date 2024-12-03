@@ -19,8 +19,26 @@ use crate::{
     lang,
     media::Media,
     path::StrictPath,
+    prelude::{timestamp_hhmmss, timestamp_mmss},
     resource::config::Playback,
 };
+
+fn timestamps<'a>(current: f64, total: Duration) -> Element<'a> {
+    let current = current as u64;
+    let total = total.as_secs();
+
+    let (current, total) = if total > 60 * 60 {
+        (timestamp_hhmmss(current), timestamp_hhmmss(total))
+    } else {
+        (timestamp_mmss(current), timestamp_mmss(total))
+    };
+
+    Row::new()
+        .push(text(current))
+        .push(horizontal_space())
+        .push(text(total))
+        .into()
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Id(pub usize);
@@ -769,22 +787,7 @@ impl Player {
                                 Column::new()
                                     .padding(padding::left(10).right(10).bottom(5))
                                     .push(vertical_space())
-                                    .push_maybe(
-                                        overlay.timestamps.then_some(
-                                            Row::new()
-                                                .push(text(format!(
-                                                    "{:02}:{:02}",
-                                                    *position as u64 / 60,
-                                                    *position as u64 % 60
-                                                )))
-                                                .push(horizontal_space())
-                                                .push(text(format!(
-                                                    "{:02}:{:02}",
-                                                    duration.as_secs() / 60,
-                                                    duration.as_secs() % 60
-                                                ))),
-                                        ),
-                                    )
+                                    .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
                                     .push(Container::new(
                                         iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
                                             Message::Player {
@@ -912,22 +915,7 @@ impl Player {
                                 Column::new()
                                     .padding(padding::left(10).right(10).bottom(5))
                                     .push(vertical_space())
-                                    .push_maybe(
-                                        overlay.timestamps.then_some(
-                                            Row::new()
-                                                .push(text(format!(
-                                                    "{:02}:{:02}",
-                                                    *position as u64 / 60,
-                                                    *position as u64 % 60
-                                                )))
-                                                .push(horizontal_space())
-                                                .push(text(format!(
-                                                    "{:02}:{:02}",
-                                                    duration.as_secs() / 60,
-                                                    duration.as_secs() % 60
-                                                ))),
-                                        ),
-                                    )
+                                    .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
                                     .push(Container::new(
                                         iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
                                             Message::Player {
@@ -1070,22 +1058,7 @@ impl Player {
                                 Column::new()
                                     .padding(padding::left(10).right(10).bottom(5))
                                     .push(vertical_space())
-                                    .push_maybe(
-                                        overlay.timestamps.then_some(
-                                            Row::new()
-                                                .push(text(format!(
-                                                    "{:02}:{:02}",
-                                                    *position as u64 / 60,
-                                                    *position as u64 % 60
-                                                )))
-                                                .push(horizontal_space())
-                                                .push(text(format!(
-                                                    "{:02}:{:02}",
-                                                    video.duration().as_secs() / 60,
-                                                    video.duration().as_secs() % 60
-                                                ))),
-                                        ),
-                                    )
+                                    .push_maybe(overlay.timestamps.then_some(timestamps(*position, video.duration())))
                                     .push(Container::new(
                                         iced::widget::slider(
                                             0.0..=video.duration().as_secs_f64(),
