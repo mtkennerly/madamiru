@@ -562,26 +562,25 @@ impl Player {
                     )
                     .push_maybe(
                         overlay.then_some(
-                            Container::new(text(source.render()).size(15))
-                                .padding(padding::right(30))
-                                .align_top(Length::Fill)
-                                .align_left(Length::Fill),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.then_some(
                             Container::new(
-                                Row::new().push(
-                                    button::icon(Icon::Close)
-                                        .on_press(Message::Player {
-                                            pane,
-                                            event: Event::Close,
-                                        })
-                                        .tooltip(lang::action::close()),
-                                ),
+                                Row::new()
+                                    .push(
+                                        button::icon(Icon::OpenInNew)
+                                            .on_press(Message::OpenFile { path: source.clone() })
+                                            .tooltip(source.render()),
+                                    )
+                                    .push(horizontal_space())
+                                    .push(
+                                        button::icon(Icon::Close)
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::Close,
+                                            })
+                                            .tooltip(lang::action::close()),
+                                    ),
                             )
                             .align_top(Length::Fill)
-                            .align_right(Length::Fill),
+                            .width(Length::Fill),
                         ),
                     )
                     .push_maybe(
@@ -635,16 +634,14 @@ impl Player {
                     )
                     .push_maybe(
                         overlay.then_some(
-                            Container::new(text(source.render()).size(15))
-                                .padding(padding::right(30))
-                                .align_top(Length::Fill)
-                                .align_left(Length::Fill),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.then_some(
                             Container::new(
                                 Row::new()
+                                    .push(
+                                        button::icon(Icon::OpenInNew)
+                                            .on_press(Message::OpenFile { path: source.clone() })
+                                            .tooltip(source.render()),
+                                    )
+                                    .push(horizontal_space())
                                     .push(
                                         button::icon(Icon::Refresh)
                                             .on_press(Message::Player {
@@ -663,7 +660,7 @@ impl Player {
                                     ),
                             )
                             .align_top(Length::Fill)
-                            .align_right(Length::Fill),
+                            .width(Length::Fill),
                         ),
                     )
                     .push_maybe(
@@ -778,16 +775,14 @@ impl Player {
                     )
                     .push_maybe(
                         overlay.then_some(
-                            Container::new(text(source.render()).size(15))
-                                .padding(padding::right(30))
-                                .align_top(Length::Fill)
-                                .align_left(Length::Fill),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.then_some(
                             Container::new(
                                 Row::new()
+                                    .push(
+                                        button::icon(Icon::OpenInNew)
+                                            .on_press(Message::OpenFile { path: source.clone() })
+                                            .tooltip(source.render()),
+                                    )
+                                    .push(horizontal_space())
                                     .push(
                                         button::icon(Icon::Refresh)
                                             .on_press(Message::Player {
@@ -806,7 +801,7 @@ impl Player {
                                     ),
                             )
                             .align_top(Length::Fill)
-                            .align_right(Length::Fill),
+                            .width(Length::Fill),
                         ),
                     )
                     .push_maybe(
@@ -924,16 +919,14 @@ impl Player {
                     )
                     .push_maybe(
                         overlay.then_some(
-                            Container::new(text(source.render()).size(15))
-                                .padding(padding::right(30))
-                                .align_top(Length::Fill)
-                                .align_left(Length::Fill),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.then_some(
                             Container::new(
                                 Row::new()
+                                    .push(
+                                        button::icon(Icon::OpenInNew)
+                                            .on_press(Message::OpenFile { path: source.clone() })
+                                            .tooltip(source.render()),
+                                    )
+                                    .push(horizontal_space())
                                     .push(
                                         button::icon(Icon::Refresh)
                                             .on_press(Message::Player {
@@ -952,7 +945,7 @@ impl Player {
                                     ),
                             )
                             .align_top(Length::Fill)
-                            .align_right(Length::Fill),
+                            .width(Length::Fill),
                         ),
                     )
                     .push_maybe(
