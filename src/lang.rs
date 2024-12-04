@@ -175,6 +175,10 @@ pub fn theme_name(theme: &Theme) -> String {
 pub mod thing {
     use super::*;
 
+    pub fn application() -> String {
+        translate("thing-application")
+    }
+
     pub fn error() -> String {
         translate("thing-error")
     }
@@ -183,8 +187,16 @@ pub mod thing {
         translate("thing-glob")
     }
 
+    pub fn image() -> String {
+        translate("thing-image")
+    }
+
     pub fn language() -> String {
         translate("thing-language")
+    }
+
+    pub fn max_initial_media() -> String {
+        translate("thing-max-initial-media")
     }
 
     pub fn path() -> String {
@@ -261,6 +273,10 @@ pub mod action {
 
     pub fn play() -> String {
         translate("action-play")
+    }
+
+    pub fn play_for_this_many_seconds() -> String {
+        translate("action-play-for-this-many-seconds")
     }
 
     pub fn select_folder() -> String {

@@ -22,7 +22,7 @@ use crate::{
     media,
     path::StrictPath,
     prelude::Error,
-    resource::config::{Config, Theme},
+    resource::config::{self, Config, Theme},
 };
 
 const RELEASE_URL: &str = "https://github.com/mtkennerly/madamiru/releases";
@@ -118,39 +118,72 @@ impl Modal {
         match self {
             Self::Settings => {
                 col = col
-                    // TODO: Enable language selector once we have translations.
-                    .push_maybe(false.then(|| {
-                        Row::new()
-                            .align_y(Alignment::Center)
-                            .spacing(20)
-                            .push(text(lang::field(&lang::thing::language())))
-                            .push(pick_list(
-                                Language::ALL,
-                                Some(config.language),
-                                Message::SelectedLanguage,
-                            ))
-                    }))
+                    .push(text(lang::field(&lang::thing::application())))
                     .push(
-                        Row::new()
-                            .align_y(Alignment::Center)
-                            .spacing(20)
-                            .push(text(lang::field(&lang::thing::theme())))
-                            .push(pick_list(Theme::ALL, Some(config.theme), Message::SelectedTheme)),
+                        Container::new(
+                            Column::new()
+                                .spacing(10)
+                                .padding(10)
+                                // TODO: Enable language selector once we have translations.
+                                .push_maybe(false.then(|| {
+                                    Row::new()
+                                        .align_y(Alignment::Center)
+                                        .spacing(20)
+                                        .push(text(lang::field(&lang::thing::language())))
+                                        .push(pick_list(Language::ALL, Some(config.language), |value| {
+                                            Message::Config {
+                                                event: config::Event::Language(value),
+                                            }
+                                        }))
+                                }))
+                                .push(
+                                    Row::new()
+                                        .align_y(Alignment::Center)
+                                        .spacing(20)
+                                        .push(text(lang::field(&lang::thing::theme())))
+                                        .push(pick_list(Theme::ALL, Some(config.theme), |value| Message::Config {
+                                            event: config::Event::Theme(value),
+                                        })),
+                                )
+                                .push(
+                                    Row::new()
+                                        .align_y(Alignment::Center)
+                                        .spacing(20)
+                                        .push(checkbox(
+                                            lang::action::check_for_updates(),
+                                            config.release.check,
+                                            |value| Message::Config {
+                                                event: config::Event::CheckRelease(value),
+                                            },
+                                        ))
+                                        .push(
+                                            button::icon(Icon::OpenInBrowser)
+                                                .on_press(Message::OpenUrl(RELEASE_URL.to_string()))
+                                                .tooltip(lang::action::view_releases()),
+                                        ),
+                                )
+                                .push(
+                                    Row::new()
+                                        .align_y(Alignment::Center)
+                                        .spacing(20)
+                                        .push(text(lang::field(&lang::thing::max_initial_media())))
+                                        .push(histories.input(UndoSubject::MaxInitialMedia)),
+                                ),
+                        )
+                        .class(style::Container::Player),
                     )
+                    .push(text(lang::field(&lang::thing::image())))
                     .push(
-                        Row::new()
-                            .align_y(Alignment::Center)
-                            .spacing(20)
-                            .push(checkbox(
-                                lang::action::check_for_updates(),
-                                config.release.check,
-                                Message::AppReleaseToggle,
-                            ))
-                            .push(
-                                button::icon(Icon::OpenInBrowser)
-                                    .on_press(Message::OpenUrl(RELEASE_URL.to_string()))
-                                    .tooltip(lang::action::view_releases()),
+                        Container::new(
+                            Column::new().spacing(10).padding(10).push(
+                                Row::new()
+                                    .align_y(Alignment::Center)
+                                    .spacing(20)
+                                    .push(text(lang::field(&lang::action::play_for_this_many_seconds())))
+                                    .push(histories.input(UndoSubject::ImageDuration)),
                             ),
+                        )
+                        .class(style::Container::Player),
                     );
             }
             Self::Sources { sources, .. } => {
@@ -283,11 +316,16 @@ impl Modal {
         .class(style::Container::ModalForeground)
     }
 
-    pub fn apply_shortcut(&mut self, subject: UndoSubject, shortcut: Shortcut) {
+    pub fn apply_shortcut(&mut self, subject: UndoSubject, shortcut: Shortcut) -> bool {
         match self {
-            Self::Settings | Self::Error { .. } | Self::Errors { .. } | Self::AppUpdate { .. } => {}
+            Self::Settings | Self::Error { .. } | Self::Errors { .. } | Self::AppUpdate { .. } => false,
             Self::Sources { sources, histories, .. } => match subject {
-                UndoSubject::Source { index } => sources[index].reset(histories.sources[index].apply(shortcut)),
+                UndoSubject::MaxInitialMedia => false,
+                UndoSubject::ImageDuration => false,
+                UndoSubject::Source { index } => {
+                    sources[index].reset(histories.sources[index].apply(shortcut));
+                    true
+                }
             },
         }
     }

@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    num::NonZeroUsize,
     time::{Duration, Instant},
 };
 
@@ -20,7 +21,11 @@ use crate::{
     lang, media,
     path::StrictPath,
     prelude::{Error, STEAM_DECK},
-    resource::{cache::Cache, config::Config, ResourceFile, SaveableResourceFile},
+    resource::{
+        cache::Cache,
+        config::{self, Config},
+        ResourceFile, SaveableResourceFile,
+    },
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -111,8 +116,8 @@ impl App {
         lang::set(config.language);
 
         let sources = flags.sources.clone();
-        if let Some(max) = flags.max {
-            config.playback.max = max;
+        if let Some(max) = flags.max_initial_media {
+            config.playback.max_initial_media = max;
         }
 
         let text_histories = TextHistories::new(&config, &sources);
@@ -223,10 +228,58 @@ impl App {
             }
             Message::CloseModal => {
                 self.close_modal();
+
+                if self
+                    .text_histories
+                    .max_initial_media
+                    .current()
+                    .parse::<NonZeroUsize>()
+                    .is_err()
+                {
+                    self.text_histories
+                        .max_initial_media
+                        .push(&self.config.playback.max_initial_media.to_string());
+                }
+
+                if self
+                    .text_histories
+                    .image_duration
+                    .current()
+                    .parse::<NonZeroUsize>()
+                    .is_err()
+                {
+                    self.text_histories
+                        .image_duration
+                        .push(&self.config.playback.image_duration.to_string());
+                }
+
                 Task::none()
             }
-            Message::AppReleaseToggle(enabled) => {
-                self.config.release.check = enabled;
+            Message::Config { event } => {
+                match event {
+                    config::Event::Theme(value) => {
+                        self.config.theme = value;
+                    }
+                    config::Event::Language(value) => {
+                        lang::set(value);
+                        self.config.language = value;
+                    }
+                    config::Event::CheckRelease(value) => {
+                        self.config.release.check = value;
+                    }
+                    config::Event::MaxInitialMediaRaw(value) => {
+                        self.text_histories.max_initial_media.push(&value.to_string());
+                        if let Ok(value) = value.parse::<NonZeroUsize>() {
+                            self.config.playback.max_initial_media = value;
+                        }
+                    }
+                    config::Event::ImageDurationRaw(value) => {
+                        self.text_histories.image_duration.push(&value.to_string());
+                        if let Ok(value) = value.parse::<NonZeroUsize>() {
+                            self.config.playback.image_duration = value;
+                        }
+                    }
+                }
                 self.save_config();
                 Task::none()
             }
@@ -371,25 +424,38 @@ impl App {
             }
             Message::UndoRedo(action, subject) => {
                 let shortcut = Shortcut::from(action);
-                match self.modals.last_mut() {
-                    Some(modal) => modal.apply_shortcut(subject, shortcut),
-                    None => {
-                        match subject {
-                            UndoSubject::Source { .. } => {}
+                let captured = self
+                    .modals
+                    .last_mut()
+                    .map(|modal| modal.apply_shortcut(subject, shortcut))
+                    .unwrap_or(false);
+
+                if !captured {
+                    match subject {
+                        UndoSubject::MaxInitialMedia => {
+                            if let Ok(value) = self
+                                .text_histories
+                                .max_initial_media
+                                .apply(shortcut)
+                                .parse::<NonZeroUsize>()
+                            {
+                                self.config.playback.max_initial_media = value;
+                            }
                         }
-                        self.save_config();
+                        UndoSubject::ImageDuration => {
+                            if let Ok(value) = self
+                                .text_histories
+                                .image_duration
+                                .apply(shortcut)
+                                .parse::<NonZeroUsize>()
+                            {
+                                self.config.playback.image_duration = value;
+                            }
+                        }
+                        UndoSubject::Source { .. } => {}
                     }
                 }
-                Task::none()
-            }
-            Message::SelectedLanguage(language) => {
-                lang::set(language);
-                self.config.language = language;
-                self.save_config();
-                Task::none()
-            }
-            Message::SelectedTheme(theme) => {
-                self.config.theme = theme;
+
                 self.save_config();
                 Task::none()
             }
@@ -436,6 +502,7 @@ impl App {
                     match update {
                         grid::Update::PauseChanged { .. } => {
                             self.config.playback.paused = self.all_paused();
+                            self.save_config();
                         }
                         grid::Update::MuteChanged { .. } => {
                             self.config.playback.muted = self.all_muted();

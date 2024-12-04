@@ -122,7 +122,7 @@ impl Grid {
 
     pub fn refresh(&mut self, collection: &media::Collection, playback: &Playback) {
         let total = if self.is_idle() {
-            playback.max
+            playback.max_initial_media.get()
         } else {
             self.players.len()
         };

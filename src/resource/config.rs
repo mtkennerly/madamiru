@@ -1,8 +1,19 @@
+use std::num::NonZeroUsize;
+
 use crate::{
     lang::{self, Language},
     prelude::{app_dir, Error, StrictPath},
     resource::{ResourceFile, SaveableResourceFile},
 };
+
+#[derive(Debug, Clone)]
+pub enum Event {
+    Theme(Theme),
+    Language(Language),
+    CheckRelease(bool),
+    MaxInitialMediaRaw(String),
+    ImageDurationRaw(String),
+}
 
 /// Settings for `config.yaml`
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
@@ -72,8 +83,12 @@ impl ToString for Theme {
 pub struct Playback {
     #[serde(skip)]
     pub paused: bool,
+    /// Whether all players are muted.
     pub muted: bool,
-    pub max: usize,
+    /// How many players to show at most by default.
+    pub max_initial_media: NonZeroUsize,
+    /// How long to show images, in seconds.
+    pub image_duration: NonZeroUsize,
 }
 
 impl Playback {
@@ -90,7 +105,8 @@ impl Default for Playback {
         Self {
             paused: false,
             muted: false,
-            max: 4,
+            max_initial_media: NonZeroUsize::new(4).unwrap(),
+            image_duration: NonZeroUsize::new(10).unwrap(),
         }
     }
 }
@@ -117,7 +133,8 @@ mod tests {
                 theme: Light
                 playback:
                   muted: true
-                  max: 1
+                  max_initial_media: 1
+                  image_duration: 2
             "#,
         )
         .unwrap();
@@ -130,7 +147,8 @@ mod tests {
                 playback: Playback {
                     paused: false,
                     muted: true,
-                    max: 1
+                    max_initial_media: NonZeroUsize::new(1).unwrap(),
+                    image_duration: NonZeroUsize::new(2).unwrap(),
                 },
             },
             config,
@@ -148,7 +166,8 @@ language: en-US
 theme: Dark
 playback:
   muted: false
-  max: 4
+  max_initial_media: 4
+  image_duration: 10
 "#
             .trim(),
             serde_yaml::to_string(&Config::default()).unwrap().trim(),

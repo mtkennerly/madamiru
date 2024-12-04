@@ -1,17 +1,16 @@
-use std::time::Instant;
+use std::{num::NonZeroUsize, time::Instant};
 
 use crate::{
     gui::{modal, player},
-    lang::Language,
     media,
     prelude::StrictPath,
-    resource::config::Theme,
+    resource::config,
 };
 
 #[derive(Clone, Debug, Default)]
 pub struct Flags {
     pub sources: Vec<media::Source>,
-    pub max: Option<usize>,
+    pub max_initial_media: Option<NonZeroUsize>,
 }
 
 #[derive(Debug, Clone)]
@@ -21,7 +20,7 @@ pub enum Message {
     Tick(Instant),
     Save,
     CloseModal,
-    AppReleaseToggle(bool),
+    Config { event: config::Event },
     CheckAppRelease,
     AppReleaseChecked(Result<crate::metadata::Release, String>),
     BrowseDir(BrowseSubject),
@@ -33,8 +32,6 @@ pub enum Message {
     OpenDirFailure { path: StrictPath },
     OpenUrlFailure { url: String },
     KeyboardEvent(iced::keyboard::Event),
-    SelectedLanguage(Language),
-    SelectedTheme(Theme),
     UndoRedo(crate::gui::undoable::Action, UndoSubject),
     OpenUrl(String),
     OpenUrlAndCloseModal(String),
@@ -123,7 +120,9 @@ pub enum BrowseFileSubject {
     Source { index: usize },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UndoSubject {
+    MaxInitialMedia,
+    ImageDuration,
     Source { index: usize },
 }
