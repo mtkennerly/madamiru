@@ -40,6 +40,56 @@ fn timestamps<'a>(current: f64, total: Duration) -> Element<'a> {
         .into()
 }
 
+#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
+fn build_video_player(video: &Video, pane: Id) -> Element {
+    VideoPlayer::new(video)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .on_end_of_stream(Message::Player {
+            pane,
+            event: Event::EndOfStream,
+        })
+        .on_new_frame(Message::Player {
+            pane,
+            event: Event::NewFrame,
+        })
+        .into()
+}
+
+#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
+fn build_video_player(video: &Video, pane: Id) -> Element {
+    VideoPlayer::new(video)
+        .on_end_of_stream(Message::Player {
+            pane,
+            event: Event::EndOfStream,
+        })
+        .on_new_frame(Message::Player {
+            pane,
+            event: Event::NewFrame,
+        })
+        .into()
+}
+
+#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
+fn mute_video(video: &mut Video, muted: bool) {
+    video.set_muted(muted);
+}
+
+#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
+fn mute_video(_video: &mut Video, _muted: bool) {
+    // Panic: `property 'mute' of type 'GstPipeline' not found`
+}
+
+#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
+fn seek_video(video: &mut Video, position: f64) {
+    let _ = video.seek(Duration::from_secs_f64(position), false);
+}
+
+#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
+fn seek_video(video: &mut Video, position: f64) {
+    let _ = video.seek(Duration::from_secs_f64(position));
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Id(pub usize);
 
@@ -286,7 +336,7 @@ impl Player {
             }
             Self::Video { video, position, .. } => {
                 *position = 0.0;
-                let _ = video.seek(Duration::from_secs_f64(*position), false);
+                seek_video(video, *position);
                 video.set_paused(false);
             }
         }
@@ -581,14 +631,13 @@ impl Player {
                     None
                 }
                 Event::SetMute(flag) => {
-                    video.set_muted(flag);
+                    mute_video(video, flag);
                     Some(Update::MuteChanged)
                 }
                 Event::Seek(offset) => {
                     *dragging = true;
                     *position = offset;
-                    // video.seek(Duration::from_secs_f64(*position)).expect("seek");
-                    video.seek(Duration::from_secs_f64(*position), false).expect("seek");
+                    seek_video(video, *position);
                     None
                 }
                 Event::SeekStop => {
@@ -598,7 +647,7 @@ impl Player {
                 Event::SeekRandom => {
                     use rand::Rng;
                     *position = rand::thread_rng().gen_range(0.0..video.duration().as_secs_f64());
-                    video.seek(Duration::from_secs_f64(*position), false).expect("seek");
+                    seek_video(video, *position);
                     None
                 }
                 Event::EndOfStream => (!video.looping()).then_some(Update::EndOfStream),
@@ -1003,23 +1052,11 @@ impl Player {
 
                 Stack::new()
                     .push(
-                        Container::new(
-                            VideoPlayer::new(video)
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .on_end_of_stream(Message::Player {
-                                    pane,
-                                    event: Event::EndOfStream,
-                                })
-                                .on_new_frame(Message::Player {
-                                    pane,
-                                    event: Event::NewFrame,
-                                }),
-                        )
-                        .align_x(Alignment::Center)
-                        .align_y(Alignment::Center)
-                        .width(Length::Fill)
-                        .height(Length::Fill),
+                        Container::new(build_video_player(video, pane))
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center)
+                            .width(Length::Fill)
+                            .height(Length::Fill),
                     )
                     .push_maybe(
                         overlay.show.then_some(
