@@ -13,6 +13,7 @@ pub enum Event {
     CheckRelease(bool),
     MaxInitialMediaRaw(String),
     ImageDurationRaw(String),
+    PauseWhenWindowLosesFocus(bool),
 }
 
 /// Settings for `config.yaml`
@@ -89,6 +90,8 @@ pub struct Playback {
     pub max_initial_media: NonZeroUsize,
     /// How long to show images, in seconds.
     pub image_duration: NonZeroUsize,
+    /// Whether to pause when window loses focus.
+    pub pause_on_unfocus: bool,
 }
 
 impl Playback {
@@ -107,6 +110,7 @@ impl Default for Playback {
             muted: false,
             max_initial_media: NonZeroUsize::new(4).unwrap(),
             image_duration: NonZeroUsize::new(10).unwrap(),
+            pause_on_unfocus: false,
         }
     }
 }
@@ -135,6 +139,7 @@ mod tests {
                   muted: true
                   max_initial_media: 1
                   image_duration: 2
+                  pause_on_unfocus: true
             "#,
         )
         .unwrap();
@@ -149,6 +154,7 @@ mod tests {
                     muted: true,
                     max_initial_media: NonZeroUsize::new(1).unwrap(),
                     image_duration: NonZeroUsize::new(2).unwrap(),
+                    pause_on_unfocus: true,
                 },
             },
             config,
@@ -168,6 +174,7 @@ playback:
   muted: false
   max_initial_media: 4
   image_duration: 10
+  pause_on_unfocus: false
 "#
             .trim(),
             serde_yaml::to_string(&Config::default()).unwrap().trim(),

@@ -23,6 +23,7 @@ action-mute = Mute
 action-open-folder = Open folder
 action-open-folder-of-file = Open folder of file
 action-pause = Pause
+action-pause-when-window-loses-focus = Pause when window loses focus
 action-play = Play
 action-play-for-this-many-seconds = Play for this many seconds
 action-select-folder = Select folder

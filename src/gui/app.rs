@@ -279,6 +279,9 @@ impl App {
                             self.config.playback.image_duration = value;
                         }
                     }
+                    config::Event::PauseWhenWindowLosesFocus(value) => {
+                        self.config.playback.pause_on_unfocus = value;
+                    }
                 }
                 self.save_config();
                 Task::none()
@@ -579,6 +582,16 @@ impl App {
                     modal::scroll_down()
                 }
             },
+            Message::WindowFocused => {
+                self.grid
+                    .update_all_players(player::Event::WindowFocused, &self.media, &self.config.playback);
+                Task::none()
+            }
+            Message::WindowUnfocused => {
+                self.grid
+                    .update_all_players(player::Event::WindowUnfocused, &self.media, &self.config.playback);
+                Task::none()
+            }
         }
     }
 
@@ -590,6 +603,8 @@ impl App {
                 iced::Event::Window(iced::window::Event::FileDropped(path)) => {
                     Some(Message::FileDragDrop(StrictPath::from(path)))
                 }
+                iced::Event::Window(iced::window::Event::Focused) => Some(Message::WindowFocused),
+                iced::Event::Window(iced::window::Event::Unfocused) => Some(Message::WindowUnfocused),
                 _ => None,
             }),
             iced::time::every(Duration::from_millis(100)).map(Message::Tick),

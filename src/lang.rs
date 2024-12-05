@@ -271,6 +271,10 @@ pub mod action {
         translate("action-pause")
     }
 
+    pub fn pause_when_window_loses_focus() -> String {
+        translate("action-pause-when-window-loses-focus")
+    }
+
     pub fn play() -> String {
         translate("action-play")
     }

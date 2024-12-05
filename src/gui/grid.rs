@@ -184,7 +184,7 @@ impl Grid {
     #[must_use]
     pub fn update(&mut self, event: Event, collection: &media::Collection, playback: &Playback) -> Option<Update> {
         match event {
-            Event::Player { id, event } => match self.players[id.0].update(event) {
+            Event::Player { id, event } => match self.players[id.0].update(event, playback) {
                 Some(update) => match update {
                     player::Update::MuteChanged { .. } => Some(Update::MuteChanged),
                     player::Update::PauseChanged { .. } => Some(Update::PauseChanged),

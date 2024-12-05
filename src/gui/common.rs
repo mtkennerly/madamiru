@@ -47,6 +47,8 @@ pub enum Message {
     FindMedia,
     MediaFound { refresh: bool, media: media::Collection },
     FileDragDrop(StrictPath),
+    WindowFocused,
+    WindowUnfocused,
 }
 
 impl Message {

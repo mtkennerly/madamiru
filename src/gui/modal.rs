@@ -162,6 +162,13 @@ impl Modal {
                                                 .tooltip(lang::action::view_releases()),
                                         ),
                                 )
+                                .push(checkbox(
+                                    lang::action::pause_when_window_loses_focus(),
+                                    config.playback.pause_on_unfocus,
+                                    |value| Message::Config {
+                                        event: config::Event::PauseWhenWindowLosesFocus(value),
+                                    },
+                                ))
                                 .push(
                                     Row::new()
                                         .align_y(Alignment::Center)

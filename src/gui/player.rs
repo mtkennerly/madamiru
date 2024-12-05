@@ -40,7 +40,7 @@ fn timestamps<'a>(current: f64, total: Duration) -> Element<'a> {
         .into()
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Id(pub usize);
 
 #[derive(Debug)]
@@ -105,6 +105,8 @@ pub enum Event {
     MouseExit,
     Refresh,
     Close,
+    WindowFocused,
+    WindowUnfocused,
 }
 
 #[derive(Debug, Clone)]
@@ -143,6 +145,7 @@ pub enum Player {
         looping: bool,
         dragging: bool,
         hovered: bool,
+        need_play_on_focus: bool,
     },
     Gif {
         source: StrictPath,
@@ -154,6 +157,7 @@ pub enum Player {
         looping: bool,
         dragging: bool,
         hovered: bool,
+        need_play_on_focus: bool,
     },
     Video {
         source: StrictPath,
@@ -161,6 +165,7 @@ pub enum Player {
         position: f64,
         dragging: bool,
         hovered: bool,
+        need_play_on_focus: bool,
     },
 }
 
@@ -178,6 +183,7 @@ impl Player {
                     looping: false,
                     dragging: false,
                     hovered: false,
+                    need_play_on_focus: false,
                 }),
                 Err(e) => Err(Self::Error {
                     source: path.clone(),
@@ -196,6 +202,7 @@ impl Player {
                     looping: false,
                     dragging: false,
                     hovered: false,
+                    need_play_on_focus: false,
                 }),
                 Err(e) => Err(Self::Error {
                     source: path.clone(),
@@ -214,6 +221,7 @@ impl Player {
                         position: 0.0,
                         dragging: false,
                         hovered: false,
+                        need_play_on_focus: false,
                     })
                 }
                 Err(e) => Err(Self::Error {
@@ -419,7 +427,7 @@ impl Player {
     }
 
     #[must_use]
-    pub fn update(&mut self, event: Event) -> Option<Update> {
+    pub fn update(&mut self, event: Event, playback: &Playback) -> Option<Update> {
         match self {
             Self::Idle => None,
             Self::Error { hovered, .. } => match event {
@@ -441,6 +449,8 @@ impl Player {
                 }
                 Event::Refresh => Some(Update::Refresh),
                 Event::Close => Some(Update::Close),
+                Event::WindowFocused => None,
+                Event::WindowUnfocused => None,
             },
             Self::Image {
                 position,
@@ -449,6 +459,7 @@ impl Player {
                 looping,
                 dragging,
                 hovered,
+                need_play_on_focus,
                 ..
             } => match event {
                 Event::SetPause(flag) => {
@@ -482,6 +493,20 @@ impl Player {
                 }
                 Event::Refresh => Some(Update::Refresh),
                 Event::Close => Some(Update::Close),
+                Event::WindowFocused => {
+                    if *need_play_on_focus {
+                        *paused = false;
+                        *need_play_on_focus = false;
+                    }
+                    None
+                }
+                Event::WindowUnfocused => {
+                    if playback.pause_on_unfocus {
+                        *paused = true;
+                        *need_play_on_focus = true;
+                    }
+                    None
+                }
             },
             Self::Gif {
                 position,
@@ -490,6 +515,7 @@ impl Player {
                 looping,
                 dragging,
                 hovered,
+                need_play_on_focus,
                 ..
             } => match event {
                 Event::SetPause(flag) => {
@@ -523,12 +549,27 @@ impl Player {
                 }
                 Event::Refresh => Some(Update::Refresh),
                 Event::Close => Some(Update::Close),
+                Event::WindowFocused => {
+                    if *need_play_on_focus {
+                        *paused = false;
+                        *need_play_on_focus = false;
+                    }
+                    None
+                }
+                Event::WindowUnfocused => {
+                    if playback.pause_on_unfocus {
+                        *paused = true;
+                        *need_play_on_focus = true;
+                    }
+                    None
+                }
             },
             Self::Video {
                 video,
                 position,
                 dragging,
                 hovered,
+                need_play_on_focus,
                 ..
             } => match event {
                 Event::SetPause(flag) => {
@@ -575,6 +616,20 @@ impl Player {
                 }
                 Event::Refresh => Some(Update::Refresh),
                 Event::Close => Some(Update::Close),
+                Event::WindowFocused => {
+                    if *need_play_on_focus {
+                        video.set_paused(false);
+                        *need_play_on_focus = false;
+                    }
+                    None
+                }
+                Event::WindowUnfocused => {
+                    if playback.pause_on_unfocus {
+                        video.set_paused(true);
+                        *need_play_on_focus = true;
+                    }
+                    None
+                }
             },
         }
     }
