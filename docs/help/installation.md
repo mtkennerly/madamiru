@@ -1,7 +1,6 @@
 # Installation
 ## Requirements
-* Madamiru is available for Windows and Linux.
-  A Mac version is planned, but not yet available.
+* Madamiru is available for Windows, Linux, and Mac.
 * For the best performance, your system should support one of DirectX, Vulkan, or Metal.
   For other systems, Madamiru will use a fallback software renderer,
   or you can also activate the software renderer by setting the `ICED_BACKEND` environment variable to `tiny-skia`.
@@ -49,11 +48,9 @@ If you are on Windows:
   because Windows does not recognize the program's publisher.
   Click "more info" and then "run anyway" to start the program.
 
-<!--
 If you are on Mac:
 
 * When you first run Madamiru, you may see a popup that says
   "Madamiru can't be opened because it is from an unidentified developer".
   To allow Madamiru to run, please refer to [this article](https://support.apple.com/en-us/102445),
   specifically the section on `If you want to open an app [...] from an unidentified developer`.
--->

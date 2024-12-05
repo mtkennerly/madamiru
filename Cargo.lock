@@ -2988,6 +2988,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "system-deps 7.0.3",
  "test-case",
  "tokio",
  "typed-path",

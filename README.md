@@ -13,10 +13,9 @@ If you'd like to help translate Madamiru into other languages,
 > ![GUI demo](docs/demo-gui.gif)
 
 ## Installation
-Download the executable for Windows or Linux from the
+Download the executable for Windows, Linux, or Mac from the
 [releases page](https://github.com/mtkennerly/madamiru/releases).
 It's portable, so you can simply download it and put it anywhere on your system.
-(A Mac version is planned, but not yet available.)
 
 You'll also need to install [GStreamer](https://gstreamer.freedesktop.org/download),
 which is a framework that provides various video codecs.
@@ -32,12 +31,10 @@ Note:
   "Windows protected your PC",
   because Windows does not recognize the program's publisher.
   Click "more info" and then "run anyway" to start the program.
-<!--
 * Mac users may see a popup that says
   "Madamiru can't be opened because it is from an unidentified developer".
   To allow Madamiru to run, please refer to [this article](https://support.apple.com/en-us/102445),
   specifically the section on `If you want to open an app [...] from an unidentified developer`.
--->
 
 ## Usage
 Detailed help documentation is available for several topics.

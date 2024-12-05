@@ -47,6 +47,9 @@ windows = { version = "0.58.0", features = ["Win32_System_Console", "Win32_Syste
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1.12"
 
+[target.'cfg(target_os = "macos")'.build-dependencies]
+system-deps = "7"
+
 [dev-dependencies]
 pretty_assertions = "1.4.1"
 test-case = "3.3.1"
@@ -79,3 +82,6 @@ pkg-fmt = "tgz"
 [package.metadata.binstall.overrides.x86_64-apple-darwin]
 pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-mac{ archive-suffix }"
 pkg-fmt = "tgz"
+
+[package.metadata.system-deps]
+"gstreamer-1.0" = "1.14"
