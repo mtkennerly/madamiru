@@ -318,7 +318,7 @@ pub mod tell {
     pub fn new_version_available(version: &str) -> String {
         let mut args = FluentArgs::new();
         args.set(VERSION, version);
-        translate_args("new-version-available", &args)
+        translate_args("tell-new-version-available", &args)
     }
 
     pub fn no_media_found() -> String {
@@ -338,6 +338,6 @@ pub mod ask {
     use super::*;
 
     pub fn view_release_notes() -> String {
-        translate("ask-view-releases-notes")
+        translate("ask-view-release-notes")
     }
 }
