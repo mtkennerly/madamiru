@@ -1,9 +1,9 @@
 use std::time::Duration;
 
 use iced::{
-    padding,
+    alignment, padding,
     widget::{horizontal_space, mouse_area, vertical_space, Image, Responsive},
-    Length,
+    Alignment, Length,
 };
 use iced_gif::gif;
 use iced_video_player::{Video, VideoPlayer};
@@ -616,10 +616,10 @@ impl Player {
     fn view_inner(&self, pane: Id, obscured: bool, viewport: iced::Size) -> Element {
         match self {
             Self::Idle => Container::new("")
-                .align_x(iced::Alignment::Center)
-                .align_y(iced::Alignment::Center)
-                .width(iced::Length::Fill)
-                .height(iced::Length::Fill)
+                .align_x(Alignment::Center)
+                .align_y(Alignment::Center)
+                .width(Length::Fill)
+                .height(Length::Fill)
                 .into(),
             Self::Error {
                 source,
@@ -631,10 +631,10 @@ impl Player {
                 Stack::new()
                     .push(
                         Container::new(text(message))
-                            .align_x(iced::Alignment::Center)
-                            .align_y(iced::Alignment::Center)
-                            .width(iced::Length::Fill)
-                            .height(iced::Length::Fill),
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center)
+                            .width(Length::Fill)
+                            .height(Length::Fill),
                     )
                     .push_maybe(
                         overlay.show.then_some(
@@ -671,7 +671,7 @@ impl Player {
                             Container::new(
                                 Row::new()
                                     .spacing(5)
-                                    .align_y(iced::alignment::Vertical::Center)
+                                    .align_y(alignment::Vertical::Center)
                                     .padding(padding::all(10.0))
                                     .push(
                                         button::big_icon(Icon::Refresh)
@@ -702,11 +702,11 @@ impl Player {
 
                 Stack::new()
                     .push(
-                        Container::new(Image::new(handle_path))
-                            .align_x(iced::Alignment::Center)
-                            .align_y(iced::Alignment::Center)
-                            .width(iced::Length::Fill)
-                            .height(iced::Length::Fill),
+                        Container::new(Image::new(handle_path).width(Length::Fill).height(Length::Fill))
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center)
+                            .width(Length::Fill)
+                            .height(Length::Fill),
                     )
                     .push_maybe(
                         overlay.show.then_some(
@@ -751,7 +751,7 @@ impl Player {
                             Container::new(
                                 Row::new()
                                     .spacing(5)
-                                    .align_y(iced::alignment::Vertical::Center)
+                                    .align_y(alignment::Vertical::Center)
                                     .padding(padding::all(10.0))
                                     .push(
                                         button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
@@ -825,16 +825,16 @@ impl Player {
                 Stack::new()
                     .push({
                         let media = if *paused {
-                            Container::new(Image::new(handle_path))
+                            Container::new(Image::new(handle_path).width(Length::Fill).height(Length::Fill))
                         } else {
-                            Container::new(gif(frames))
+                            Container::new(gif(frames).width(Length::Fill).height(Length::Fill))
                         };
 
                         media
-                            .align_x(iced::Alignment::Center)
-                            .align_y(iced::Alignment::Center)
-                            .width(iced::Length::Fill)
-                            .height(iced::Length::Fill)
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center)
+                            .width(Length::Fill)
+                            .height(Length::Fill)
                     })
                     .push_maybe(
                         overlay.show.then_some(
@@ -879,7 +879,7 @@ impl Player {
                             Container::new(
                                 Row::new()
                                     .spacing(5)
-                                    .align_y(iced::alignment::Vertical::Center)
+                                    .align_y(alignment::Vertical::Center)
                                     .padding(padding::all(10.0))
                                     .push(
                                         button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
@@ -950,9 +950,8 @@ impl Player {
                     .push(
                         Container::new(
                             VideoPlayer::new(video)
-                                // .width(iced::Length::Fill)
-                                // .height(iced::Length::Fill)
-                                // .content_fit(iced::ContentFit::Contain)
+                                .width(Length::Fill)
+                                .height(Length::Fill)
                                 .on_end_of_stream(Message::Player {
                                     pane,
                                     event: Event::EndOfStream,
@@ -962,10 +961,10 @@ impl Player {
                                     event: Event::NewFrame,
                                 }),
                         )
-                        .align_x(iced::Alignment::Center)
-                        .align_y(iced::Alignment::Center)
-                        .width(iced::Length::Fill)
-                        .height(iced::Length::Fill),
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center)
+                        .width(Length::Fill)
+                        .height(Length::Fill),
                     )
                     .push_maybe(
                         overlay.show.then_some(
@@ -1010,7 +1009,7 @@ impl Player {
                             Container::new(
                                 Row::new()
                                     .spacing(5)
-                                    .align_y(iced::alignment::Vertical::Center)
+                                    .align_y(alignment::Vertical::Center)
                                     .padding(padding::all(10.0))
                                     .push(
                                         button::icon(if video.muted() { Icon::Mute } else { Icon::VolumeHigh })
