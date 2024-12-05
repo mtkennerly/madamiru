@@ -824,7 +824,7 @@ impl Player {
                             Container::new(
                                 Row::new()
                                     .push(
-                                        button::icon(Icon::OpenInNew)
+                                        button::icon(Icon::Image)
                                             .on_press(Message::OpenFile { path: source.clone() })
                                             .tooltip(source.render()),
                                     )
@@ -952,7 +952,7 @@ impl Player {
                             Container::new(
                                 Row::new()
                                     .push(
-                                        button::icon(Icon::OpenInNew)
+                                        button::icon(Icon::Image)
                                             .on_press(Message::OpenFile { path: source.clone() })
                                             .tooltip(source.render()),
                                     )
@@ -1070,7 +1070,7 @@ impl Player {
                             Container::new(
                                 Row::new()
                                     .push(
-                                        button::icon(Icon::OpenInNew)
+                                        button::icon(Icon::Movie)
                                             .on_press(Message::OpenFile { path: source.clone() })
                                             .tooltip(source.render()),
                                     )
