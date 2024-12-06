@@ -132,10 +132,8 @@ impl Media {
                 let extension = path.file_extension().map(|x| x.to_lowercase());
 
                 match info.mime_type() {
-                    "video/mp4" | "video/mpeg" | "video/quicktime" | "video/webm" | "video/x-flv" | "video/x-m4v"
-                    | "video/x-matroska" | "video/x-ms-wmv" | "video/x-msvideo" => {
-                        Some(Self::Video { path: path.clone() })
-                    }
+                    "video/mp4" | "video/quicktime" | "video/webm" | "video/x-m4v" | "video/x-matroska"
+                    | "video/x-msvideo" => Some(Self::Video { path: path.clone() }),
                     "image/bmp"
                     | "image/jpeg"
                     | "image/png"

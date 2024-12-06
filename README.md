@@ -3,7 +3,7 @@ Madamiru is a cross-platform video player written in [Rust](https://www.rust-lan
 that can automatically shuffle multiple videos at once in a grid layout.
 
 ## Features
-* Video formats: AVI, FLV, M4V, MKV, MP4, MPEG, QuickTime, WebM, WMV
+* Video formats: AVI, M4V, MKV, MOV, MP4, WebM
 * Image formats: BMP, GIF, ICO, JPEG, PNG, TIFF, SVG, WebP
 * Subtitles are supported within MKV (but not as separate files)
 
