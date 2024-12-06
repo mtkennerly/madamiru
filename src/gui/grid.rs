@@ -144,6 +144,57 @@ impl Grid {
         }
     }
 
+    fn refresh_outdated(&mut self, collection: &mut media::Collection, playback: &Playback) {
+        let mut remove = vec![];
+        let mut active: HashSet<_> = self.active_media().into_iter().cloned().collect();
+
+        for (index, player) in self.players.iter_mut().enumerate() {
+            if let Some(old_media) = player.media() {
+                if collection.is_outdated(old_media, &self.sources) {
+                    active.remove(old_media);
+                    match collection.one_new(&self.sources, active.iter().collect()) {
+                        Some(new_media) => {
+                            if player.swap_media(&new_media, playback).is_err() {
+                                collection.mark_error(&new_media);
+                            }
+                            active.insert(new_media);
+                        }
+                        None => {
+                            remove.push(player::Id(index));
+                        }
+                    }
+                }
+            }
+        }
+
+        for id in remove.into_iter().rev() {
+            self.players.remove(id.0);
+        }
+    }
+
+    pub fn refresh_on_media_collection_changed(
+        &mut self,
+        context: media::RefreshContext,
+        collection: &mut media::Collection,
+        playback: &Playback,
+    ) {
+        match context {
+            media::RefreshContext::Launch => {
+                self.refresh(collection, playback);
+            }
+            media::RefreshContext::Edit => {
+                if self.is_idle() {
+                    self.refresh(collection, playback);
+                } else {
+                    self.refresh_outdated(collection, playback);
+                }
+            }
+            media::RefreshContext::Automatic => {
+                self.refresh_outdated(collection, playback);
+            }
+        }
+    }
+
     pub fn add_player(&mut self, collection: &mut media::Collection, playback: &Playback) -> Result<(), Error> {
         let Some(media) = collection.one_new(&self.sources, self.active_media()) else {
             return Err(Error::NoMediaAvailable);

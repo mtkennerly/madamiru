@@ -4,6 +4,13 @@ use itertools::Itertools;
 
 use crate::{lang, path::StrictPath};
 
+#[derive(Debug, Clone, Copy)]
+pub enum RefreshContext {
+    Launch,
+    Edit,
+    Automatic,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Source {
     Path { path: StrictPath },
@@ -172,6 +179,13 @@ pub struct Collection {
 impl Collection {
     pub fn mark_error(&mut self, media: &Media) {
         self.errored.insert(media.clone());
+    }
+
+    pub fn is_outdated(&self, media: &Media, sources: &[Source]) -> bool {
+        sources
+            .iter()
+            .filter_map(|source| self.media.get(source))
+            .all(|known| !known.contains(media))
     }
 
     pub fn find(sources: &[Source]) -> SourceMap {

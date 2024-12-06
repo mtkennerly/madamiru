@@ -144,7 +144,7 @@ impl App {
         if sources.is_empty() {
             modals.push(Modal::new_sources(sources.clone(), text_histories.clone()));
         } else {
-            commands.push(Self::find_media(sources, true))
+            commands.push(Self::find_media(sources, media::RefreshContext::Launch))
         }
 
         if !errors.is_empty() {
@@ -188,7 +188,7 @@ impl App {
         self.grid.all_muted()
     }
 
-    fn find_media(sources: Vec<media::Source>, refresh: bool) -> Task<Message> {
+    fn find_media(sources: Vec<media::Source>, context: media::RefreshContext) -> Task<Message> {
         if sources.is_empty() {
             return Task::none();
         }
@@ -197,7 +197,7 @@ impl App {
             match tokio::task::spawn_blocking(move || media::Collection::find(&sources)).await {
                 Ok(media) => {
                     log::debug!("Found media: {media:?}");
-                    Message::MediaFound { refresh, media }
+                    Message::MediaFound { context, media }
                 }
                 Err(e) => {
                     log::error!("Unable to find media: {e:?}");
@@ -536,7 +536,7 @@ impl App {
                                 self.modals.pop();
                                 self.text_histories = histories;
                                 self.grid.set_sources(sources.clone());
-                                return Self::find_media(sources, true);
+                                return Self::find_media(sources, media::RefreshContext::Edit);
                             }
                             modal::Update::Task(task) => {
                                 return task;
@@ -557,14 +557,12 @@ impl App {
                 ));
                 Task::none()
             }
-            Message::FindMedia => Self::find_media(self.grid.sources().to_vec(), false),
-            Message::MediaFound { refresh, media } => {
+            Message::FindMedia => Self::find_media(self.grid.sources().to_vec(), media::RefreshContext::Automatic),
+            Message::MediaFound { context, media } => {
                 self.media.replace(media);
-                if refresh {
-                    self.refresh()
-                } else {
-                    Task::none()
-                }
+                self.grid
+                    .refresh_on_media_collection_changed(context, &mut self.media, &self.config.playback);
+                Task::none()
             }
             Message::FileDragDrop(path) => match self.modals.last_mut() {
                 Some(Modal::Sources { sources, histories }) => {
