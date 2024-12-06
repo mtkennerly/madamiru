@@ -1,6 +1,6 @@
-# ![Logo](assets/icon.svg) Madamiru
-Madamiru is a cross-platform video player written in [Rust](https://www.rust-lang.org)
-that can automatically shuffle multiple videos at once in a grid layout.
+# <img src="assets/icon.svg" alt="Logo" width="64" height="64"> Madamiru
+Madamiru is a cross-platform media player written in [Rust](https://www.rust-lang.org)
+that can automatically shuffle multiple videos and images at once in a grid layout.
 
 ## Features
 * Video formats: AVI, M4V, MKV, MOV, MP4, WebM
