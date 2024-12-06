@@ -41,6 +41,40 @@ fn timestamps<'a>(current: f64, total: Duration) -> Element<'a> {
 }
 
 #[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
+fn build_video(uri: &url::Url) -> Result<Video, iced_video_player::Error> {
+    // Based on `iced_video_player::Video::new`,
+    // but without a text sink so that the built-in subtitle functionality triggers.
+
+    use gstreamer as gst;
+    use gstreamer_app as gst_app;
+    use gstreamer_app::prelude::*;
+
+    gst::init()?;
+
+    let pipeline = format!(
+        r#"playbin uri="{}" video-sink="videoscale ! videoconvert ! appsink name=iced_video drop=true caps=video/x-raw,format=NV12,pixel-aspect-ratio=1/1""#,
+        uri.as_str()
+    );
+    let pipeline = gst::parse::launch(pipeline.as_ref())?
+        .downcast::<gst::Pipeline>()
+        .map_err(|_| iced_video_player::Error::Cast)?;
+
+    let video_sink: gst::Element = pipeline.property("video-sink");
+    let pad = video_sink.pads().first().cloned().unwrap();
+    let pad = pad.dynamic_cast::<gst::GhostPad>().unwrap();
+    let bin = pad.parent_element().unwrap().downcast::<gst::Bin>().unwrap();
+    let video_sink = bin.by_name("iced_video").unwrap();
+    let video_sink = video_sink.downcast::<gst_app::AppSink>().unwrap();
+
+    Video::from_gst_pipeline(pipeline, video_sink, None)
+}
+
+#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
+fn build_video(uri: &url::Url) -> Result<Video, iced_video_player::Error> {
+    Video::new(uri)
+}
+
+#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
 fn build_video_player(video: &Video, pane: Id) -> Element {
     VideoPlayer::new(video)
         .width(Length::Fill)
@@ -263,7 +297,7 @@ impl Player {
             Media::Video { path } => match Self::load_video(path) {
                 Ok(mut video) => {
                     video.set_paused(playback.paused);
-                    video.set_muted(playback.muted);
+                    mute_video(&mut video, playback.muted);
 
                     Ok(Self::Video {
                         source: path.clone(),
@@ -284,7 +318,7 @@ impl Player {
     }
 
     fn load_video(source: &StrictPath) -> Result<Video, Error> {
-        Ok(Video::new(
+        Ok(build_video(
             &url::Url::from_file_path(source.as_std_path_buf()?).map_err(|_| Error::Url)?,
         )?)
     }

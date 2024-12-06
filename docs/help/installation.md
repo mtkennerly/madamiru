@@ -35,6 +35,10 @@ You can install Madamiru one of these ways:
 
   * To install or update: `cargo install --locked madamiru`
 
+  However, note that some features are not yet available in this version.
+  The prebuilt release uses a pre-release version of some dependencies,
+  which is not possible when installing via Cargo.
+
   On Linux, this requires the following system packages, or their equivalents
   for your distribution:
 

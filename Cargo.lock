@@ -2968,6 +2968,8 @@ dependencies = [
  "fluent",
  "globetter",
  "globset",
+ "gstreamer",
+ "gstreamer-app",
  "iced",
  "iced_gif",
  "iced_video_player",
