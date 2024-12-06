@@ -45,7 +45,7 @@ pub enum Message {
     ShowSettings,
     ShowSources,
     FindMedia,
-    MediaFound { refresh: bool, media: media::Collection },
+    MediaFound { refresh: bool, media: media::SourceMap },
     FileDragDrop(StrictPath),
     WindowFocused,
     WindowUnfocused,

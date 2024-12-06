@@ -216,12 +216,12 @@ pub enum Player {
     #[default]
     Idle,
     Error {
-        source: StrictPath,
+        media: Media,
         message: String,
         hovered: bool,
     },
     Image {
-        source: StrictPath,
+        media: Media,
         handle_path: std::path::PathBuf,
         position: f64,
         duration: Duration,
@@ -232,7 +232,7 @@ pub enum Player {
         need_play_on_focus: bool,
     },
     Svg {
-        source: StrictPath,
+        media: Media,
         handle_path: std::path::PathBuf,
         position: f64,
         duration: Duration,
@@ -243,7 +243,7 @@ pub enum Player {
         need_play_on_focus: bool,
     },
     Gif {
-        source: StrictPath,
+        media: Media,
         frames: gif::Frames,
         handle_path: std::path::PathBuf,
         position: f64,
@@ -255,7 +255,7 @@ pub enum Player {
         need_play_on_focus: bool,
     },
     Video {
-        source: StrictPath,
+        media: Media,
         video: Video,
         position: f64,
         dragging: bool,
@@ -270,7 +270,7 @@ impl Player {
         match media {
             Media::Image { path } => match Self::load_image(path) {
                 Ok(handle_path) => Ok(Self::Image {
-                    source: path.clone(),
+                    media: media.clone(),
                     handle_path,
                     position: 0.0,
                     duration: Duration::from_secs(playback.image_duration.get() as u64),
@@ -281,14 +281,14 @@ impl Player {
                     need_play_on_focus: false,
                 }),
                 Err(e) => Err(Self::Error {
-                    source: path.clone(),
+                    media: media.clone(),
                     message: e.message(),
                     hovered: false,
                 }),
             },
             Media::Svg { path } => match Self::load_svg(path) {
                 Ok(handle_path) => Ok(Self::Svg {
-                    source: path.clone(),
+                    media: media.clone(),
                     handle_path,
                     position: 0.0,
                     duration: Duration::from_secs(playback.image_duration.get() as u64),
@@ -299,14 +299,14 @@ impl Player {
                     need_play_on_focus: false,
                 }),
                 Err(e) => Err(Self::Error {
-                    source: path.clone(),
+                    media: media.clone(),
                     message: e.message(),
                     hovered: false,
                 }),
             },
             Media::Gif { path } => match Self::load_gif(path) {
                 Ok((frames, handle_path)) => Ok(Self::Gif {
-                    source: path.clone(),
+                    media: media.clone(),
                     frames,
                     handle_path,
                     position: 0.0,
@@ -318,7 +318,7 @@ impl Player {
                     need_play_on_focus: false,
                 }),
                 Err(e) => Err(Self::Error {
-                    source: path.clone(),
+                    media: media.clone(),
                     message: e.message(),
                     hovered: false,
                 }),
@@ -329,7 +329,7 @@ impl Player {
                     mute_video(&mut video, playback.muted);
 
                     Ok(Self::Video {
-                        source: path.clone(),
+                        media: media.clone(),
                         video,
                         position: 0.0,
                         dragging: false,
@@ -338,7 +338,7 @@ impl Player {
                     })
                 }
                 Err(e) => Err(Self::Error {
-                    source: path.clone(),
+                    media: media.clone(),
                     message: e.message(),
                     hovered: false,
                 }),
@@ -412,14 +412,14 @@ impl Player {
         }
     }
 
-    pub fn source(&self) -> Option<&StrictPath> {
+    pub fn media(&self) -> Option<&Media> {
         match self {
             Self::Idle => None,
-            Self::Error { source, .. } => Some(source),
-            Self::Image { source, .. } => Some(source),
-            Self::Svg { source, .. } => Some(source),
-            Self::Gif { source, .. } => Some(source),
-            Self::Video { source, .. } => Some(source),
+            Self::Error { media, .. } => Some(media),
+            Self::Image { media, .. } => Some(media),
+            Self::Svg { media, .. } => Some(media),
+            Self::Gif { media, .. } => Some(media),
+            Self::Video { media, .. } => Some(media),
         }
     }
 
@@ -893,7 +893,7 @@ impl Player {
                 .height(Length::Fill)
                 .into(),
             Self::Error {
-                source,
+                media,
                 message,
                 hovered,
             } => {
@@ -920,8 +920,10 @@ impl Player {
                                 Row::new()
                                     .push(
                                         button::icon(Icon::OpenInNew)
-                                            .on_press(Message::OpenFile { path: source.clone() })
-                                            .tooltip(source.render()),
+                                            .on_press(Message::OpenFile {
+                                                path: media.path().clone(),
+                                            })
+                                            .tooltip(media.path().render()),
                                     )
                                     .push(horizontal_space())
                                     .push(
@@ -959,7 +961,7 @@ impl Player {
                     .into()
             }
             Self::Image {
-                source,
+                media,
                 handle_path,
                 position,
                 duration,
@@ -992,8 +994,10 @@ impl Player {
                                 Row::new()
                                     .push(
                                         button::icon(Icon::Image)
-                                            .on_press(Message::OpenFile { path: source.clone() })
-                                            .tooltip(source.render()),
+                                            .on_press(Message::OpenFile {
+                                                path: media.path().clone(),
+                                            })
+                                            .tooltip(media.path().render()),
                                     )
                                     .push(horizontal_space())
                                     .push(
@@ -1080,7 +1084,7 @@ impl Player {
                     .into()
             }
             Self::Svg {
-                source,
+                media,
                 handle_path,
                 position,
                 duration,
@@ -1113,8 +1117,10 @@ impl Player {
                                 Row::new()
                                     .push(
                                         button::icon(Icon::Image)
-                                            .on_press(Message::OpenFile { path: source.clone() })
-                                            .tooltip(source.render()),
+                                            .on_press(Message::OpenFile {
+                                                path: media.path().clone(),
+                                            })
+                                            .tooltip(media.path().render()),
                                     )
                                     .push(horizontal_space())
                                     .push(
@@ -1201,7 +1207,7 @@ impl Player {
                     .into()
             }
             Self::Gif {
-                source,
+                media,
                 frames,
                 handle_path,
                 position,
@@ -1241,8 +1247,10 @@ impl Player {
                                 Row::new()
                                     .push(
                                         button::icon(Icon::Image)
-                                            .on_press(Message::OpenFile { path: source.clone() })
-                                            .tooltip(source.render()),
+                                            .on_press(Message::OpenFile {
+                                                path: media.path().clone(),
+                                            })
+                                            .tooltip(media.path().render()),
                                     )
                                     .push(horizontal_space())
                                     .push(
@@ -1329,7 +1337,7 @@ impl Player {
                     .into()
             }
             Self::Video {
-                source,
+                media,
                 video,
                 position,
                 dragging,
@@ -1359,8 +1367,10 @@ impl Player {
                                 Row::new()
                                     .push(
                                         button::icon(Icon::Movie)
-                                            .on_press(Message::OpenFile { path: source.clone() })
-                                            .tooltip(source.render()),
+                                            .on_press(Message::OpenFile {
+                                                path: media.path().clone(),
+                                            })
+                                            .tooltip(media.path().render()),
                                     )
                                     .push(horizontal_space())
                                     .push(

@@ -176,7 +176,7 @@ impl App {
     }
 
     fn refresh(&mut self) -> Task<Message> {
-        self.grid.refresh(&self.media, &self.config.playback);
+        self.grid.refresh(&mut self.media, &self.config.playback);
         Task::none()
     }
 
@@ -213,13 +213,13 @@ impl App {
             Message::Exit => {
                 // If we don't pause first, you may still hear the videos for a moment after the app closes.
                 self.grid
-                    .update_all_players(player::Event::SetPause(true), &self.media, &self.config.playback);
+                    .update_all_players(player::Event::SetPause(true), &mut self.media, &self.config.playback);
                 std::process::exit(0)
             }
             Message::Tick(instant) => {
                 let elapsed = instant - self.last_tick;
                 self.last_tick = instant;
-                self.grid.tick(elapsed, &self.media, &self.config.playback);
+                self.grid.tick(elapsed, &mut self.media, &self.config.playback);
                 Task::none()
             }
             Message::Save => {
@@ -468,7 +468,7 @@ impl App {
                 Self::open_url(url)
             }
             Message::Refresh => self.refresh(),
-            Message::AddPlayer => match self.grid.add_player(&self.media, &self.config.playback) {
+            Message::AddPlayer => match self.grid.add_player(&mut self.media, &self.config.playback) {
                 Ok(_) => Task::none(),
                 Err(e) => match e {
                     grid::Error::NoMediaAvailable => {
@@ -483,7 +483,7 @@ impl App {
                 self.config.playback.paused = flag;
 
                 self.grid
-                    .update_all_players(player::Event::SetPause(flag), &self.media, &self.config.playback);
+                    .update_all_players(player::Event::SetPause(flag), &mut self.media, &self.config.playback);
 
                 Task::none()
             }
@@ -492,14 +492,14 @@ impl App {
                 self.save_config();
 
                 self.grid
-                    .update_all_players(player::Event::SetMute(flag), &self.media, &self.config.playback);
+                    .update_all_players(player::Event::SetMute(flag), &mut self.media, &self.config.playback);
 
                 Task::none()
             }
             Message::Player { pane, event } => {
                 if let Some(update) = self.grid.update(
                     grid::Event::Player { id: pane, event },
-                    &self.media,
+                    &mut self.media,
                     &self.config.playback,
                 ) {
                     match update {
@@ -524,7 +524,8 @@ impl App {
                 Task::none()
             }
             Message::AllPlayers { event } => {
-                self.grid.update_all_players(event, &self.media, &self.config.playback);
+                self.grid
+                    .update_all_players(event, &mut self.media, &self.config.playback);
                 Task::none()
             }
             Message::Modal { event } => {
@@ -558,7 +559,7 @@ impl App {
             }
             Message::FindMedia => Self::find_media(self.grid.sources().to_vec(), false),
             Message::MediaFound { refresh, media } => {
-                self.media = media;
+                self.media.replace(media);
                 if refresh {
                     self.refresh()
                 } else {
@@ -584,12 +585,12 @@ impl App {
             },
             Message::WindowFocused => {
                 self.grid
-                    .update_all_players(player::Event::WindowFocused, &self.media, &self.config.playback);
+                    .update_all_players(player::Event::WindowFocused, &mut self.media, &self.config.playback);
                 Task::none()
             }
             Message::WindowUnfocused => {
                 self.grid
-                    .update_all_players(player::Event::WindowUnfocused, &self.media, &self.config.playback);
+                    .update_all_players(player::Event::WindowUnfocused, &mut self.media, &self.config.playback);
                 Task::none()
             }
         }

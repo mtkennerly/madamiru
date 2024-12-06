@@ -1,4 +1,6 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+
+use itertools::Itertools;
 
 use crate::{lang, path::StrictPath};
 
@@ -159,24 +161,27 @@ impl Media {
     }
 }
 
+pub type SourceMap = HashMap<Source, HashSet<Media>>;
+
 #[derive(Debug, Default, Clone)]
 pub struct Collection {
-    media: HashSet<Media>,
+    media: SourceMap,
+    errored: HashSet<Media>,
 }
 
 impl Collection {
-    pub fn new(media: HashSet<Media>) -> Self {
-        Self { media }
+    pub fn mark_error(&mut self, media: &Media) {
+        self.errored.insert(media.clone());
     }
 
-    pub fn find(sources: &[Source]) -> Self {
-        let mut media = HashSet::new();
+    pub fn find(sources: &[Source]) -> SourceMap {
+        let mut media = SourceMap::new();
 
         for source in sources {
-            media.extend(Self::find_in_source(source));
+            media.insert(source.clone(), Self::find_in_source(source));
         }
 
-        Self::new(media)
+        media
     }
 
     fn find_in_source(source: &Source) -> HashSet<Media> {
@@ -208,24 +213,28 @@ impl Collection {
         }
     }
 
-    pub fn new_first(
-        &self,
-        take: usize,
-        old: HashSet<&StrictPath>,
-        ignored: &HashSet<StrictPath>,
-    ) -> Option<Vec<Media>> {
+    pub fn replace(&mut self, new: SourceMap) {
+        self.media = new;
+    }
+
+    pub fn new_first(&self, sources: &[Source], take: usize, old: HashSet<&Media>) -> Option<Vec<Media>> {
         use rand::seq::SliceRandom;
 
-        let mut media: Vec<_> = self.media.iter().collect();
+        let mut media: Vec<_> = sources
+            .iter()
+            .filter_map(|source| self.media.get(source))
+            .flatten()
+            .unique()
+            .collect();
         media.shuffle(&mut rand::thread_rng());
 
         let media: Vec<_> = media
             .iter()
-            .filter(|media| !ignored.contains(media.path()) && !old.contains(media.path()))
+            .filter(|media| !self.errored.contains(media) && !old.contains(*media))
             .chain(
                 media
                     .iter()
-                    .filter(|media| !ignored.contains(media.path()) && old.contains(media.path())),
+                    .filter(|media| !self.errored.contains(media) && old.contains(*media)),
             )
             .take(take)
             .cloned()
@@ -235,15 +244,20 @@ impl Collection {
         (!media.is_empty()).then_some(media)
     }
 
-    pub fn one_new(&self, old: HashSet<&StrictPath>, ignored: &HashSet<StrictPath>) -> Option<Media> {
+    pub fn one_new(&self, sources: &[Source], old: HashSet<&Media>) -> Option<Media> {
         use rand::seq::SliceRandom;
 
-        let mut media: Vec<_> = self.media.iter().collect();
+        let mut media: Vec<_> = sources
+            .iter()
+            .filter_map(|source| self.media.get(source))
+            .flatten()
+            .unique()
+            .collect();
         media.shuffle(&mut rand::thread_rng());
 
         media
             .into_iter()
-            .find(|media| !ignored.contains(media.path()) && !old.contains(media.path()))
+            .find(|media| !self.errored.contains(media) && !old.contains(media))
             .cloned()
     }
 }
