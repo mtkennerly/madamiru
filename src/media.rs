@@ -101,6 +101,7 @@ impl ToString for SourceKind {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Media {
     Image { path: StrictPath },
+    Svg { path: StrictPath },
     Gif { path: StrictPath },
     Video { path: StrictPath },
 }
@@ -108,8 +109,9 @@ pub enum Media {
 impl Media {
     pub fn path(&self) -> &StrictPath {
         match self {
-            Self::Gif { path } => path,
             Self::Image { path } => path,
+            Self::Svg { path } => path,
+            Self::Gif { path } => path,
             Self::Video { path } => path,
         }
     }
@@ -127,6 +129,8 @@ impl Media {
             Ok(Some(info)) => {
                 log::info!("Inferred file type '{}': {path:?}", info.mime_type());
 
+                let extension = path.file_extension().map(|x| x.to_lowercase());
+
                 match info.mime_type() {
                     "video/mp4" | "video/mpeg" | "video/quicktime" | "video/webm" | "video/x-flv" | "video/x-m4v"
                     | "video/x-matroska" | "video/x-ms-wmv" | "video/x-msvideo" => {
@@ -139,7 +143,10 @@ impl Media {
                     | "image/vnd.microsoft.icon"
                     | "image/webp" => Some(Self::Image { path: path.clone() }),
                     "image/gif" => Some(Self::Gif { path: path.clone() }),
-                    _ => None,
+                    _ => match extension.as_deref() {
+                        Some("svg") => Some(Self::Svg { path: path.clone() }),
+                        _ => None,
+                    },
                 }
             }
             Ok(None) => {

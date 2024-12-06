@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use iced::{
     alignment, padding,
-    widget::{horizontal_space, mouse_area, vertical_space, Image, Responsive},
+    widget::{horizontal_space, mouse_area, vertical_space, Image, Responsive, Svg},
     Alignment, Length,
 };
 use iced_gif::gif;
@@ -231,6 +231,17 @@ pub enum Player {
         hovered: bool,
         need_play_on_focus: bool,
     },
+    Svg {
+        source: StrictPath,
+        handle_path: std::path::PathBuf,
+        position: f64,
+        duration: Duration,
+        paused: bool,
+        looping: bool,
+        dragging: bool,
+        hovered: bool,
+        need_play_on_focus: bool,
+    },
     Gif {
         source: StrictPath,
         frames: gif::Frames,
@@ -259,6 +270,24 @@ impl Player {
         match media {
             Media::Image { path } => match Self::load_image(path) {
                 Ok(handle_path) => Ok(Self::Image {
+                    source: path.clone(),
+                    handle_path,
+                    position: 0.0,
+                    duration: Duration::from_secs(playback.image_duration.get() as u64),
+                    paused: playback.paused,
+                    looping: false,
+                    dragging: false,
+                    hovered: false,
+                    need_play_on_focus: false,
+                }),
+                Err(e) => Err(Self::Error {
+                    source: path.clone(),
+                    message: e.message(),
+                    hovered: false,
+                }),
+            },
+            Media::Svg { path } => match Self::load_svg(path) {
+                Ok(handle_path) => Ok(Self::Svg {
                     source: path.clone(),
                     handle_path,
                     position: 0.0,
@@ -327,6 +356,10 @@ impl Player {
         Ok(source.as_std_path_buf()?)
     }
 
+    fn load_svg(source: &StrictPath) -> Result<std::path::PathBuf, Error> {
+        Ok(source.as_std_path_buf()?)
+    }
+
     fn load_gif(source: &StrictPath) -> Result<(gif::Frames, std::path::PathBuf), Error> {
         let bytes = source.try_read_bytes()?;
         let frames = gif::Frames::from_bytes(bytes)?;
@@ -365,6 +398,9 @@ impl Player {
             Self::Image { position, .. } => {
                 *position = 0.0;
             }
+            Self::Svg { position, .. } => {
+                *position = 0.0;
+            }
             Self::Gif { position, .. } => {
                 *position = 0.0;
             }
@@ -381,8 +417,20 @@ impl Player {
             Self::Idle => None,
             Self::Error { source, .. } => Some(source),
             Self::Image { source, .. } => Some(source),
+            Self::Svg { source, .. } => Some(source),
             Self::Gif { source, .. } => Some(source),
             Self::Video { source, .. } => Some(source),
+        }
+    }
+
+    pub fn is_error(&self) -> bool {
+        match self {
+            Self::Idle => false,
+            Self::Error { .. } => true,
+            Self::Image { .. } => false,
+            Self::Svg { .. } => false,
+            Self::Gif { .. } => false,
+            Self::Video { .. } => false,
         }
     }
 
@@ -391,6 +439,7 @@ impl Player {
             Self::Idle => None,
             Self::Error { .. } => None,
             Self::Image { paused, .. } => Some(*paused),
+            Self::Svg { paused, .. } => Some(*paused),
             Self::Gif { paused, .. } => Some(*paused),
             Self::Video { video, .. } => Some(video.paused()),
         }
@@ -401,6 +450,7 @@ impl Player {
             Self::Idle => None,
             Self::Error { .. } => None,
             Self::Image { .. } => None,
+            Self::Svg { .. } => None,
             Self::Gif { .. } => None,
             Self::Video { video, .. } => Some(video.muted()),
         }
@@ -411,6 +461,7 @@ impl Player {
             Self::Idle => None,
             Self::Error { hovered, .. } => Some(*hovered),
             Self::Image { hovered, .. } => Some(*hovered),
+            Self::Svg { hovered, .. } => Some(*hovered),
             Self::Gif { hovered, .. } => Some(*hovered),
             Self::Video { hovered, .. } => Some(*hovered),
         }
@@ -423,6 +474,9 @@ impl Player {
                 *hovered = flag;
             }
             Self::Image { hovered, .. } => {
+                *hovered = flag;
+            }
+            Self::Svg { hovered, .. } => {
                 *hovered = flag;
             }
             Self::Gif { hovered, .. } => {
@@ -439,6 +493,29 @@ impl Player {
             Self::Idle => None,
             Self::Error { .. } => None,
             Self::Image {
+                position,
+                duration,
+                paused,
+                looping,
+                dragging,
+                ..
+            } => {
+                if !*paused && !*dragging {
+                    *position += elapsed.as_secs_f64();
+                }
+
+                if *position >= duration.as_secs_f64() {
+                    if *looping {
+                        *position = 0.0;
+                        None
+                    } else {
+                        Some(Update::EndOfStream)
+                    }
+                } else {
+                    None
+                }
+            }
+            Self::Svg {
                 position,
                 duration,
                 paused,
@@ -500,7 +577,7 @@ impl Player {
                 bottom_controls: false,
                 timestamps: false,
             },
-            Self::Image { .. } | Self::Gif { .. } | Self::Video { .. } => Overlay {
+            Self::Image { .. } | Self::Svg { .. } | Self::Gif { .. } | Self::Video { .. } => Overlay {
                 show,
                 center_controls: show && viewport.height > 100.0 && viewport.width > 150.0,
                 top_controls: show && viewport.width > 100.0,
@@ -537,6 +614,62 @@ impl Player {
                 Event::WindowUnfocused => None,
             },
             Self::Image {
+                position,
+                duration,
+                paused,
+                looping,
+                dragging,
+                hovered,
+                need_play_on_focus,
+                ..
+            } => match event {
+                Event::SetPause(flag) => {
+                    *paused = flag;
+                    None
+                }
+                Event::SetLoop(flag) => {
+                    *looping = flag;
+                    None
+                }
+                Event::SetMute(_) => None,
+                Event::Seek(offset) => {
+                    *dragging = true;
+                    *position = offset.min(duration.as_secs_f64());
+                    None
+                }
+                Event::SeekStop => {
+                    *dragging = false;
+                    None
+                }
+                Event::SeekRandom => None,
+                Event::EndOfStream => Some(Update::EndOfStream),
+                Event::NewFrame => None,
+                Event::MouseEnter => {
+                    *hovered = true;
+                    None
+                }
+                Event::MouseExit => {
+                    *hovered = false;
+                    None
+                }
+                Event::Refresh => Some(Update::Refresh),
+                Event::Close => Some(Update::Close),
+                Event::WindowFocused => {
+                    if *need_play_on_focus {
+                        *paused = false;
+                        *need_play_on_focus = false;
+                    }
+                    None
+                }
+                Event::WindowUnfocused => {
+                    if playback.pause_on_unfocus {
+                        *paused = true;
+                        *need_play_on_focus = true;
+                    }
+                    None
+                }
+            },
+            Self::Svg {
                 position,
                 duration,
                 paused,
@@ -841,6 +974,127 @@ impl Player {
                 Stack::new()
                     .push(
                         Container::new(Image::new(handle_path).width(Length::Fill).height(Length::Fill))
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center)
+                            .width(Length::Fill)
+                            .height(Length::Fill),
+                    )
+                    .push_maybe(
+                        overlay.show.then_some(
+                            Container::new("")
+                                .center(Length::Fill)
+                                .class(style::Container::ModalBackground),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.top_controls.then_some(
+                            Container::new(
+                                Row::new()
+                                    .push(
+                                        button::icon(Icon::Image)
+                                            .on_press(Message::OpenFile { path: source.clone() })
+                                            .tooltip(source.render()),
+                                    )
+                                    .push(horizontal_space())
+                                    .push(
+                                        button::icon(Icon::Refresh)
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::Refresh,
+                                            })
+                                            .tooltip(lang::action::shuffle_media()),
+                                    )
+                                    .push(
+                                        button::icon(Icon::Close)
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::Close,
+                                            })
+                                            .tooltip(lang::action::close()),
+                                    ),
+                            )
+                            .align_top(Length::Fill)
+                            .width(Length::Fill),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.center_controls.then_some(
+                            Container::new(
+                                Row::new()
+                                    .spacing(5)
+                                    .align_y(alignment::Vertical::Center)
+                                    .padding(padding::all(10.0))
+                                    .push(
+                                        button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::SetPause(!*paused),
+                                            })
+                                            .tooltip(if *paused {
+                                                lang::action::play()
+                                            } else {
+                                                lang::action::pause()
+                                            }),
+                                    )
+                                    .push(
+                                        button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
+                                            .on_press(Message::Player {
+                                                pane,
+                                                event: Event::SetLoop(!*looping),
+                                            })
+                                            .tooltip(if *looping {
+                                                lang::tell::player_will_loop()
+                                            } else {
+                                                lang::tell::player_will_shuffle()
+                                            }),
+                                    ),
+                            )
+                            .center(Length::Fill),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.bottom_controls.then_some(
+                            Container::new(
+                                Column::new()
+                                    .padding(padding::left(10).right(10).bottom(5))
+                                    .push(vertical_space())
+                                    .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
+                                    .push(Container::new(
+                                        iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
+                                            Message::Player {
+                                                pane,
+                                                event: Event::Seek(x),
+                                            }
+                                        })
+                                        .step(0.1)
+                                        .on_release(Message::Player {
+                                            pane,
+                                            event: Event::SeekStop,
+                                        }),
+                                    )),
+                            )
+                            .align_bottom(Length::Fill)
+                            .center_x(Length::Fill),
+                        ),
+                    )
+                    .into()
+            }
+            Self::Svg {
+                source,
+                handle_path,
+                position,
+                duration,
+                paused,
+                looping,
+                dragging,
+                hovered,
+                ..
+            } => {
+                let overlay = self.overlay(viewport, obscured, *hovered || *dragging);
+
+                Stack::new()
+                    .push(
+                        Container::new(Svg::new(handle_path).width(Length::Fill).height(Length::Fill))
                             .align_x(Alignment::Center)
                             .align_y(Alignment::Center)
                             .width(Length::Fill)

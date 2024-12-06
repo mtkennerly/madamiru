@@ -559,6 +559,13 @@ impl StrictPath {
             .map(|x| x.to_string_lossy().to_string())
     }
 
+    pub fn file_extension(&self) -> Option<String> {
+        self.as_std_path_buf()
+            .ok()?
+            .extension()
+            .map(|x| x.to_string_lossy().to_string())
+    }
+
     // TODO: Refactor to use `popped()`?
     pub fn parent(&self) -> Option<Self> {
         self.as_std_path_buf().ok()?.parent().map(Self::from)

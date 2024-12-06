@@ -206,13 +206,7 @@ impl Grid {
                         None
                     }
                     player::Update::Refresh => {
-                        let failed = match &self.players[id.0] {
-                            Player::Idle => false,
-                            Player::Error { .. } => true,
-                            Player::Image { .. } => false,
-                            Player::Gif { .. } => false,
-                            Player::Video { .. } => false,
-                        };
+                        let failed = self.players[id.0].is_error();
 
                         let media = collection.one_new(self.active_sources(), &self.errored);
                         let player = &mut self.players[id.0];

@@ -1,5 +1,5 @@
 use iced::{
-    widget::{button, checkbox, container, pick_list, scrollable, slider, text_input},
+    widget::{button, checkbox, container, pick_list, scrollable, slider, svg, text_input},
     Background, Border, Color, Shadow, Vector,
 };
 
@@ -497,5 +497,19 @@ impl iced::widget::slider::Catalog for Theme {
                 },
             },
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Svg;
+impl svg::Catalog for Theme {
+    type Class<'a> = Svg;
+
+    fn default<'a>() -> Self::Class<'a> {
+        Default::default()
+    }
+
+    fn style(&self, _class: &Self::Class<'_>, _status: svg::Status) -> svg::Style {
+        svg::Style { color: None }
     }
 }

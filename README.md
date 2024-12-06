@@ -4,7 +4,7 @@ that can automatically shuffle multiple videos at once in a grid layout.
 
 ## Features
 * Video formats: AVI, FLV, M4V, MKV, MP4, MPEG, QuickTime, WebM, WMV
-* Image formats: BMP, GIF, JPEG, PNG, TIFF, ICO, WebP
+* Image formats: BMP, GIF, ICO, JPEG, PNG, TIFF, SVG, WebP
 * Subtitles are supported within MKV (but not as separate files)
 
 If you'd like to help translate Madamiru into other languages,
