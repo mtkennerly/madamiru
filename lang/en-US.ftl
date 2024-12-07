@@ -29,6 +29,8 @@ action-play-for-this-many-seconds = Play for this many seconds
 action-select-folder = Select folder
 action-select-file = Select file
 action-shuffle-media = Shuffle media
+action-split-horizontally = Split horizontally
+action-split-vertically = Split vertically
 action-unmute = Unmute
 action-view-releases = View releases
 

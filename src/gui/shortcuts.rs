@@ -1,24 +1,9 @@
 // Iced has built-in support for some keyboard shortcuts. This module provides
 // support for implementing other shortcuts until Iced provides its own support.
 
-use std::{collections::VecDeque, num::NonZeroUsize};
+use std::collections::VecDeque;
 
-use iced::{widget::text_input, Length};
-
-use crate::{
-    gui::{
-        common::{EditAction, Message, UndoSubject},
-        modal, style,
-        widget::{Element, TextInput, Undoable},
-    },
-    media::Source,
-    prelude::StrictPath,
-    resource::config::{self, Config},
-};
-
-fn path_appears_valid(path: &str) -> bool {
-    !path.contains("://")
-}
+use crate::{media::Source, prelude::StrictPath, resource::config::Config};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Shortcut {
@@ -120,82 +105,6 @@ impl TextHistories {
             image_duration: TextHistory::raw(&config.playback.image_duration.to_string()),
             sources: sources.iter().map(|source| TextHistory::raw(source.raw())).collect(),
         }
-    }
-
-    pub fn input<'a>(&self, subject: UndoSubject) -> Element<'a> {
-        let current = match &subject {
-            UndoSubject::MaxInitialMedia => self.max_initial_media.current(),
-            UndoSubject::ImageDuration => self.image_duration.current(),
-            UndoSubject::Source { index } => self.sources[*index].current(),
-        };
-
-        let event: Box<dyn Fn(String) -> Message> = match subject {
-            UndoSubject::MaxInitialMedia => Box::new(move |value| Message::Config {
-                event: config::Event::MaxInitialMediaRaw(value),
-            }),
-            UndoSubject::ImageDuration => Box::new(move |value| Message::Config {
-                event: config::Event::ImageDurationRaw(value),
-            }),
-            UndoSubject::Source { index } => Box::new(move |value| Message::Modal {
-                event: modal::Event::EditedSource {
-                    action: EditAction::Change(index, value),
-                },
-            }),
-        };
-
-        let placeholder = match &subject {
-            UndoSubject::MaxInitialMedia => "".to_string(),
-            UndoSubject::ImageDuration => "".to_string(),
-            UndoSubject::Source { .. } => "".to_string(),
-        };
-
-        let icon = match &subject {
-            UndoSubject::MaxInitialMedia => (current.parse::<NonZeroUsize>().is_err()).then_some(text_input::Icon {
-                font: crate::gui::font::ICONS,
-                code_point: crate::gui::icon::Icon::Error.as_char(),
-                size: None,
-                spacing: 5.0,
-                side: text_input::Side::Right,
-            }),
-            UndoSubject::ImageDuration => (current.parse::<NonZeroUsize>().is_err()).then_some(text_input::Icon {
-                font: crate::gui::font::ICONS,
-                code_point: crate::gui::icon::Icon::Error.as_char(),
-                size: None,
-                spacing: 5.0,
-                side: text_input::Side::Right,
-            }),
-            UndoSubject::Source { .. } => (!path_appears_valid(&current)).then_some(text_input::Icon {
-                font: crate::gui::font::ICONS,
-                code_point: crate::gui::icon::Icon::Error.as_char(),
-                size: None,
-                spacing: 5.0,
-                side: text_input::Side::Right,
-            }),
-        };
-
-        let width = match subject {
-            UndoSubject::MaxInitialMedia => Length::Fixed(80.0),
-            UndoSubject::ImageDuration => Length::Fixed(80.0),
-            UndoSubject::Source { .. } => Length::Fill,
-        };
-
-        Undoable::new(
-            {
-                let mut input = TextInput::new(&placeholder, &current)
-                    .on_input(event)
-                    .class(style::TextInput)
-                    .padding(5)
-                    .width(width);
-
-                if let Some(icon) = icon {
-                    input = input.icon(icon);
-                }
-
-                input
-            },
-            move |action| Message::UndoRedo(action, subject),
-        )
-        .into()
     }
 }
 

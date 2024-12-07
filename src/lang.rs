@@ -295,6 +295,14 @@ pub mod action {
         translate("action-shuffle-media")
     }
 
+    pub fn split_horizontally() -> String {
+        translate("action-split-horizontally")
+    }
+
+    pub fn split_vertically() -> String {
+        translate("action-split-vertically")
+    }
+
     pub fn unmute() -> String {
         translate("action-unmute")
     }

@@ -28,6 +28,8 @@ pub enum Icon {
     Refresh,
     Settings,
     Shuffle,
+    SplitHorizontal,
+    SplitVertical,
     TimerRefresh,
     VolumeHigh,
 }
@@ -56,6 +58,8 @@ impl Icon {
             Self::Refresh => '\u{E5D5}',
             Self::Settings => '\u{E8B8}',
             Self::Shuffle => '\u{e043}',
+            Self::SplitHorizontal => '\u{e8d4}',
+            Self::SplitVertical => '\u{e8d5}',
             Self::TimerRefresh => '\u{e889}',
             Self::VolumeHigh => '\u{e050}',
             Self::PlaylistAdd => '\u{e03b}',
@@ -79,6 +83,17 @@ impl Icon {
             .size(20)
             .width(20)
             .height(20)
+            .align_x(alignment::Horizontal::Center)
+            .align_y(iced::alignment::Vertical::Center)
+            .line_height(1.0)
+    }
+
+    pub fn mini_control(self) -> Text<'static> {
+        text(self.as_char().to_string())
+            .font(font::ICONS)
+            .size(14)
+            .width(14)
+            .height(14)
             .align_x(alignment::Horizontal::Center)
             .align_y(iced::alignment::Vertical::Center)
             .line_height(1.0)

@@ -14,6 +14,7 @@ use crate::{
 pub struct CustomButton<'a> {
     content: Element<'a>,
     on_press: Option<Message>,
+    enabled: bool,
     class: style::Button,
     padding: Option<Padding>,
     tooltip: Option<String>,
@@ -29,6 +30,11 @@ impl CustomButton<'_> {
 
     pub fn on_press_maybe(mut self, message: Option<Message>) -> Self {
         self.on_press = message;
+        self
+    }
+
+    pub fn enabled(mut self, enabled: bool) -> Self {
+        self.enabled = enabled;
         self
     }
 
@@ -53,7 +59,7 @@ impl<'a> From<CustomButton<'a>> for Element<'a> {
     fn from(value: CustomButton<'a>) -> Self {
         let mut button = Button::new(value.content).class(value.class);
 
-        if !value.obscured {
+        if !value.obscured && value.enabled {
             button = button.on_press_maybe(value.on_press);
         }
 
@@ -62,7 +68,7 @@ impl<'a> From<CustomButton<'a>> for Element<'a> {
         }
 
         match value.tooltip {
-            Some(tooltip) if !value.obscured => Tooltip::new(
+            Some(tooltip) if !value.obscured && value.enabled => Tooltip::new(
                 button,
                 Container::new(text(tooltip).size(14)).padding([2, 4]),
                 value.tooltip_position,
@@ -79,6 +85,7 @@ pub fn primary<'a>(content: String) -> CustomButton<'a> {
     CustomButton {
         content: text(content).align_x(alignment::Horizontal::Center).into(),
         on_press: None,
+        enabled: true,
         class: style::Button::Primary,
         padding: Some([5, 40].into()),
         tooltip: None,
@@ -91,6 +98,7 @@ pub fn negative<'a>(content: String) -> CustomButton<'a> {
     CustomButton {
         content: text(content).align_x(alignment::Horizontal::Center).into(),
         on_press: None,
+        enabled: true,
         class: style::Button::Negative,
         padding: Some([5, 40].into()),
         tooltip: None,
@@ -103,6 +111,7 @@ pub fn icon<'a>(icon: Icon) -> CustomButton<'a> {
     CustomButton {
         content: icon.small_control().into(),
         on_press: None,
+        enabled: true,
         class: style::Button::Icon,
         padding: None,
         tooltip: None,
@@ -115,6 +124,20 @@ pub fn big_icon<'a>(icon: Icon) -> CustomButton<'a> {
     CustomButton {
         content: icon.big_control().into(),
         on_press: None,
+        enabled: true,
+        class: style::Button::Icon,
+        padding: None,
+        tooltip: None,
+        tooltip_position: tooltip::Position::Top,
+        obscured: false,
+    }
+}
+
+pub fn mini_icon<'a>(icon: Icon) -> CustomButton<'a> {
+    CustomButton {
+        content: icon.mini_control().into(),
+        on_press: None,
+        enabled: true,
         class: style::Button::Icon,
         padding: None,
         tooltip: None,

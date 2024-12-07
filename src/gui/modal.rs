@@ -13,6 +13,7 @@ use crate::{
     gui::{
         button,
         common::{BrowseFileSubject, BrowseSubject, EditAction, Message, UndoSubject},
+        grid,
         icon::Icon,
         shortcuts::{Shortcut, TextHistories, TextHistory},
         style,
@@ -44,8 +45,8 @@ pub enum Event {
 
 pub enum Update {
     SavedSources {
+        grid_id: grid::Id,
         sources: Vec<media::Source>,
-        histories: TextHistories,
     },
     Task(Task<Message>),
 }
@@ -60,8 +61,9 @@ pub enum ModalVariant {
 pub enum Modal {
     Settings,
     Sources {
+        grid_id: grid::Id,
         sources: Vec<media::Source>,
-        histories: TextHistories,
+        histories: Vec<TextHistory>,
     },
     Error {
         variant: Error,
@@ -75,13 +77,23 @@ pub enum Modal {
 }
 
 impl Modal {
-    pub fn new_sources(mut sources: Vec<media::Source>, mut histories: TextHistories) -> Self {
+    pub fn new_sources(grid_id: grid::Id, mut sources: Vec<media::Source>) -> Self {
+        let mut histories = vec![];
+
         if sources.is_empty() {
             sources.push(media::Source::default());
-            histories.sources.push(TextHistory::default())
+            histories.push(TextHistory::default())
+        } else {
+            for source in &sources {
+                histories.push(TextHistory::raw(source.raw()));
+            }
         }
 
-        Self::Sources { sources, histories }
+        Self::Sources {
+            grid_id,
+            sources,
+            histories,
+        }
     }
 
     pub fn variant(&self) -> ModalVariant {
@@ -102,7 +114,7 @@ impl Modal {
         }
     }
 
-    pub fn message(&self, _histories: &TextHistories) -> Option<Message> {
+    pub fn message(&self) -> Option<Message> {
         match self {
             Self::Settings => Some(Message::CloseModal),
             Self::Sources { .. } => Some(Message::Modal { event: Event::Save }),
@@ -174,7 +186,7 @@ impl Modal {
                                         .align_y(Alignment::Center)
                                         .spacing(20)
                                         .push(text(lang::field(&lang::thing::max_initial_media())))
-                                        .push(histories.input(UndoSubject::MaxInitialMedia)),
+                                        .push(UndoSubject::MaxInitialMedia.view_with(histories)),
                                 ),
                         )
                         .class(style::Container::Player),
@@ -187,7 +199,7 @@ impl Modal {
                                     .align_y(Alignment::Center)
                                     .spacing(20)
                                     .push(text(lang::field(&lang::action::play_for_this_many_seconds())))
-                                    .push(histories.input(UndoSubject::ImageDuration)),
+                                    .push(UndoSubject::ImageDuration.view_with(histories)),
                             ),
                         )
                         .class(style::Container::Player),
@@ -222,7 +234,7 @@ impl Modal {
                                         }
                                     })),
                             )
-                            .push(histories.input(UndoSubject::Source { index }))
+                            .push(UndoSubject::Source { index }.view(sources[index].raw()))
                             .push(match source {
                                 media::Source::Path { path } => Row::new()
                                     .spacing(10)
@@ -237,23 +249,26 @@ impl Modal {
                                         path.clone(),
                                         modifiers,
                                     ))
-                                    .push(button::icon(Icon::Close).on_press_maybe((sources.len() > 1).then_some(
-                                        Message::Modal {
-                                            event: Event::EditedSource {
-                                                action: EditAction::Remove(index),
-                                            },
-                                        },
-                                    ))),
-                                media::Source::Glob { .. } => Row::new()
-                                    .spacing(10)
-                                    .align_y(alignment::Vertical::Center)
-                                    .push(button::icon(Icon::Close).on_press_maybe((sources.len() > 1).then_some(
-                                        Message::Modal {
-                                            event: Event::EditedSource {
-                                                action: EditAction::Remove(index),
-                                            },
-                                        },
-                                    ))),
+                                    .push(
+                                        button::icon(Icon::Close)
+                                            .on_press(Message::Modal {
+                                                event: Event::EditedSource {
+                                                    action: EditAction::Remove(index),
+                                                },
+                                            })
+                                            .enabled(sources.len() > 1),
+                                    ),
+                                media::Source::Glob { .. } => {
+                                    Row::new().spacing(10).align_y(alignment::Vertical::Center).push(
+                                        button::icon(Icon::Close)
+                                            .on_press(Message::Modal {
+                                                event: Event::EditedSource {
+                                                    action: EditAction::Remove(index),
+                                                },
+                                            })
+                                            .enabled(sources.len() > 1),
+                                    )
+                                }
                             }),
                     );
                 }
@@ -282,13 +297,13 @@ impl Modal {
         Some(col)
     }
 
-    pub fn controls(&self, histories: &TextHistories) -> Element {
+    pub fn controls(&self) -> Element {
         let positive_button = button::primary(match self.variant() {
             ModalVariant::Info => lang::action::close(),
             ModalVariant::Confirm => lang::action::confirm(),
             ModalVariant::Editor => lang::action::close(),
         })
-        .on_press_maybe(self.message(histories));
+        .on_press_maybe(self.message());
 
         let negative_button = button::negative(lang::action::cancel()).on_press(Message::CloseModal);
 
@@ -318,7 +333,7 @@ impl Modal {
                         .padding(padding::right(5))
                         .max_height(viewport.height - 300.0)
                 }))
-                .push(Container::new(self.controls(histories))),
+                .push(Container::new(self.controls())),
         )
         .class(style::Container::ModalForeground)
     }
@@ -330,7 +345,7 @@ impl Modal {
                 UndoSubject::MaxInitialMedia => false,
                 UndoSubject::ImageDuration => false,
                 UndoSubject::Source { index } => {
-                    sources[index].reset(histories.sources[index].apply(shortcut));
+                    sources[index].reset(histories[index].apply(shortcut));
                     true
                 }
             },
@@ -341,26 +356,30 @@ impl Modal {
     pub fn update(&mut self, event: Event) -> Option<Update> {
         match self {
             Self::Settings | Self::Error { .. } | Self::Errors { .. } | Self::AppUpdate { .. } => None,
-            Self::Sources { sources, histories, .. } => match event {
+            Self::Sources {
+                grid_id,
+                sources,
+                histories,
+            } => match event {
                 Event::EditedSource { action } => {
                     match action {
                         EditAction::Add => {
                             let value = StrictPath::default();
-                            histories.sources.push(TextHistory::path(&value));
+                            histories.push(TextHistory::path(&value));
                             sources.push(media::Source::new_path(value));
                             return Some(Update::Task(scroll_down()));
                         }
                         EditAction::Change(index, value) => {
-                            histories.sources[index].push(&value);
+                            histories[index].push(&value);
                             sources[index].reset(value);
                         }
                         EditAction::Remove(index) => {
-                            histories.sources.remove(index);
+                            histories.remove(index);
                             sources.remove(index);
                         }
                         EditAction::Move(index, direction) => {
                             let offset = direction.shift(index);
-                            histories.sources.swap(index, offset);
+                            histories.swap(index, offset);
                             sources.swap(index, offset);
                         }
                     }
@@ -374,13 +393,12 @@ impl Modal {
                     for index in (0..sources.len()).rev() {
                         if sources[index].is_empty() {
                             sources.remove(index);
-                            histories.sources.remove(index);
                         }
                     }
 
                     Some(Update::SavedSources {
+                        grid_id: *grid_id,
                         sources: sources.clone(),
-                        histories: histories.clone(),
                     })
                 }
             },
@@ -394,11 +412,6 @@ impl Modal {
         histories: &TextHistories,
         modifiers: &Modifiers,
     ) -> Element {
-        let histories = match self {
-            Self::Settings | Self::Error { .. } | Self::Errors { .. } | Self::AppUpdate { .. } => histories,
-            Self::Sources { histories, .. } => histories,
-        };
-
         Stack::new()
             .push({
                 let mut area = mouse_area(

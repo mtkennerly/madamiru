@@ -227,8 +227,18 @@ impl Collection {
         }
     }
 
-    pub fn replace(&mut self, new: SourceMap) {
-        self.media = new;
+    pub fn update(&mut self, new: SourceMap, context: RefreshContext) {
+        match context {
+            RefreshContext::Launch => {
+                self.media = new;
+            }
+            RefreshContext::Edit => {
+                self.media.extend(new);
+            }
+            RefreshContext::Automatic => {
+                self.media = new;
+            }
+        }
     }
 
     pub fn new_first(&self, sources: &[Source], take: usize, old: HashSet<&Media>) -> Option<Vec<Media>> {

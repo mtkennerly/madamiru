@@ -1,5 +1,6 @@
 use iced::{
-    widget::{button, checkbox, container, pick_list, scrollable, slider, svg, text_input},
+    border::Radius,
+    widget::{button, checkbox, container, pane_grid, pick_list, scrollable, slider, svg, text_input},
     Background, Border, Color, Shadow, Vector,
 };
 
@@ -201,6 +202,8 @@ pub enum Container {
     ModalForeground,
     ModalBackground,
     Player,
+    PlayerGroup,
+    PlayerGroupTitle,
     Tooltip,
 }
 impl container::Catalog for Theme {
@@ -215,6 +218,8 @@ impl container::Catalog for Theme {
             background: Some(match class {
                 Container::Wrapper => Color::TRANSPARENT.into(),
                 Container::Player => self.field.alpha(0.15).into(),
+                Container::PlayerGroup => self.field.alpha(0.3).into(),
+                Container::PlayerGroupTitle => self.field.alpha(0.45).into(),
                 Container::ModalBackground => self.field.alpha(0.5).into(),
                 Container::Tooltip => self.field.into(),
                 _ => self.background.into(),
@@ -222,16 +227,22 @@ impl container::Catalog for Theme {
             border: Border {
                 color: match class {
                     Container::Wrapper => Color::TRANSPARENT,
-                    Container::Player => self.field,
+                    Container::Player => self.field.alpha(0.8),
+                    Container::PlayerGroup | Container::PlayerGroupTitle => self.field,
                     Container::ModalForeground => self.disabled,
                     _ => self.text,
                 },
                 width: match class {
-                    Container::Player | Container::ModalForeground => 1.0,
+                    Container::Player
+                    | Container::PlayerGroup
+                    | Container::PlayerGroupTitle
+                    | Container::ModalForeground => 1.0,
                     _ => 0.0,
                 },
                 radius: match class {
                     Container::ModalForeground | Container::Player => 10.0.into(),
+                    Container::PlayerGroup => Radius::new(10.0).top(0.0),
+                    Container::PlayerGroupTitle => Radius::new(10.0).bottom(0.0),
                     Container::ModalBackground => 5.0.into(),
                     Container::Tooltip => 20.0.into(),
                     _ => 0.0.into(),
@@ -511,5 +522,36 @@ impl svg::Catalog for Theme {
 
     fn style(&self, _class: &Self::Class<'_>, _status: svg::Status) -> svg::Style {
         svg::Style { color: None }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PaneGrid;
+impl pane_grid::Catalog for Theme {
+    type Class<'a> = PaneGrid;
+
+    fn default<'a>() -> <Self as pane_grid::Catalog>::Class<'a> {
+        Default::default()
+    }
+
+    fn style(&self, _class: &<Self as pane_grid::Catalog>::Class<'_>) -> pane_grid::Style {
+        pane_grid::Style {
+            hovered_region: pane_grid::Highlight {
+                background: self.positive.alpha(0.5).into(),
+                border: Border {
+                    color: Color::TRANSPARENT,
+                    width: 0.0,
+                    radius: 5.0.into(),
+                },
+            },
+            hovered_split: pane_grid::Line {
+                color: self.disabled,
+                width: 2.0,
+            },
+            picked_split: pane_grid::Line {
+                color: self.disabled.alpha(0.8),
+                width: 2.0,
+            },
+        }
     }
 }

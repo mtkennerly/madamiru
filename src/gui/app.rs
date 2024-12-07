@@ -4,19 +4,24 @@ use std::{
     time::{Duration, Instant},
 };
 
-use iced::{alignment, keyboard, widget::horizontal_space, Length, Subscription, Task};
+use iced::{
+    alignment, keyboard,
+    widget::{horizontal_space, pane_grid},
+    Length, Subscription, Task,
+};
+use itertools::Itertools;
 
 use crate::{
     gui::{
         button,
-        common::{BrowseFileSubject, BrowseSubject, Flags, Message, UndoSubject},
+        common::{Flags, Message, PaneEvent, UndoSubject},
         grid::{self, Grid},
         icon::Icon,
         modal::{self, Modal},
         player::{self},
         shortcuts::{Shortcut, TextHistories, TextHistory},
         style,
-        widget::{Column, Container, Element, Responsive, Row, Stack},
+        widget::{Column, Container, Element, PaneGrid, Responsive, Row, Stack},
     },
     lang, media,
     path::StrictPath,
@@ -27,6 +32,21 @@ use crate::{
         ResourceFile, SaveableResourceFile,
     },
 };
+
+/// We sometimes need this instead of `App::grid_mut()`
+/// when that would prevent mutable borrowing of other fields.
+macro_rules! grid_mut {
+    ($id:expr, $grids:expr) => {
+        'grid: loop {
+            for (grid_id, grid) in $grids.iter_mut() {
+                if *grid_id == $id {
+                    break 'grid grid;
+                }
+            }
+            unreachable!();
+        }
+    };
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SaveKind {
@@ -41,9 +61,10 @@ pub struct App {
     text_histories: TextHistories,
     pending_save: HashMap<SaveKind, Instant>,
     modifiers: keyboard::Modifiers,
-    grid: Grid,
+    grids: pane_grid::State<Grid>,
     media: media::Collection,
     last_tick: Instant,
+    dragging_pane: bool,
 }
 
 impl App {
@@ -139,10 +160,10 @@ impl App {
             }))
         }
 
-        let grid = Grid::new(&sources);
+        let (grids, grid_id) = pane_grid::State::new(Grid::new(&sources));
 
         if sources.is_empty() {
-            modals.push(Modal::new_sources(sources.clone(), text_histories.clone()));
+            modals.push(Modal::new_sources(grid_id, sources.clone()));
         } else {
             commands.push(Self::find_media(sources, media::RefreshContext::Launch))
         }
@@ -159,9 +180,10 @@ impl App {
                 text_histories,
                 pending_save: Default::default(),
                 modifiers: Default::default(),
-                grid,
+                grids,
                 media: Default::default(),
                 last_tick: Instant::now(),
+                dragging_pane: false,
             },
             Task::batch(commands),
         )
@@ -175,17 +197,40 @@ impl App {
         crate::gui::style::Theme::from(self.config.theme)
     }
 
+    fn grid(&self, id: grid::Id) -> &Grid {
+        self.grids.get(id).unwrap()
+    }
+
+    fn grid_mut(&mut self, id: grid::Id) -> &mut Grid {
+        self.grids.get_mut(id).unwrap()
+    }
+
     fn refresh(&mut self) -> Task<Message> {
-        self.grid.refresh(&mut self.media, &self.config.playback);
+        for (_id, grid) in self.grids.iter_mut() {
+            grid.refresh(&mut self.media, &self.config.playback);
+        }
         Task::none()
     }
 
+    fn all_idle(&self) -> bool {
+        self.grids.iter().all(|(_id, grid)| grid.is_idle())
+    }
+
     fn all_paused(&self) -> bool {
-        self.grid.all_paused()
+        self.grids.iter().all(|(_id, grid)| grid.all_paused())
     }
 
     fn all_muted(&self) -> bool {
-        self.grid.all_muted()
+        self.grids.iter().all(|(_id, grid)| grid.all_muted())
+    }
+
+    fn all_sources(&self) -> Vec<media::Source> {
+        self.grids
+            .iter()
+            .flat_map(|(_grid_id, grid)| grid.sources())
+            .unique()
+            .cloned()
+            .collect()
     }
 
     fn find_media(sources: Vec<media::Source>, context: media::RefreshContext) -> Task<Message> {
@@ -212,14 +257,17 @@ impl App {
             Message::Ignore => Task::none(),
             Message::Exit => {
                 // If we don't pause first, you may still hear the videos for a moment after the app closes.
-                self.grid
-                    .update_all_players(player::Event::SetPause(true), &mut self.media, &self.config.playback);
+                for (_grid_id, grid) in self.grids.iter_mut() {
+                    grid.update_all_players(player::Event::SetPause(true), &mut self.media, &self.config.playback);
+                }
                 std::process::exit(0)
             }
             Message::Tick(instant) => {
                 let elapsed = instant - self.last_tick;
                 self.last_tick = instant;
-                self.grid.tick(elapsed, &mut self.media, &self.config.playback);
+                for (_id, grid) in self.grids.iter_mut() {
+                    grid.tick(elapsed, &mut self.media, &self.config.playback);
+                }
                 Task::none()
             }
             Message::Save => {
@@ -344,23 +392,6 @@ impl App {
                     }
                 })
             }
-            Message::OpenDirSubject(subject) => {
-                let path = match subject {
-                    BrowseSubject::Source { index } => self.grid.sources()[index].path().cloned(),
-                };
-
-                let Some(path) = path else {
-                    return Task::none();
-                };
-
-                match path.parent_if_file() {
-                    Ok(path) => self.update(Message::OpenDir { path }),
-                    Err(_) => {
-                        self.show_error(Error::UnableToOpenDir(path));
-                        Task::none()
-                    }
-                }
-            }
             Message::OpenFile { path } => {
                 let path = match path.parent_if_file() {
                     Ok(path) => path,
@@ -382,17 +413,6 @@ impl App {
                         }
                     }
                 })
-            }
-            Message::OpenFileSubject(subject) => {
-                let path = match subject {
-                    BrowseFileSubject::Source { index } => self.grid.sources()[index].path().cloned(),
-                };
-
-                let Some(path) = path else {
-                    return Task::none();
-                };
-
-                self.update(Message::OpenFile { path })
             }
             Message::OpenDirFailure { path } => {
                 self.show_modal(Modal::Error {
@@ -468,22 +488,12 @@ impl App {
                 Self::open_url(url)
             }
             Message::Refresh => self.refresh(),
-            Message::AddPlayer => match self.grid.add_player(&mut self.media, &self.config.playback) {
-                Ok(_) => Task::none(),
-                Err(e) => match e {
-                    grid::Error::NoMediaAvailable => {
-                        self.show_modal(Modal::Error {
-                            variant: Error::NoMediaFound,
-                        });
-                        Task::none()
-                    }
-                },
-            },
             Message::SetPause(flag) => {
                 self.config.playback.paused = flag;
 
-                self.grid
-                    .update_all_players(player::Event::SetPause(flag), &mut self.media, &self.config.playback);
+                for (_grid_id, grid) in self.grids.iter_mut() {
+                    grid.update_all_players(player::Event::SetPause(flag), &mut self.media, &self.config.playback);
+                }
 
                 Task::none()
             }
@@ -491,17 +501,24 @@ impl App {
                 self.config.playback.muted = flag;
                 self.save_config();
 
-                self.grid
-                    .update_all_players(player::Event::SetMute(flag), &mut self.media, &self.config.playback);
+                for (_grid_id, grid) in self.grids.iter_mut() {
+                    grid.update_all_players(player::Event::SetMute(flag), &mut self.media, &self.config.playback);
+                }
 
                 Task::none()
             }
-            Message::Player { pane, event } => {
-                if let Some(update) = self.grid.update(
-                    grid::Event::Player { id: pane, event },
+            Message::Player {
+                grid_id,
+                player_id,
+                event,
+            } => {
+                if let Some(update) = grid_mut!(grid_id, self.grids).update(
+                    grid::Event::Player { player_id, event },
                     &mut self.media,
                     &self.config.playback,
                 ) {
+                    let grid = self.grid(grid_id);
+
                     match update {
                         grid::Update::PauseChanged { .. } => {
                             self.config.playback.paused = self.all_paused();
@@ -512,11 +529,8 @@ impl App {
                             self.save_config();
                         }
                         grid::Update::PlayerClosed => {
-                            if self.grid.is_idle() {
-                                self.show_modal(Modal::new_sources(
-                                    self.grid.sources().to_vec(),
-                                    self.text_histories.clone(),
-                                ));
+                            if grid.is_idle() {
+                                self.show_modal(Modal::new_sources(grid_id, grid.sources().to_vec()));
                             }
                         }
                     }
@@ -524,18 +538,18 @@ impl App {
                 Task::none()
             }
             Message::AllPlayers { event } => {
-                self.grid
-                    .update_all_players(event, &mut self.media, &self.config.playback);
+                for (_grid_id, grid) in self.grids.iter_mut() {
+                    grid.update_all_players(event.clone(), &mut self.media, &self.config.playback);
+                }
                 Task::none()
             }
             Message::Modal { event } => {
                 if let Some(modal) = self.modals.last_mut() {
                     if let Some(update) = modal.update(event) {
                         match update {
-                            modal::Update::SavedSources { sources, histories } => {
+                            modal::Update::SavedSources { grid_id, sources } => {
                                 self.modals.pop();
-                                self.text_histories = histories;
-                                self.grid.set_sources(sources.clone());
+                                self.grid_mut(grid_id).set_sources(sources.clone());
                                 return Self::find_media(sources, media::RefreshContext::Edit);
                             }
                             modal::Update::Task(task) => {
@@ -550,45 +564,85 @@ impl App {
                 self.show_modal(Modal::Settings);
                 Task::none()
             }
-            Message::ShowSources => {
-                self.show_modal(Modal::new_sources(
-                    self.grid.sources().to_vec(),
-                    self.text_histories.clone(),
-                ));
-                Task::none()
-            }
-            Message::FindMedia => Self::find_media(self.grid.sources().to_vec(), media::RefreshContext::Automatic),
+            Message::FindMedia => Self::find_media(self.all_sources(), media::RefreshContext::Automatic),
             Message::MediaFound { context, media } => {
-                self.media.replace(media);
-                self.grid
-                    .refresh_on_media_collection_changed(context, &mut self.media, &self.config.playback);
+                self.media.update(media, context);
+                for (_grid_id, grid) in self.grids.iter_mut() {
+                    grid.refresh_on_media_collection_changed(context, &mut self.media, &self.config.playback);
+                }
                 Task::none()
             }
             Message::FileDragDrop(path) => match self.modals.last_mut() {
-                Some(Modal::Sources { sources, histories }) => {
-                    histories.sources.push(TextHistory::path(&path));
+                Some(Modal::Sources { sources, histories, .. }) => {
+                    histories.push(TextHistory::path(&path));
                     sources.push(media::Source::new_path(path));
                     modal::scroll_down()
                 }
                 _ => {
-                    let mut sources = self.grid.sources().to_vec();
-                    let mut histories = self.text_histories.clone();
+                    // TODO: Update hovered grid.
+                    let (grid_id, grid) = self.grids.iter().last().unwrap();
 
-                    histories.sources.push(TextHistory::path(&path));
+                    let mut sources = grid.sources().to_vec();
                     sources.push(media::Source::new_path(path));
 
-                    self.show_modal(Modal::new_sources(sources, histories));
+                    self.show_modal(Modal::new_sources(*grid_id, sources));
                     modal::scroll_down()
                 }
             },
             Message::WindowFocused => {
-                self.grid
-                    .update_all_players(player::Event::WindowFocused, &mut self.media, &self.config.playback);
+                for (_grid_id, grid) in self.grids.iter_mut() {
+                    grid.update_all_players(player::Event::WindowFocused, &mut self.media, &self.config.playback);
+                }
                 Task::none()
             }
             Message::WindowUnfocused => {
-                self.grid
-                    .update_all_players(player::Event::WindowUnfocused, &mut self.media, &self.config.playback);
+                for (_grid_id, grid) in self.grids.iter_mut() {
+                    grid.update_all_players(player::Event::WindowUnfocused, &mut self.media, &self.config.playback);
+                }
+                Task::none()
+            }
+            Message::Pane { event } => {
+                match event {
+                    PaneEvent::Drag(event) => match event {
+                        pane_grid::DragEvent::Picked { .. } => {
+                            self.dragging_pane = true;
+                        }
+                        pane_grid::DragEvent::Dropped { pane, target } => {
+                            self.dragging_pane = false;
+                            self.grids.drop(pane, target);
+                        }
+                        pane_grid::DragEvent::Canceled { .. } => {
+                            self.dragging_pane = false;
+                        }
+                    },
+                    PaneEvent::Resize(event) => {
+                        self.grids.resize(event.split, event.ratio);
+                    }
+                    PaneEvent::Split { grid_id, axis } => {
+                        let sources = vec![];
+                        if let Some((grid_id, _split)) = self.grids.split(axis, grid_id, Grid::new(&sources)) {
+                            self.show_modal(Modal::new_sources(grid_id, sources));
+                        }
+                    }
+                    PaneEvent::Close { grid_id } => {
+                        self.grids.close(grid_id);
+                    }
+                    PaneEvent::AddPlayer { grid_id } => {
+                        match grid_mut!(grid_id, self.grids).add_player(&mut self.media, &self.config.playback) {
+                            Ok(_) => {}
+                            Err(e) => match e {
+                                grid::Error::NoMediaAvailable => {
+                                    self.show_modal(Modal::Error {
+                                        variant: Error::NoMediaFound,
+                                    });
+                                }
+                            },
+                        }
+                    }
+                    PaneEvent::ShowSources { grid_id } => {
+                        self.show_modal(Modal::new_sources(grid_id, self.grid(grid_id).sources().to_vec()));
+                    }
+                }
                 Task::none()
             }
         }
@@ -622,109 +676,169 @@ impl App {
     }
 
     pub fn view(&self) -> Element {
-        let obscured = !self.modals.is_empty();
+        let obscured = !self.modals.is_empty() || self.dragging_pane;
 
         Responsive::new(move |viewport| {
-            let content = Container::new(
-                Column::new()
-                    .spacing(5)
-                    .push(
-                        Row::new()
+            let content =
+                Container::new(
+                    Column::new()
+                        .spacing(5)
+                        .push(
+                            Stack::new()
+                                .push(
+                                    Container::new(
+                                        button::icon(Icon::Settings)
+                                            .on_press(Message::ShowSettings)
+                                            .obscured(obscured)
+                                            .tooltip_below(lang::thing::settings()),
+                                    )
+                                    .align_right(Length::Fill),
+                                )
+                                .push_maybe(STEAM_DECK.then(|| {
+                                    Container::new(
+                                        button::icon(Icon::LogOut)
+                                            .on_press(Message::Exit)
+                                            .obscured(obscured)
+                                            .tooltip_below(lang::action::exit_app()),
+                                    )
+                                    .align_left(Length::Fill)
+                                }))
+                                .push(
+                                    Container::new(
+                                        Container::new(
+                                            Row::new()
+                                                .spacing(5)
+                                                .push(
+                                                    button::icon(if self.config.playback.muted {
+                                                        Icon::Mute
+                                                    } else {
+                                                        Icon::VolumeHigh
+                                                    })
+                                                    .on_press(Message::SetMute(!self.config.playback.muted))
+                                                    .enabled(!self.all_idle())
+                                                    .obscured(obscured)
+                                                    .tooltip_below(if self.config.playback.muted {
+                                                        lang::action::unmute()
+                                                    } else {
+                                                        lang::action::mute()
+                                                    }),
+                                                )
+                                                .push(
+                                                    button::icon(if self.config.playback.paused {
+                                                        Icon::Play
+                                                    } else {
+                                                        Icon::Pause
+                                                    })
+                                                    .on_press(Message::SetPause(!self.config.playback.paused))
+                                                    .enabled(!self.all_idle())
+                                                    .obscured(obscured)
+                                                    .tooltip_below(if self.config.playback.paused {
+                                                        lang::action::play()
+                                                    } else {
+                                                        lang::action::pause()
+                                                    }),
+                                                )
+                                                .push(
+                                                    button::icon(Icon::Refresh)
+                                                        .on_press(Message::Refresh)
+                                                        .enabled(!self.all_idle())
+                                                        .obscured(obscured)
+                                                        .tooltip_below(lang::action::shuffle_media()),
+                                                )
+                                                .push(
+                                                    button::icon(Icon::TimerRefresh)
+                                                        .on_press(Message::AllPlayers {
+                                                            event: player::Event::SeekRandom,
+                                                        })
+                                                        .enabled(!self.all_idle())
+                                                        .obscured(obscured)
+                                                        .tooltip_below(lang::action::jump_position()),
+                                                ),
+                                        )
+                                        .class(style::Container::Player),
+                                    )
+                                    .center(Length::Fill),
+                                ),
+                        )
+                        .push(
+                            PaneGrid::new(&self.grids, |grid_id, grid, _maximized| {
+                                pane_grid::Content::new(
+                                    Container::new(grid.view(grid_id, obscured))
+                                        .padding(5)
+                                        .class(style::Container::PlayerGroup),
+                                )
+                                .title_bar({
+                                    let mut bar = pane_grid::TitleBar::new(horizontal_space())
+                                        .class(style::Container::PlayerGroupTitle)
+                                        .controls(pane_grid::Controls::new(
+                                            Row::new()
+                                                .align_y(alignment::Vertical::Center)
+                                                .push(
+                                                    button::mini_icon(Icon::SplitVertical)
+                                                        .on_press(Message::Pane {
+                                                            event: PaneEvent::Split {
+                                                                grid_id,
+                                                                axis: pane_grid::Axis::Horizontal,
+                                                            },
+                                                        })
+                                                        .obscured(obscured)
+                                                        .tooltip_below(lang::action::split_vertically()),
+                                                )
+                                                .push(
+                                                    button::mini_icon(Icon::SplitHorizontal)
+                                                        .on_press(Message::Pane {
+                                                            event: PaneEvent::Split {
+                                                                grid_id,
+                                                                axis: pane_grid::Axis::Vertical,
+                                                            },
+                                                        })
+                                                        .obscured(obscured)
+                                                        .tooltip_below(lang::action::split_horizontally()),
+                                                )
+                                                .push(
+                                                    button::mini_icon(Icon::Add)
+                                                        .on_press(Message::Pane {
+                                                            event: PaneEvent::AddPlayer { grid_id },
+                                                        })
+                                                        .enabled(!grid.is_idle())
+                                                        .obscured(obscured)
+                                                        .tooltip_below(lang::action::add_player()),
+                                                )
+                                                .push(
+                                                    button::mini_icon(Icon::PlaylistAdd)
+                                                        .on_press(Message::Pane {
+                                                            event: PaneEvent::ShowSources { grid_id },
+                                                        })
+                                                        .obscured(obscured)
+                                                        .tooltip_below(lang::action::configure_media_sources()),
+                                                )
+                                                .push(
+                                                    button::mini_icon(Icon::Close)
+                                                        .on_press(Message::Pane {
+                                                            event: PaneEvent::Close { grid_id },
+                                                        })
+                                                        .enabled(self.grids.len() > 1)
+                                                        .obscured(obscured)
+                                                        .tooltip_below(lang::action::close()),
+                                                ),
+                                        ));
+
+                                    if grid.is_idle() {
+                                        bar = bar.always_show_controls();
+                                    }
+
+                                    bar
+                                })
+                            })
                             .spacing(5)
-                            .align_y(alignment::Vertical::Center)
-                            .push(
-                                button::icon(Icon::PlaylistAdd)
-                                    .on_press(Message::ShowSources)
-                                    .obscured(obscured)
-                                    .tooltip_below(lang::action::configure_media_sources()),
-                            )
-                            .push(horizontal_space())
-                            .push_maybe((self.grid.is_idle() && !self.grid.sources().is_empty()).then(|| {
-                                Container::new(
-                                    Row::new().spacing(5).push(
-                                        button::icon(Icon::Add)
-                                            .on_press(Message::AddPlayer)
-                                            .obscured(obscured)
-                                            .tooltip_below(lang::action::add_player()),
-                                    ),
-                                )
-                                .class(style::Container::Player)
-                            }))
-                            .push_maybe((!self.grid.is_idle()).then(|| {
-                                Container::new(
-                                    Row::new()
-                                        .spacing(5)
-                                        .push(
-                                            button::icon(Icon::Add)
-                                                .on_press(Message::AddPlayer)
-                                                .obscured(obscured)
-                                                .tooltip_below(lang::action::add_player()),
-                                        )
-                                        .push(
-                                            button::icon(if self.config.playback.muted {
-                                                Icon::Mute
-                                            } else {
-                                                Icon::VolumeHigh
-                                            })
-                                            .on_press(Message::SetMute(!self.config.playback.muted))
-                                            .obscured(obscured)
-                                            .tooltip_below(
-                                                if self.config.playback.muted {
-                                                    lang::action::unmute()
-                                                } else {
-                                                    lang::action::mute()
-                                                },
-                                            ),
-                                        )
-                                        .push(
-                                            button::icon(if self.config.playback.paused {
-                                                Icon::Play
-                                            } else {
-                                                Icon::Pause
-                                            })
-                                            .on_press(Message::SetPause(!self.config.playback.paused))
-                                            .obscured(obscured)
-                                            .tooltip_below(
-                                                if self.config.playback.paused {
-                                                    lang::action::play()
-                                                } else {
-                                                    lang::action::pause()
-                                                },
-                                            ),
-                                        )
-                                        .push(
-                                            button::icon(Icon::Refresh)
-                                                .on_press(Message::Refresh)
-                                                .obscured(obscured)
-                                                .tooltip_below(lang::action::shuffle_media()),
-                                        )
-                                        .push(
-                                            button::icon(Icon::TimerRefresh)
-                                                .on_press(Message::AllPlayers {
-                                                    event: player::Event::SeekRandom,
-                                                })
-                                                .obscured(obscured)
-                                                .tooltip_below(lang::action::jump_position()),
-                                        ),
-                                )
-                                .class(style::Container::Player)
-                            }))
-                            .push(horizontal_space())
-                            .push(
-                                button::icon(Icon::Settings)
-                                    .on_press(Message::ShowSettings)
-                                    .obscured(obscured)
-                                    .tooltip_below(lang::thing::settings()),
-                            )
-                            .push_maybe(STEAM_DECK.then(|| {
-                                button::icon(Icon::LogOut)
-                                    .on_press(Message::Exit)
-                                    .obscured(obscured)
-                                    .tooltip_below(lang::action::exit_app())
-                            })),
-                    )
-                    .push(self.grid.view(obscured)),
-            );
+                            .on_drag(|event| Message::Pane {
+                                event: PaneEvent::Drag(event),
+                            })
+                            .on_resize(5, |event| Message::Pane {
+                                event: PaneEvent::Resize(event),
+                            }),
+                        ),
+                );
 
             let stack = Stack::new()
                 .width(Length::Fill)

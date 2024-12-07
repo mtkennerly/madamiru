@@ -1,5 +1,7 @@
 use std::{collections::HashSet, time::Duration};
 
+use iced::widget::pane_grid;
+
 use crate::{
     gui::{
         player::{self, Player},
@@ -10,6 +12,8 @@ use crate::{
     resource::config::Playback,
 };
 
+pub type Id = pane_grid::Pane;
+
 #[derive(Debug)]
 pub enum Error {
     NoMediaAvailable,
@@ -17,7 +21,10 @@ pub enum Error {
 
 #[derive(Debug, Clone)]
 pub enum Event {
-    Player { id: player::Id, event: player::Event },
+    Player {
+        player_id: player::Id,
+        event: player::Event,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -232,13 +239,13 @@ impl Grid {
     #[must_use]
     pub fn update(&mut self, event: Event, collection: &mut media::Collection, playback: &Playback) -> Option<Update> {
         match event {
-            Event::Player { id, event } => match self.players[id.0].update(event, playback) {
+            Event::Player { player_id, event } => match self.players[player_id.0].update(event, playback) {
                 Some(update) => match update {
                     player::Update::MuteChanged { .. } => Some(Update::MuteChanged),
                     player::Update::PauseChanged { .. } => Some(Update::PauseChanged),
                     player::Update::EndOfStream { .. } => {
                         let media = collection.one_new(&self.sources, self.active_media());
-                        let player = &mut self.players[id.0];
+                        let player = &mut self.players[player_id.0];
 
                         match media {
                             Some(media) => {
@@ -254,10 +261,10 @@ impl Grid {
                         None
                     }
                     player::Update::Refresh => {
-                        let failed = self.players[id.0].is_error();
+                        let failed = self.players[player_id.0].is_error();
 
                         let media = collection.one_new(&self.sources, self.active_media());
-                        let player = &mut self.players[id.0];
+                        let player = &mut self.players[player_id.0];
 
                         match media {
                             Some(media) => {
@@ -267,7 +274,7 @@ impl Grid {
                             }
                             None => {
                                 if failed {
-                                    self.remove(id);
+                                    self.remove(player_id);
                                     if self.players.is_empty() {
                                         self.players.push(Player::Idle);
                                     }
@@ -281,7 +288,7 @@ impl Grid {
                         None
                     }
                     player::Update::Close { .. } => {
-                        self.remove(id);
+                        self.remove(player_id);
                         if self.players.is_empty() {
                             self.players.push(Player::Idle);
                         }
@@ -299,17 +306,17 @@ impl Grid {
         collection: &mut media::Collection,
         playback: &Playback,
     ) {
-        let ids: Vec<_> = self
+        let player_ids: Vec<_> = self
             .players
             .iter()
             .enumerate()
             .map(|(id, _)| player::Id(id))
             .rev()
             .collect();
-        for id in ids {
+        for player_id in player_ids {
             let _ = self.update(
                 Event::Player {
-                    id,
+                    player_id,
                     event: event.clone(),
                 },
                 collection,
@@ -318,7 +325,7 @@ impl Grid {
         }
     }
 
-    pub fn view(&self, obscured: bool) -> Element {
+    pub fn view(&self, grid_id: Id, obscured: bool) -> Element {
         let mut row = Row::new().spacing(5);
         let mut column = Column::new().spacing(5);
         let mut count = 0;
@@ -326,7 +333,7 @@ impl Grid {
 
         for (i, player) in self.players.iter().enumerate() {
             row = row.push(
-                Container::new(player.view(player::Id(i), obscured))
+                Container::new(player.view(grid_id, player::Id(i), obscured))
                     .padding(5)
                     .class(style::Container::Player),
             );

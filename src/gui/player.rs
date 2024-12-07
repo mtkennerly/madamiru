@@ -12,6 +12,7 @@ use crate::{
     gui::{
         button,
         common::Message,
+        grid,
         icon::Icon,
         style,
         widget::{text, Column, Container, Element, Row, Stack},
@@ -75,30 +76,34 @@ fn build_video(uri: &url::Url) -> Result<Video, iced_video_player::Error> {
 }
 
 #[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
-fn build_video_player(video: &Video, pane: Id) -> Element {
+fn build_video_player(video: &Video, grid_id: grid::Id, player_id: Id) -> Element {
     VideoPlayer::new(video)
         .width(Length::Fill)
         .height(Length::Fill)
         .on_end_of_stream(Message::Player {
-            pane,
+            grid_id,
+            player_id,
             event: Event::EndOfStream,
         })
         .on_new_frame(Message::Player {
-            pane,
+            grid_id,
+            player_id,
             event: Event::NewFrame,
         })
         .into()
 }
 
 #[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn build_video_player(video: &Video, pane: Id) -> Element {
+fn build_video_player(video: &Video, grid_id: grid::Id, player_id: Id) -> Element {
     VideoPlayer::new(video)
         .on_end_of_stream(Message::Player {
-            pane,
+            grid_id,
+            player_id,
             event: Event::EndOfStream,
         })
         .on_new_frame(Message::Player {
-            pane,
+            grid_id,
+            player_id,
             event: Event::NewFrame,
         })
         .into()
@@ -850,14 +855,15 @@ impl Player {
         }
     }
 
-    pub fn view(&self, pane: Id, obscured: bool) -> Element {
+    pub fn view(&self, grid_id: grid::Id, player_id: Id, obscured: bool) -> Element {
         Responsive::new(move |viewport| {
-            mouse_area(self.view_inner(pane, obscured, viewport))
+            mouse_area(self.view_inner(grid_id, player_id, obscured, viewport))
                 .on_enter(if obscured {
                     Message::Ignore
                 } else {
                     Message::Player {
-                        pane,
+                        grid_id,
+                        player_id,
                         event: Event::MouseEnter,
                     }
                 })
@@ -866,7 +872,8 @@ impl Player {
                         Message::Ignore
                     } else {
                         Message::Player {
-                            pane,
+                            grid_id,
+                            player_id,
                             event: Event::MouseEnter,
                         }
                     }
@@ -875,7 +882,8 @@ impl Player {
                     Message::Ignore
                 } else {
                     Message::Player {
-                        pane,
+                        grid_id,
+                        player_id,
                         event: Event::MouseExit,
                     }
                 })
@@ -884,7 +892,7 @@ impl Player {
         .into()
     }
 
-    fn view_inner(&self, pane: Id, obscured: bool, viewport: iced::Size) -> Element {
+    fn view_inner(&self, grid_id: grid::Id, player_id: Id, obscured: bool, viewport: iced::Size) -> Element {
         match self {
             Self::Idle => Container::new("")
                 .align_x(Alignment::Center)
@@ -929,7 +937,8 @@ impl Player {
                                     .push(
                                         button::icon(Icon::Close)
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::Close,
                                             })
                                             .tooltip(lang::action::close()),
@@ -949,7 +958,8 @@ impl Player {
                                     .push(
                                         button::big_icon(Icon::Refresh)
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::Refresh,
                                             })
                                             .tooltip(lang::action::shuffle_media()),
@@ -1003,7 +1013,8 @@ impl Player {
                                     .push(
                                         button::icon(Icon::Refresh)
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::Refresh,
                                             })
                                             .tooltip(lang::action::shuffle_media()),
@@ -1011,7 +1022,8 @@ impl Player {
                                     .push(
                                         button::icon(Icon::Close)
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::Close,
                                             })
                                             .tooltip(lang::action::close()),
@@ -1031,7 +1043,8 @@ impl Player {
                                     .push(
                                         button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::SetPause(!*paused),
                                             })
                                             .tooltip(if *paused {
@@ -1043,7 +1056,8 @@ impl Player {
                                     .push(
                                         button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::SetLoop(!*looping),
                                             })
                                             .tooltip(if *looping {
@@ -1066,13 +1080,15 @@ impl Player {
                                     .push(Container::new(
                                         iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
                                             Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::Seek(x),
                                             }
                                         })
                                         .step(0.1)
                                         .on_release(Message::Player {
-                                            pane,
+                                            grid_id,
+                                            player_id,
                                             event: Event::SeekStop,
                                         }),
                                     )),
@@ -1126,7 +1142,8 @@ impl Player {
                                     .push(
                                         button::icon(Icon::Refresh)
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::Refresh,
                                             })
                                             .tooltip(lang::action::shuffle_media()),
@@ -1134,7 +1151,8 @@ impl Player {
                                     .push(
                                         button::icon(Icon::Close)
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::Close,
                                             })
                                             .tooltip(lang::action::close()),
@@ -1154,7 +1172,8 @@ impl Player {
                                     .push(
                                         button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::SetPause(!*paused),
                                             })
                                             .tooltip(if *paused {
@@ -1166,7 +1185,8 @@ impl Player {
                                     .push(
                                         button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::SetLoop(!*looping),
                                             })
                                             .tooltip(if *looping {
@@ -1189,13 +1209,15 @@ impl Player {
                                     .push(Container::new(
                                         iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
                                             Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::Seek(x),
                                             }
                                         })
                                         .step(0.1)
                                         .on_release(Message::Player {
-                                            pane,
+                                            grid_id,
+                                            player_id,
                                             event: Event::SeekStop,
                                         }),
                                     )),
@@ -1256,7 +1278,8 @@ impl Player {
                                     .push(
                                         button::icon(Icon::Refresh)
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::Refresh,
                                             })
                                             .tooltip(lang::action::shuffle_media()),
@@ -1264,7 +1287,8 @@ impl Player {
                                     .push(
                                         button::icon(Icon::Close)
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::Close,
                                             })
                                             .tooltip(lang::action::close()),
@@ -1284,7 +1308,8 @@ impl Player {
                                     .push(
                                         button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::SetPause(!*paused),
                                             })
                                             .tooltip(if *paused {
@@ -1296,7 +1321,8 @@ impl Player {
                                     .push(
                                         button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::SetLoop(!*looping),
                                             })
                                             .tooltip(if *looping {
@@ -1319,13 +1345,15 @@ impl Player {
                                     .push(Container::new(
                                         iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
                                             Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::Seek(x),
                                             }
                                         })
                                         .step(0.1)
                                         .on_release(Message::Player {
-                                            pane,
+                                            grid_id,
+                                            player_id,
                                             event: Event::SeekStop,
                                         }),
                                     )),
@@ -1348,7 +1376,7 @@ impl Player {
 
                 Stack::new()
                     .push(
-                        Container::new(build_video_player(video, pane))
+                        Container::new(build_video_player(video, grid_id, player_id))
                             .align_x(Alignment::Center)
                             .align_y(Alignment::Center)
                             .width(Length::Fill)
@@ -1376,7 +1404,8 @@ impl Player {
                                     .push(
                                         button::icon(Icon::Refresh)
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::Refresh,
                                             })
                                             .tooltip(lang::action::shuffle_media()),
@@ -1384,7 +1413,8 @@ impl Player {
                                     .push(
                                         button::icon(Icon::Close)
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::Close,
                                             })
                                             .tooltip(lang::action::close()),
@@ -1404,7 +1434,8 @@ impl Player {
                                     .push(
                                         button::icon(if video.muted() { Icon::Mute } else { Icon::VolumeHigh })
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::SetMute(!video.muted()),
                                             })
                                             .tooltip(if video.muted() {
@@ -1416,7 +1447,8 @@ impl Player {
                                     .push(
                                         button::big_icon(if video.paused() { Icon::Play } else { Icon::Pause })
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::SetPause(!video.paused()),
                                             })
                                             .tooltip(if video.paused() {
@@ -1428,7 +1460,8 @@ impl Player {
                                     .push(
                                         button::icon(if video.looping() { Icon::Loop } else { Icon::Shuffle })
                                             .on_press(Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::SetLoop(!video.looping()),
                                             })
                                             .tooltip(if video.looping() {
@@ -1453,13 +1486,15 @@ impl Player {
                                             0.0..=video.duration().as_secs_f64(),
                                             *position,
                                             move |x| Message::Player {
-                                                pane,
+                                                grid_id,
+                                                player_id,
                                                 event: Event::Seek(x),
                                             },
                                         )
                                         .step(0.1)
                                         .on_release(Message::Player {
-                                            pane,
+                                            grid_id,
+                                            player_id,
                                             event: Event::SeekStop,
                                         }),
                                     )),

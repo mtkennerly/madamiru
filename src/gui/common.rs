@@ -1,7 +1,17 @@
 use std::{num::NonZeroUsize, time::Instant};
 
+use iced::{
+    widget::{pane_grid, text_input},
+    Length,
+};
+
 use crate::{
-    gui::{modal, player},
+    gui::{
+        grid, modal, player,
+        shortcuts::TextHistories,
+        style,
+        widget::{Element, TextInput, Undoable},
+    },
     media,
     prelude::StrictPath,
     resource::config,
@@ -30,11 +40,9 @@ pub enum Message {
     OpenDir {
         path: StrictPath,
     },
-    OpenDirSubject(BrowseSubject),
     OpenFile {
         path: StrictPath,
     },
-    OpenFileSubject(BrowseFileSubject),
     OpenDirFailure {
         path: StrictPath,
     },
@@ -46,11 +54,11 @@ pub enum Message {
     OpenUrl(String),
     OpenUrlAndCloseModal(String),
     Refresh,
-    AddPlayer,
     SetPause(bool),
     SetMute(bool),
     Player {
-        pane: player::Id,
+        grid_id: grid::Id,
+        player_id: player::Id,
         event: player::Event,
     },
     AllPlayers {
@@ -60,7 +68,6 @@ pub enum Message {
         event: modal::Event,
     },
     ShowSettings,
-    ShowSources,
     FindMedia,
     MediaFound {
         context: media::RefreshContext,
@@ -69,6 +76,9 @@ pub enum Message {
     FileDragDrop(StrictPath),
     WindowFocused,
     WindowUnfocused,
+    Pane {
+        event: PaneEvent,
+    },
 }
 
 impl Message {
@@ -147,4 +157,98 @@ pub enum UndoSubject {
     MaxInitialMedia,
     ImageDuration,
     Source { index: usize },
+}
+
+impl UndoSubject {
+    pub fn view_with<'a>(self, histories: &TextHistories) -> Element<'a> {
+        match self {
+            Self::MaxInitialMedia => self.view(&histories.max_initial_media.current()),
+            Self::ImageDuration => self.view(&histories.image_duration.current()),
+            Self::Source { .. } => self.view(""),
+        }
+    }
+
+    pub fn view<'a>(self, current: &str) -> Element<'a> {
+        let event: Box<dyn Fn(String) -> Message> = match self {
+            UndoSubject::MaxInitialMedia => Box::new(move |value| Message::Config {
+                event: config::Event::MaxInitialMediaRaw(value),
+            }),
+            UndoSubject::ImageDuration => Box::new(move |value| Message::Config {
+                event: config::Event::ImageDurationRaw(value),
+            }),
+            UndoSubject::Source { index } => Box::new(move |value| Message::Modal {
+                event: modal::Event::EditedSource {
+                    action: EditAction::Change(index, value),
+                },
+            }),
+        };
+
+        let placeholder = match self {
+            UndoSubject::MaxInitialMedia => "".to_string(),
+            UndoSubject::ImageDuration => "".to_string(),
+            UndoSubject::Source { .. } => "".to_string(),
+        };
+
+        let icon = match self {
+            UndoSubject::MaxInitialMedia => (current.parse::<NonZeroUsize>().is_err()).then_some(text_input::Icon {
+                font: crate::gui::font::ICONS,
+                code_point: crate::gui::icon::Icon::Error.as_char(),
+                size: None,
+                spacing: 5.0,
+                side: text_input::Side::Right,
+            }),
+            UndoSubject::ImageDuration => (current.parse::<NonZeroUsize>().is_err()).then_some(text_input::Icon {
+                font: crate::gui::font::ICONS,
+                code_point: crate::gui::icon::Icon::Error.as_char(),
+                size: None,
+                spacing: 5.0,
+                side: text_input::Side::Right,
+            }),
+            UndoSubject::Source { .. } => (!path_appears_valid(current)).then_some(text_input::Icon {
+                font: crate::gui::font::ICONS,
+                code_point: crate::gui::icon::Icon::Error.as_char(),
+                size: None,
+                spacing: 5.0,
+                side: text_input::Side::Right,
+            }),
+        };
+
+        let width = match self {
+            UndoSubject::MaxInitialMedia => Length::Fixed(80.0),
+            UndoSubject::ImageDuration => Length::Fixed(80.0),
+            UndoSubject::Source { .. } => Length::Fill,
+        };
+
+        Undoable::new(
+            {
+                let mut input = TextInput::new(&placeholder, current)
+                    .on_input(event)
+                    .class(style::TextInput)
+                    .padding(5)
+                    .width(width);
+
+                if let Some(icon) = icon {
+                    input = input.icon(icon);
+                }
+
+                input
+            },
+            move |action| Message::UndoRedo(action, self),
+        )
+        .into()
+    }
+}
+
+fn path_appears_valid(path: &str) -> bool {
+    !path.contains("://")
+}
+
+#[derive(Debug, Clone)]
+pub enum PaneEvent {
+    Drag(pane_grid::DragEvent),
+    Resize(pane_grid::ResizeEvent),
+    Split { grid_id: grid::Id, axis: pane_grid::Axis },
+    Close { grid_id: grid::Id },
+    AddPlayer { grid_id: grid::Id },
+    ShowSources { grid_id: grid::Id },
 }
