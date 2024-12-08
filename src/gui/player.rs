@@ -630,7 +630,7 @@ impl Player {
             } => match event {
                 Event::SetPause(flag) => {
                     *paused = flag;
-                    None
+                    Some(Update::PauseChanged)
                 }
                 Event::SetLoop(flag) => {
                     *looping = flag;
@@ -686,7 +686,7 @@ impl Player {
             } => match event {
                 Event::SetPause(flag) => {
                     *paused = flag;
-                    None
+                    Some(Update::PauseChanged)
                 }
                 Event::SetLoop(flag) => {
                     *looping = flag;
@@ -742,7 +742,7 @@ impl Player {
             } => match event {
                 Event::SetPause(flag) => {
                     *paused = flag;
-                    None
+                    Some(Update::PauseChanged)
                 }
                 Event::SetLoop(flag) => {
                     *looping = flag;

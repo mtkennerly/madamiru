@@ -542,14 +542,14 @@ impl App {
                         grid::Update::PauseChanged { .. } => {
                             if let Some(paused) = self.all_paused() {
                                 self.config.playback.paused = paused;
+                                self.save_config();
                             }
-                            self.save_config();
                         }
                         grid::Update::MuteChanged { .. } => {
                             if let Some(muted) = self.all_muted() {
                                 self.config.playback.muted = muted;
+                                self.save_config();
                             }
-                            self.save_config();
                         }
                         grid::Update::PlayerClosed => {
                             if grid.is_idle() {
@@ -715,8 +715,8 @@ impl App {
 
                             if let Some(muted) = self.all_muted() {
                                 self.config.playback.muted = muted;
+                                self.save_config();
                             }
-                            self.save_config();
                         }
                     }
                     PaneEvent::SetPause { grid_id, paused } => {
@@ -729,8 +729,8 @@ impl App {
 
                             if let Some(paused) = self.all_paused() {
                                 self.config.playback.paused = paused;
+                                self.save_config();
                             }
-                            self.save_config();
                         }
                     }
                     PaneEvent::SeekRandom { grid_id } => {
