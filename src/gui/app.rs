@@ -29,21 +29,6 @@ use crate::{
     },
 };
 
-/// We sometimes need this instead of `App::grid_mut()`
-/// when that would prevent mutable borrowing of other fields.
-macro_rules! grid_mut {
-    ($id:expr, $grids:expr) => {
-        'grid: loop {
-            for (grid_id, grid) in $grids.iter_mut() {
-                if *grid_id == $id {
-                    break 'grid grid;
-                }
-            }
-            unreachable!();
-        }
-    };
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SaveKind {
     Config,
@@ -60,6 +45,7 @@ pub struct App {
     grids: pane_grid::State<Grid>,
     media: media::Collection,
     last_tick: Instant,
+    #[allow(unused)] // TODO: https://github.com/iced-rs/iced/pull/2691
     dragging_pane: bool,
     viewing_pane_controls: Option<grid::Id>,
 }
@@ -197,12 +183,12 @@ impl App {
         crate::gui::style::Theme::from(self.config.theme)
     }
 
-    fn grid(&self, id: grid::Id) -> &Grid {
-        self.grids.get(id).unwrap()
+    fn grid(&self, id: grid::Id) -> Option<&Grid> {
+        self.grids.get(id)
     }
 
-    fn grid_mut(&mut self, id: grid::Id) -> &mut Grid {
-        self.grids.get_mut(id).unwrap()
+    fn grid_mut(&mut self, id: grid::Id) -> Option<&mut Grid> {
+        self.grids.get_mut(id)
     }
 
     fn refresh(&mut self) -> Task<Message> {
@@ -512,12 +498,18 @@ impl App {
                 player_id,
                 event,
             } => {
-                if let Some(update) = grid_mut!(grid_id, self.grids).update(
+                let Some(grid) = self.grids.get_mut(grid_id) else {
+                    return Task::none();
+                };
+
+                if let Some(update) = grid.update(
                     grid::Event::Player { player_id, event },
                     &mut self.media,
                     &self.config.playback,
                 ) {
-                    let grid = self.grid(grid_id);
+                    let Some(grid) = self.grid(grid_id) else {
+                        return Task::none();
+                    };
 
                     match update {
                         grid::Update::PauseChanged { .. } => {
@@ -549,7 +541,9 @@ impl App {
                         match update {
                             modal::Update::SavedSources { grid_id, sources } => {
                                 self.modals.pop();
-                                self.grid_mut(grid_id).set_sources(sources.clone());
+                                if let Some(grid) = self.grid_mut(grid_id) {
+                                    grid.set_sources(sources.clone());
+                                }
                                 return Self::find_media(sources, media::RefreshContext::Edit);
                             }
                             modal::Update::Task(task) => {
@@ -628,7 +622,11 @@ impl App {
                         self.grids.close(grid_id);
                     }
                     PaneEvent::AddPlayer { grid_id } => {
-                        match grid_mut!(grid_id, self.grids).add_player(&mut self.media, &self.config.playback) {
+                        let Some(grid) = self.grids.get_mut(grid_id) else {
+                            return Task::none();
+                        };
+
+                        match grid.add_player(&mut self.media, &self.config.playback) {
                             Ok(_) => {}
                             Err(e) => match e {
                                 grid::Error::NoMediaAvailable => {
@@ -640,7 +638,11 @@ impl App {
                         }
                     }
                     PaneEvent::ShowSources { grid_id } => {
-                        self.show_modal(Modal::new_sources(grid_id, self.grid(grid_id).sources().to_vec()));
+                        let sources = self
+                            .grid(grid_id)
+                            .map(|grid| grid.sources().to_vec())
+                            .unwrap_or_default();
+                        self.show_modal(Modal::new_sources(grid_id, sources));
                     }
                     PaneEvent::ShowControls { grid_id } => {
                         if self.viewing_pane_controls.is_some_and(|x| x == grid_id) {
@@ -686,7 +688,7 @@ impl App {
     }
 
     pub fn view(&self) -> Element {
-        let obscured = !self.modals.is_empty() || self.dragging_pane;
+        let obscured = !self.modals.is_empty();
 
         Responsive::new(move |viewport| {
             let content =
