@@ -1,4 +1,4 @@
-use iced::alignment;
+use iced::{alignment, Length};
 
 use crate::gui::{
     font,
@@ -94,6 +94,17 @@ impl Icon {
             .size(14)
             .width(14)
             .height(14)
+            .align_x(alignment::Horizontal::Center)
+            .align_y(iced::alignment::Vertical::Center)
+            .line_height(1.0)
+    }
+
+    pub fn max_control(self) -> Text<'static> {
+        text(self.as_char().to_string())
+            .font(font::ICONS)
+            .size(40)
+            .width(Length::Fill)
+            .height(Length::Fill)
             .align_x(alignment::Horizontal::Center)
             .align_y(iced::alignment::Vertical::Center)
             .line_height(1.0)

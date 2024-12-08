@@ -47,6 +47,7 @@ pub struct App {
     last_tick: Instant,
     #[allow(unused)] // TODO: https://github.com/iced-rs/iced/pull/2691
     dragging_pane: bool,
+    dragged_file: Option<StrictPath>,
     viewing_pane_controls: Option<grid::Id>,
 }
 
@@ -144,8 +145,7 @@ impl App {
             }))
         }
 
-        let (mut grids, grid_id) = pane_grid::State::new(Grid::new(&sources));
-        grids.split(pane_grid::Axis::Vertical, grid_id, Grid::new(&[]));
+        let (grids, grid_id) = pane_grid::State::new(Grid::new(&sources));
 
         if sources.is_empty() {
             modals.push(Modal::new_sources(grid_id, sources.clone()));
@@ -169,6 +169,7 @@ impl App {
                 media: Default::default(),
                 last_tick: Instant::now(),
                 dragging_pane: false,
+                dragged_file: None,
                 viewing_pane_controls: None,
             },
             Task::batch(commands),
@@ -572,17 +573,37 @@ impl App {
                     sources.push(media::Source::new_path(path));
                     modal::scroll_down()
                 }
-                _ => {
-                    // TODO: Update hovered grid.
-                    let (grid_id, grid) = self.grids.iter().last().unwrap();
+                Some(_) => Task::none(),
+                None => {
+                    if self.grids.len() == 1 {
+                        let (grid_id, grid) = self.grids.iter().last().unwrap();
 
-                    let mut sources = grid.sources().to_vec();
-                    sources.push(media::Source::new_path(path));
+                        let mut sources = grid.sources().to_vec();
+                        sources.push(media::Source::new_path(path));
 
-                    self.show_modal(Modal::new_sources(*grid_id, sources));
-                    modal::scroll_down()
+                        self.show_modal(Modal::new_sources(*grid_id, sources));
+                        modal::scroll_down()
+                    } else {
+                        self.dragged_file = Some(path);
+                        Task::none()
+                    }
                 }
             },
+            Message::FileDragDropGridSelected(grid_id) => {
+                let Some(grid) = self.grids.get(grid_id) else {
+                    return Task::none();
+                };
+
+                let Some(path) = self.dragged_file.take() else {
+                    return Task::none();
+                };
+
+                let mut sources = grid.sources().to_vec();
+                sources.push(media::Source::new_path(path));
+
+                self.show_modal(Modal::new_sources(grid_id, sources));
+                modal::scroll_down()
+            }
             Message::WindowFocused => {
                 for (_grid_id, grid) in self.grids.iter_mut() {
                     grid.update_all_players(player::Event::WindowFocused, &mut self.media, &self.config.playback);
@@ -688,6 +709,7 @@ impl App {
     }
 
     pub fn view(&self) -> Element {
+        let dragging_file = self.dragged_file.is_some();
         let obscured = !self.modals.is_empty();
 
         Responsive::new(move |viewport| {
@@ -775,7 +797,7 @@ impl App {
                         .push(
                             PaneGrid::new(&self.grids, |grid_id, grid, _maximized| {
                                 pane_grid::Content::new(
-                                    Container::new(grid.view(grid_id, obscured))
+                                    Container::new(grid.view(grid_id, obscured, dragging_file))
                                         .padding(5)
                                         .class(style::Container::PlayerGroup),
                                 )

@@ -206,6 +206,7 @@ pub enum Container {
     PlayerGroupControls,
     PlayerGroupTitle,
     Tooltip,
+    FileDrag,
 }
 impl container::Catalog for Theme {
     type Class<'a> = Container;
@@ -224,6 +225,7 @@ impl container::Catalog for Theme {
                 Container::PlayerGroupTitle => self.field.alpha(0.45).into(),
                 Container::ModalBackground => self.field.alpha(0.5).into(),
                 Container::Tooltip => self.field.into(),
+                Container::FileDrag => self.field.alpha(0.9).into(),
                 _ => self.background.into(),
             }),
             border: Border {

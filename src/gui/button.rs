@@ -146,6 +146,19 @@ pub fn mini_icon<'a>(icon: Icon) -> CustomButton<'a> {
     }
 }
 
+pub fn max_icon<'a>(icon: Icon) -> CustomButton<'a> {
+    CustomButton {
+        content: icon.max_control().into(),
+        on_press: None,
+        enabled: true,
+        class: style::Button::Icon,
+        padding: None,
+        tooltip: None,
+        tooltip_position: tooltip::Position::Top,
+        obscured: false,
+    }
+}
+
 pub fn choose_folder<'a>(subject: BrowseSubject, raw: StrictPath, modifiers: &keyboard::Modifiers) -> CustomButton<'a> {
     if modifiers.shift() {
         icon(Icon::OpenInNew).on_press(Message::OpenDir { path: raw })

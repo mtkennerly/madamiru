@@ -74,6 +74,7 @@ pub enum Message {
         media: media::SourceMap,
     },
     FileDragDrop(StrictPath),
+    FileDragDropGridSelected(grid::Id),
     WindowFocused,
     WindowUnfocused,
     Pane {

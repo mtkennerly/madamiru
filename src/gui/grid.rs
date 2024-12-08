@@ -1,6 +1,6 @@
 use std::{collections::HashSet, time::Duration};
 
-use iced::{alignment, widget::pane_grid};
+use iced::{alignment, widget::pane_grid, Length};
 
 use crate::{
     gui::{
@@ -9,7 +9,7 @@ use crate::{
         icon::Icon,
         player::{self, Player},
         style,
-        widget::{Column, Container, Element, Row},
+        widget::{Column, Container, Element, Row, Stack},
     },
     lang,
     media::{self, Media},
@@ -329,7 +329,9 @@ impl Grid {
         }
     }
 
-    pub fn view(&self, grid_id: Id, obscured: bool) -> Element {
+    pub fn view(&self, grid_id: Id, obscured: bool, dragging_file: bool) -> Element {
+        let obscured = obscured || dragging_file;
+
         let mut row = Row::new().spacing(5);
         let mut column = Column::new().spacing(5);
         let mut count = 0;
@@ -352,7 +354,24 @@ impl Grid {
 
         column = column.push(row);
 
-        column.into()
+        Stack::new()
+            .push(column)
+            .push_maybe(
+                dragging_file.then_some(
+                    Container::new("")
+                        .center(Length::Fill)
+                        .class(style::Container::FileDrag),
+                ),
+            )
+            .push_maybe(
+                dragging_file.then_some(
+                    Container::new(
+                        button::max_icon(Icon::PlaylistAdd).on_press(Message::FileDragDropGridSelected(grid_id)),
+                    )
+                    .center(Length::Fill),
+                ),
+            )
+            .into()
     }
 
     pub fn controls(&self, grid_id: Id, obscured: bool, has_siblings: bool) -> Element<'_> {
