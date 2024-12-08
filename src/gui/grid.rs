@@ -261,64 +261,67 @@ impl Grid {
     #[must_use]
     pub fn update(&mut self, event: Event, collection: &mut media::Collection, playback: &Playback) -> Option<Update> {
         match event {
-            Event::Player { player_id, event } => match self.players[player_id.0].update(event, playback) {
-                Some(update) => match update {
-                    player::Update::MuteChanged { .. } => Some(Update::MuteChanged),
-                    player::Update::PauseChanged { .. } => Some(Update::PauseChanged),
-                    player::Update::EndOfStream { .. } => {
-                        let media = collection.one_new(&self.sources, self.active_media());
-                        let player = &mut self.players[player_id.0];
+            Event::Player { player_id, event } => {
+                let active_media: HashSet<_> = self.active_media().into_iter().cloned().collect();
+                let player = self.players.get_mut(player_id.0)?;
 
-                        match media {
-                            Some(media) => {
-                                if player.swap_media(&media, playback).is_err() {
-                                    collection.mark_error(&media);
-                                }
-                            }
-                            None => {
-                                player.restart();
-                            }
-                        }
+                match player.update(event, playback) {
+                    Some(update) => match update {
+                        player::Update::MuteChanged { .. } => Some(Update::MuteChanged),
+                        player::Update::PauseChanged { .. } => Some(Update::PauseChanged),
+                        player::Update::EndOfStream { .. } => {
+                            let media = collection.one_new(&self.sources, active_media.iter().collect());
 
-                        None
-                    }
-                    player::Update::Refresh => {
-                        let failed = self.players[player_id.0].is_error();
-
-                        let media = collection.one_new(&self.sources, self.active_media());
-                        let player = &mut self.players[player_id.0];
-
-                        match media {
-                            Some(media) => {
-                                if player.swap_media(&media, playback).is_err() {
-                                    collection.mark_error(&media);
-                                }
-                            }
-                            None => {
-                                if failed {
-                                    self.remove(player_id);
-                                    if self.players.is_empty() {
-                                        self.players.push(Player::Idle);
+                            match media {
+                                Some(media) => {
+                                    if player.swap_media(&media, playback).is_err() {
+                                        collection.mark_error(&media);
                                     }
-                                    return Some(Update::PlayerClosed);
-                                } else {
+                                }
+                                None => {
                                     player.restart();
                                 }
                             }
-                        }
 
-                        None
-                    }
-                    player::Update::Close { .. } => {
-                        self.remove(player_id);
-                        if self.players.is_empty() {
-                            self.players.push(Player::Idle);
+                            None
                         }
-                        Some(Update::PlayerClosed)
-                    }
-                },
-                None => None,
-            },
+                        player::Update::Refresh => {
+                            let failed = player.is_error();
+
+                            let media = collection.one_new(&self.sources, active_media.iter().collect());
+
+                            match media {
+                                Some(media) => {
+                                    if player.swap_media(&media, playback).is_err() {
+                                        collection.mark_error(&media);
+                                    }
+                                }
+                                None => {
+                                    if failed {
+                                        self.remove(player_id);
+                                        if self.players.is_empty() {
+                                            self.players.push(Player::Idle);
+                                        }
+                                        return Some(Update::PlayerClosed);
+                                    } else {
+                                        player.restart();
+                                    }
+                                }
+                            }
+
+                            None
+                        }
+                        player::Update::Close { .. } => {
+                            self.remove(player_id);
+                            if self.players.is_empty() {
+                                self.players.push(Player::Idle);
+                            }
+                            Some(Update::PlayerClosed)
+                        }
+                    },
+                    None => None,
+                }
+            }
         }
     }
 
