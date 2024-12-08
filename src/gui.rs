@@ -1,12 +1,12 @@
 mod app;
 mod button;
 mod common;
+mod dropdown;
 mod font;
 mod grid;
 mod icon;
 mod modal;
 mod player;
-mod popup_menu;
 mod shortcuts;
 mod style;
 mod undoable;

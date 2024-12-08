@@ -203,6 +203,7 @@ pub enum Container {
     ModalBackground,
     Player,
     PlayerGroup,
+    PlayerGroupControls,
     PlayerGroupTitle,
     Tooltip,
 }
@@ -219,6 +220,7 @@ impl container::Catalog for Theme {
                 Container::Wrapper => Color::TRANSPARENT.into(),
                 Container::Player => self.field.alpha(0.15).into(),
                 Container::PlayerGroup => self.field.alpha(0.3).into(),
+                Container::PlayerGroupControls => self.field.into(),
                 Container::PlayerGroupTitle => self.field.alpha(0.45).into(),
                 Container::ModalBackground => self.field.alpha(0.5).into(),
                 Container::Tooltip => self.field.into(),
@@ -229,18 +231,20 @@ impl container::Catalog for Theme {
                     Container::Wrapper => Color::TRANSPARENT,
                     Container::Player => self.field.alpha(0.8),
                     Container::PlayerGroup | Container::PlayerGroupTitle => self.field,
+                    Container::PlayerGroupControls => self.disabled,
                     Container::ModalForeground => self.disabled,
                     _ => self.text,
                 },
                 width: match class {
                     Container::Player
                     | Container::PlayerGroup
+                    | Container::PlayerGroupControls
                     | Container::PlayerGroupTitle
                     | Container::ModalForeground => 1.0,
                     _ => 0.0,
                 },
                 radius: match class {
-                    Container::ModalForeground | Container::Player => 10.0.into(),
+                    Container::ModalForeground | Container::Player | Container::PlayerGroupControls => 10.0.into(),
                     Container::PlayerGroup => Radius::new(10.0).top(0.0),
                     Container::PlayerGroupTitle => Radius::new(10.0).bottom(0.0),
                     Container::ModalBackground => 5.0.into(),

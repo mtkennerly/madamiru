@@ -10,6 +10,7 @@ pub type Button<'a> = w::Button<'a, Message, Theme, Renderer>;
 pub type Checkbox<'a> = w::Checkbox<'a, Message, Theme, Renderer>;
 pub type Column<'a> = w::Column<'a, Message, Theme, Renderer>;
 pub type Container<'a> = w::Container<'a, Message, Theme, Renderer>;
+pub type DropDown<'a> = crate::gui::dropdown::DropDown<'a, Message, Theme, Renderer>;
 pub type PaneGrid<'a> = w::PaneGrid<'a, Message, Theme, Renderer>;
 pub type PickList<'a, T, L, V> = w::PickList<'a, T, L, V, Message, Theme, Renderer>;
 pub type Responsive<'a> = w::Responsive<'a, Message, Theme, Renderer>;

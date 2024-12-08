@@ -4,11 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use iced::{
-    alignment, keyboard,
-    widget::{horizontal_space, pane_grid},
-    Length, Subscription, Task,
-};
+use iced::{keyboard, widget::pane_grid, Length, Subscription, Task};
 use itertools::Itertools;
 
 use crate::{
@@ -21,7 +17,7 @@ use crate::{
         player::{self},
         shortcuts::{Shortcut, TextHistories, TextHistory},
         style,
-        widget::{Column, Container, Element, PaneGrid, Responsive, Row, Stack},
+        widget::{Column, Container, DropDown, Element, PaneGrid, Responsive, Row, Stack},
     },
     lang, media,
     path::StrictPath,
@@ -65,10 +61,12 @@ pub struct App {
     media: media::Collection,
     last_tick: Instant,
     dragging_pane: bool,
+    viewing_pane_controls: Option<grid::Id>,
 }
 
 impl App {
     fn show_modal(&mut self, modal: Modal) {
+        self.viewing_pane_controls = None;
         self.modals.push(modal);
     }
 
@@ -160,7 +158,8 @@ impl App {
             }))
         }
 
-        let (grids, grid_id) = pane_grid::State::new(Grid::new(&sources));
+        let (mut grids, grid_id) = pane_grid::State::new(Grid::new(&sources));
+        grids.split(pane_grid::Axis::Vertical, grid_id, Grid::new(&[]));
 
         if sources.is_empty() {
             modals.push(Modal::new_sources(grid_id, sources.clone()));
@@ -184,6 +183,7 @@ impl App {
                 media: Default::default(),
                 last_tick: Instant::now(),
                 dragging_pane: false,
+                viewing_pane_controls: None,
             },
             Task::batch(commands),
         )
@@ -642,6 +642,16 @@ impl App {
                     PaneEvent::ShowSources { grid_id } => {
                         self.show_modal(Modal::new_sources(grid_id, self.grid(grid_id).sources().to_vec()));
                     }
+                    PaneEvent::ShowControls { grid_id } => {
+                        if self.viewing_pane_controls.is_some_and(|x| x == grid_id) {
+                            self.viewing_pane_controls = None;
+                        } else {
+                            self.viewing_pane_controls = Some(grid_id);
+                        }
+                    }
+                    PaneEvent::CloseControls => {
+                        self.viewing_pane_controls = None;
+                    }
                 }
                 Task::none()
             }
@@ -768,59 +778,23 @@ impl App {
                                         .class(style::Container::PlayerGroup),
                                 )
                                 .title_bar({
-                                    let mut bar = pane_grid::TitleBar::new(horizontal_space())
+                                    let mut bar = pane_grid::TitleBar::new(" ")
                                         .class(style::Container::PlayerGroupTitle)
-                                        .controls(pane_grid::Controls::new(
-                                            Row::new()
-                                                .align_y(alignment::Vertical::Center)
-                                                .push(
-                                                    button::mini_icon(Icon::SplitVertical)
-                                                        .on_press(Message::Pane {
-                                                            event: PaneEvent::Split {
-                                                                grid_id,
-                                                                axis: pane_grid::Axis::Horizontal,
-                                                            },
-                                                        })
-                                                        .obscured(obscured)
-                                                        .tooltip_below(lang::action::split_vertically()),
-                                                )
-                                                .push(
-                                                    button::mini_icon(Icon::SplitHorizontal)
-                                                        .on_press(Message::Pane {
-                                                            event: PaneEvent::Split {
-                                                                grid_id,
-                                                                axis: pane_grid::Axis::Vertical,
-                                                            },
-                                                        })
-                                                        .obscured(obscured)
-                                                        .tooltip_below(lang::action::split_horizontally()),
-                                                )
-                                                .push(
-                                                    button::mini_icon(Icon::Add)
-                                                        .on_press(Message::Pane {
-                                                            event: PaneEvent::AddPlayer { grid_id },
-                                                        })
-                                                        .enabled(!grid.is_idle())
-                                                        .obscured(obscured)
-                                                        .tooltip_below(lang::action::add_player()),
-                                                )
-                                                .push(
-                                                    button::mini_icon(Icon::PlaylistAdd)
-                                                        .on_press(Message::Pane {
-                                                            event: PaneEvent::ShowSources { grid_id },
-                                                        })
-                                                        .obscured(obscured)
-                                                        .tooltip_below(lang::action::configure_media_sources()),
-                                                )
-                                                .push(
-                                                    button::mini_icon(Icon::Close)
-                                                        .on_press(Message::Pane {
-                                                            event: PaneEvent::Close { grid_id },
-                                                        })
-                                                        .enabled(self.grids.len() > 1)
-                                                        .obscured(obscured)
-                                                        .tooltip_below(lang::action::close()),
-                                                ),
+                                        .controls(pane_grid::Controls::dynamic(
+                                            grid.controls(grid_id, obscured, self.grids.len() > 1),
+                                            DropDown::new(
+                                                button::mini_icon(Icon::MoreVert)
+                                                    .on_press(Message::Pane {
+                                                        event: PaneEvent::ShowControls { grid_id },
+                                                    })
+                                                    .obscured(obscured),
+                                                Container::new(grid.controls(grid_id, obscured, self.grids.len() > 1))
+                                                    .class(style::Container::PlayerGroupControls),
+                                                self.viewing_pane_controls.is_some_and(|x| x == grid_id),
+                                            )
+                                            .on_dismiss(Message::Pane {
+                                                event: PaneEvent::CloseControls,
+                                            }),
                                         ));
 
                                     if grid.is_idle() {

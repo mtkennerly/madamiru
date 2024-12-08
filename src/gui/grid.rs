@@ -1,13 +1,17 @@
 use std::{collections::HashSet, time::Duration};
 
-use iced::widget::pane_grid;
+use iced::{alignment, widget::pane_grid};
 
 use crate::{
     gui::{
+        button,
+        common::{Message, PaneEvent},
+        icon::Icon,
         player::{self, Player},
         style,
         widget::{Column, Container, Element, Row},
     },
+    lang,
     media::{self, Media},
     resource::config::Playback,
 };
@@ -349,5 +353,59 @@ impl Grid {
         column = column.push(row);
 
         column.into()
+    }
+
+    pub fn controls(&self, grid_id: Id, obscured: bool, has_siblings: bool) -> Element<'_> {
+        Row::new()
+            .align_y(alignment::Vertical::Center)
+            .push(
+                button::mini_icon(Icon::SplitVertical)
+                    .on_press(Message::Pane {
+                        event: PaneEvent::Split {
+                            grid_id,
+                            axis: pane_grid::Axis::Horizontal,
+                        },
+                    })
+                    .obscured(obscured)
+                    .tooltip_below(lang::action::split_vertically()),
+            )
+            .push(
+                button::mini_icon(Icon::SplitHorizontal)
+                    .on_press(Message::Pane {
+                        event: PaneEvent::Split {
+                            grid_id,
+                            axis: pane_grid::Axis::Vertical,
+                        },
+                    })
+                    .obscured(obscured)
+                    .tooltip_below(lang::action::split_horizontally()),
+            )
+            .push(
+                button::mini_icon(Icon::Add)
+                    .on_press(Message::Pane {
+                        event: PaneEvent::AddPlayer { grid_id },
+                    })
+                    .enabled(!self.is_idle())
+                    .obscured(obscured)
+                    .tooltip_below(lang::action::add_player()),
+            )
+            .push(
+                button::mini_icon(Icon::PlaylistAdd)
+                    .on_press(Message::Pane {
+                        event: PaneEvent::ShowSources { grid_id },
+                    })
+                    .obscured(obscured)
+                    .tooltip_below(lang::action::configure_media_sources()),
+            )
+            .push(
+                button::mini_icon(Icon::Close)
+                    .on_press(Message::Pane {
+                        event: PaneEvent::Close { grid_id },
+                    })
+                    .enabled(has_siblings)
+                    .obscured(obscured)
+                    .tooltip_below(lang::action::close()),
+            )
+            .into()
     }
 }

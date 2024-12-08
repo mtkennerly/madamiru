@@ -251,4 +251,6 @@ pub enum PaneEvent {
     Close { grid_id: grid::Id },
     AddPlayer { grid_id: grid::Id },
     ShowSources { grid_id: grid::Id },
+    ShowControls { grid_id: grid::Id },
+    CloseControls,
 }
