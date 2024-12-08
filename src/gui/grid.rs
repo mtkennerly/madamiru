@@ -1,6 +1,10 @@
 use std::{collections::HashSet, time::Duration};
 
-use iced::{alignment, widget::pane_grid, Length};
+use iced::{
+    alignment, padding,
+    widget::{pane_grid, vertical_rule},
+    Length,
+};
 
 use crate::{
     gui::{
@@ -52,10 +56,6 @@ impl Grid {
         }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.players.is_empty()
-    }
-
     pub fn is_idle(&self) -> bool {
         self.players.is_empty() || (self.players.len() == 1 && matches!(self.players[0], Player::Idle))
     }
@@ -100,20 +100,38 @@ impl Grid {
         self.players.remove(id.0);
     }
 
-    pub fn all_paused(&self) -> bool {
-        if self.is_empty() {
-            false
-        } else {
-            self.players.iter().all(|x| x.is_paused().is_some_and(|x| x))
+    pub fn all_paused(&self) -> Option<bool> {
+        let mut relevant = false;
+        for player in &self.players {
+            match player.is_paused() {
+                Some(true) => {
+                    relevant = true;
+                }
+                Some(false) => {
+                    return Some(false);
+                }
+                None => {}
+            }
         }
+
+        relevant.then_some(true)
     }
 
-    pub fn all_muted(&self) -> bool {
-        if self.is_empty() {
-            false
-        } else {
-            self.players.iter().all(|x| x.is_muted().is_some_and(|x| x))
+    pub fn all_muted(&self) -> Option<bool> {
+        let mut relevant = false;
+        for player in &self.players {
+            match player.is_muted() {
+                Some(true) => {
+                    relevant = true;
+                }
+                Some(false) => {
+                    return Some(false);
+                }
+                None => {}
+            }
         }
+
+        relevant.then_some(true)
     }
 
     pub fn sources(&self) -> &[media::Source] {
@@ -375,8 +393,61 @@ impl Grid {
     }
 
     pub fn controls(&self, grid_id: Id, obscured: bool, has_siblings: bool) -> Element<'_> {
+        let show_player_controls = has_siblings && !self.is_idle();
+
         Row::new()
             .align_y(alignment::Vertical::Center)
+            .push_maybe(self.all_muted().filter(|_| show_player_controls).map(|all_muted| {
+                button::mini_icon(if all_muted { Icon::Mute } else { Icon::VolumeHigh })
+                    .on_press(Message::Pane {
+                        event: PaneEvent::SetMute {
+                            grid_id,
+                            muted: !all_muted,
+                        },
+                    })
+                    .obscured(obscured)
+                    .tooltip_below(if all_muted {
+                        lang::action::unmute()
+                    } else {
+                        lang::action::mute()
+                    })
+            }))
+            .push_maybe(self.all_paused().filter(|_| show_player_controls).map(|all_paused| {
+                button::mini_icon(if all_paused { Icon::Play } else { Icon::Pause })
+                    .on_press(Message::Pane {
+                        event: PaneEvent::SetPause {
+                            grid_id,
+                            paused: !all_paused,
+                        },
+                    })
+                    .obscured(obscured)
+                    .tooltip_below(if all_paused {
+                        lang::action::play()
+                    } else {
+                        lang::action::pause()
+                    })
+            }))
+            .push_maybe(show_player_controls.then(|| {
+                button::mini_icon(Icon::Refresh)
+                    .on_press(Message::Pane {
+                        event: PaneEvent::Refresh { grid_id },
+                    })
+                    .obscured(obscured)
+                    .tooltip_below(lang::action::shuffle_media())
+            }))
+            .push_maybe(show_player_controls.then(|| {
+                button::mini_icon(Icon::TimerRefresh)
+                    .on_press(Message::Pane {
+                        event: PaneEvent::SeekRandom { grid_id },
+                    })
+                    .obscured(obscured)
+                    .tooltip_below(lang::action::jump_position())
+            }))
+            .push_maybe(show_player_controls.then(|| {
+                Container::new(vertical_rule(2))
+                    .height(10)
+                    .padding(padding::left(5).right(5))
+            }))
             .push(
                 button::mini_icon(Icon::SplitVertical)
                     .on_press(Message::Pane {

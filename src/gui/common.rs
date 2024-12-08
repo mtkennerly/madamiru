@@ -254,4 +254,8 @@ pub enum PaneEvent {
     ShowSources { grid_id: grid::Id },
     ShowControls { grid_id: grid::Id },
     CloseControls,
+    SetMute { grid_id: grid::Id, muted: bool },
+    SetPause { grid_id: grid::Id, paused: bool },
+    SeekRandom { grid_id: grid::Id },
+    Refresh { grid_id: grid::Id },
 }

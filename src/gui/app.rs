@@ -203,12 +203,38 @@ impl App {
         self.grids.iter().all(|(_id, grid)| grid.is_idle())
     }
 
-    fn all_paused(&self) -> bool {
-        self.grids.iter().all(|(_id, grid)| grid.all_paused())
+    fn all_paused(&self) -> Option<bool> {
+        let mut relevant = false;
+        for (_grid_id, grid) in self.grids.iter() {
+            match grid.all_paused() {
+                Some(true) => {
+                    relevant = true;
+                }
+                Some(false) => {
+                    return Some(false);
+                }
+                None => {}
+            }
+        }
+
+        relevant.then_some(true)
     }
 
-    fn all_muted(&self) -> bool {
-        self.grids.iter().all(|(_id, grid)| grid.all_muted())
+    fn all_muted(&self) -> Option<bool> {
+        let mut relevant = false;
+        for (_grid_id, grid) in self.grids.iter() {
+            match grid.all_muted() {
+                Some(true) => {
+                    relevant = true;
+                }
+                Some(false) => {
+                    return Some(false);
+                }
+                None => {}
+            }
+        }
+
+        relevant.then_some(true)
     }
 
     fn all_sources(&self) -> Vec<media::Source> {
@@ -514,11 +540,15 @@ impl App {
 
                     match update {
                         grid::Update::PauseChanged { .. } => {
-                            self.config.playback.paused = self.all_paused();
+                            if let Some(paused) = self.all_paused() {
+                                self.config.playback.paused = paused;
+                            }
                             self.save_config();
                         }
                         grid::Update::MuteChanged { .. } => {
-                            self.config.playback.muted = self.all_muted();
+                            if let Some(muted) = self.all_muted() {
+                                self.config.playback.muted = muted;
+                            }
                             self.save_config();
                         }
                         grid::Update::PlayerClosed => {
@@ -675,6 +705,44 @@ impl App {
                     PaneEvent::CloseControls => {
                         self.viewing_pane_controls = None;
                     }
+                    PaneEvent::SetMute { grid_id, muted } => {
+                        if let Some(grid) = self.grids.get_mut(grid_id) {
+                            grid.update_all_players(
+                                player::Event::SetMute(muted),
+                                &mut self.media,
+                                &self.config.playback,
+                            );
+
+                            if let Some(muted) = self.all_muted() {
+                                self.config.playback.muted = muted;
+                            }
+                            self.save_config();
+                        }
+                    }
+                    PaneEvent::SetPause { grid_id, paused } => {
+                        if let Some(grid) = self.grids.get_mut(grid_id) {
+                            grid.update_all_players(
+                                player::Event::SetPause(paused),
+                                &mut self.media,
+                                &self.config.playback,
+                            );
+
+                            if let Some(paused) = self.all_paused() {
+                                self.config.playback.paused = paused;
+                            }
+                            self.save_config();
+                        }
+                    }
+                    PaneEvent::SeekRandom { grid_id } => {
+                        if let Some(grid) = self.grids.get_mut(grid_id) {
+                            grid.update_all_players(player::Event::SeekRandom, &mut self.media, &self.config.playback);
+                        }
+                    }
+                    PaneEvent::Refresh { grid_id } => {
+                        if let Some(grid) = self.grids.get_mut(grid_id) {
+                            grid.update_all_players(player::Event::Refresh, &mut self.media, &self.config.playback);
+                        }
+                    }
                 }
                 Task::none()
             }
@@ -749,7 +817,6 @@ impl App {
                                                         Icon::VolumeHigh
                                                     })
                                                     .on_press(Message::SetMute(!self.config.playback.muted))
-                                                    .enabled(!self.all_idle())
                                                     .obscured(obscured)
                                                     .tooltip_below(if self.config.playback.muted {
                                                         lang::action::unmute()
@@ -764,7 +831,6 @@ impl App {
                                                         Icon::Pause
                                                     })
                                                     .on_press(Message::SetPause(!self.config.playback.paused))
-                                                    .enabled(!self.all_idle())
                                                     .obscured(obscured)
                                                     .tooltip_below(if self.config.playback.paused {
                                                         lang::action::play()

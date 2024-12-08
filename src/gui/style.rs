@@ -1,6 +1,6 @@
 use iced::{
     border::Radius,
-    widget::{button, checkbox, container, pane_grid, pick_list, scrollable, slider, svg, text_input},
+    widget::{button, checkbox, container, pane_grid, pick_list, rule, scrollable, slider, svg, text_input},
     Background, Border, Color, Shadow, Vector,
 };
 
@@ -558,6 +558,25 @@ impl pane_grid::Catalog for Theme {
                 color: self.disabled.alpha(0.8),
                 width: 2.0,
             },
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Rule;
+impl rule::Catalog for Theme {
+    type Class<'a> = Rule;
+
+    fn default<'a>() -> Self::Class<'a> {
+        Default::default()
+    }
+
+    fn style(&self, _class: &Self::Class<'_>) -> rule::Style {
+        rule::Style {
+            color: self.disabled,
+            width: 1,
+            radius: 0.0.into(),
+            fill_mode: rule::FillMode::Full,
         }
     }
 }
