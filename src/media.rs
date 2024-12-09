@@ -182,6 +182,10 @@ impl Collection {
     }
 
     pub fn is_outdated(&self, media: &Media, sources: &[Source]) -> bool {
+        if sources.is_empty() {
+            return true;
+        }
+
         sources
             .iter()
             .filter_map(|source| self.media.get(source))

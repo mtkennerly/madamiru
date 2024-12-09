@@ -104,6 +104,10 @@ impl Grid {
 
     pub fn remove(&mut self, id: player::Id) {
         self.players.remove(id.0);
+
+        if self.players.is_empty() {
+            self.players.push(Player::Idle);
+        }
     }
 
     pub fn all_paused(&self) -> Option<bool> {
@@ -226,7 +230,7 @@ impl Grid {
         }
 
         for id in remove.into_iter().rev() {
-            self.players.remove(id.0);
+            self.remove(id);
         }
     }
 
@@ -328,9 +332,6 @@ impl Grid {
                                 None => {
                                     if failed {
                                         self.remove(player_id);
-                                        if self.players.is_empty() {
-                                            self.players.push(Player::Idle);
-                                        }
                                         return Some(Update::PlayerClosed);
                                     } else {
                                         player.restart();
@@ -342,9 +343,6 @@ impl Grid {
                         }
                         player::Update::Close { .. } => {
                             self.remove(player_id);
-                            if self.players.is_empty() {
-                                self.players.push(Player::Idle);
-                            }
                             Some(Update::PlayerClosed)
                         }
                     },

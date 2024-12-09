@@ -252,10 +252,6 @@ impl App {
     }
 
     fn find_media(sources: Vec<media::Source>, context: media::RefreshContext) -> Task<Message> {
-        if sources.is_empty() {
-            return Task::none();
-        }
-
         Task::future(async move {
             match tokio::task::spawn_blocking(move || media::Collection::find(&sources)).await {
                 Ok(media) => {
