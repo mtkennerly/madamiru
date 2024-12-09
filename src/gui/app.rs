@@ -145,10 +145,11 @@ impl App {
             }))
         }
 
-        let (grids, grid_id) = pane_grid::State::new(Grid::new(&sources));
+        let grid_settings = grid::Settings::default().with_sources(sources.clone());
+        let (grids, grid_id) = pane_grid::State::new(Grid::new(&grid_settings));
 
         if sources.is_empty() {
-            modals.push(Modal::new_sources(grid_id, sources.clone()));
+            modals.push(Modal::new_grid_settings(grid_id, grid_settings));
         } else {
             commands.push(Self::find_media(sources, media::RefreshContext::Launch))
         }
@@ -489,6 +490,7 @@ impl App {
                             }
                         }
                         UndoSubject::Source { .. } => {}
+                        UndoSubject::OrientationLimit => {}
                     }
                 }
 
@@ -553,7 +555,7 @@ impl App {
                         }
                         grid::Update::PlayerClosed => {
                             if grid.is_idle() {
-                                self.show_modal(Modal::new_sources(grid_id, grid.sources().to_vec()));
+                                self.show_modal(Modal::new_grid_settings(grid_id, grid.settings()));
                             }
                         }
                     }
@@ -570,10 +572,11 @@ impl App {
                 if let Some(modal) = self.modals.last_mut() {
                     if let Some(update) = modal.update(event) {
                         match update {
-                            modal::Update::SavedSources { grid_id, sources } => {
+                            modal::Update::SavedGridSettings { grid_id, settings } => {
                                 self.modals.pop();
+                                let sources = settings.sources.clone();
                                 if let Some(grid) = self.grid_mut(grid_id) {
-                                    grid.set_sources(sources.clone());
+                                    grid.set_settings(settings);
                                 }
                                 return Self::find_media(sources, media::RefreshContext::Edit);
                             }
@@ -598,9 +601,11 @@ impl App {
                 Task::none()
             }
             Message::FileDragDrop(path) => match self.modals.last_mut() {
-                Some(Modal::Sources { sources, histories, .. }) => {
-                    histories.push(TextHistory::path(&path));
-                    sources.push(media::Source::new_path(path));
+                Some(Modal::GridSettings {
+                    settings, histories, ..
+                }) => {
+                    histories.sources.push(TextHistory::path(&path));
+                    settings.sources.push(media::Source::new_path(path));
                     modal::scroll_down()
                 }
                 Some(_) => Task::none(),
@@ -608,10 +613,9 @@ impl App {
                     if self.grids.len() == 1 {
                         let (grid_id, grid) = self.grids.iter().last().unwrap();
 
-                        let mut sources = grid.sources().to_vec();
-                        sources.push(media::Source::new_path(path));
+                        let settings = grid.settings().with_source(media::Source::new_path(path));
 
-                        self.show_modal(Modal::new_sources(*grid_id, sources));
+                        self.show_modal(Modal::new_grid_settings(*grid_id, settings));
                         modal::scroll_down()
                     } else {
                         self.dragged_file = Some(path);
@@ -628,10 +632,9 @@ impl App {
                     return Task::none();
                 };
 
-                let mut sources = grid.sources().to_vec();
-                sources.push(media::Source::new_path(path));
+                let settings = grid.settings().with_source(media::Source::new_path(path));
 
-                self.show_modal(Modal::new_sources(grid_id, sources));
+                self.show_modal(Modal::new_grid_settings(grid_id, settings));
                 modal::scroll_down()
             }
             Message::WindowFocused => {
@@ -664,9 +667,9 @@ impl App {
                         self.grids.resize(event.split, event.ratio);
                     }
                     PaneEvent::Split { grid_id, axis } => {
-                        let sources = vec![];
-                        if let Some((grid_id, _split)) = self.grids.split(axis, grid_id, Grid::new(&sources)) {
-                            self.show_modal(Modal::new_sources(grid_id, sources));
+                        let settings = grid::Settings::default();
+                        if let Some((grid_id, _split)) = self.grids.split(axis, grid_id, Grid::new(&settings)) {
+                            self.show_modal(Modal::new_grid_settings(grid_id, settings));
                         }
                     }
                     PaneEvent::Close { grid_id } => {
@@ -688,12 +691,10 @@ impl App {
                             },
                         }
                     }
-                    PaneEvent::ShowSources { grid_id } => {
-                        let sources = self
-                            .grid(grid_id)
-                            .map(|grid| grid.sources().to_vec())
-                            .unwrap_or_default();
-                        self.show_modal(Modal::new_sources(grid_id, sources));
+                    PaneEvent::ShowSettings { grid_id } => {
+                        if let Some(grid) = self.grid(grid_id) {
+                            self.show_modal(Modal::new_grid_settings(grid_id, grid.settings()));
+                        }
                     }
                     PaneEvent::ShowControls { grid_id } => {
                         if self.viewing_pane_controls.is_some_and(|x| x == grid_id) {

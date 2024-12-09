@@ -2,11 +2,15 @@ thing-application = Application
 thing-error = Error
 thing-glob = Glob
 thing-image = Image
+thing-items-per-line = Items per line
 thing-key-shift = Shift
 thing-language = Language
+thing-layout = Layout
 thing-max-initial-media = Max initial media
+thing-orientation = Orientation
 thing-path = Path
 thing-settings = Settings
+thing-sources = Sources
 thing-theme = Theme
 thing-theme-dark = Dark
 thing-theme-light = Light
@@ -33,6 +37,9 @@ action-split-horizontally = Split horizontally
 action-split-vertically = Split vertically
 action-unmute = Unmute
 action-view-releases = View releases
+
+state-horizontal = Horizontal
+state-vertical = Vertical
 
 tell-config-is-invalid = The config file is invalid.
 tell-player-will-loop = Player will loop

@@ -116,6 +116,7 @@ pub enum Button {
     #[default]
     Primary,
     Negative,
+    Bare,
     Icon,
 }
 impl button::Catalog for Theme {
@@ -130,7 +131,7 @@ impl button::Catalog for Theme {
             background: match class {
                 Button::Primary => Some(self.positive.into()),
                 Button::Negative => Some(self.negative.into()),
-                Button::Icon => None,
+                Button::Bare | Button::Icon => None,
             },
             border: Border {
                 color: Color::TRANSPARENT,
@@ -138,7 +139,7 @@ impl button::Catalog for Theme {
                 radius: 10.0.into(),
             },
             text_color: match class {
-                Button::Icon => self.text,
+                Button::Bare | Button::Icon => self.text,
                 _ => self.text_button,
             },
             shadow: Shadow {
@@ -153,11 +154,11 @@ impl button::Catalog for Theme {
                 background: match class {
                     Button::Primary => Some(self.positive.alpha(0.8).into()),
                     Button::Negative => Some(self.negative.alpha(0.8).into()),
-                    Button::Icon => Some(self.text.alpha(0.2).into()),
+                    Button::Bare | Button::Icon => Some(self.text.alpha(0.2).into()),
                 },
                 border: active.border,
                 text_color: match class {
-                    Button::Icon => self.text.alpha(0.9),
+                    Button::Bare | Button::Icon => self.text.alpha(0.9),
                     _ => self.text_button.alpha(0.9),
                 },
                 shadow: Shadow {

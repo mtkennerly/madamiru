@@ -1,10 +1,10 @@
-use std::sync::LazyLock;
+use std::{num::NonZeroUsize, sync::LazyLock};
 
 use iced::{
     alignment,
     keyboard::Modifiers,
     padding,
-    widget::{mouse_area, opaque, scrollable},
+    widget::{horizontal_rule, mouse_area, opaque, scrollable},
     Alignment, Length, Task,
 };
 use itertools::Itertools;
@@ -40,13 +40,17 @@ pub fn scroll_down() -> Task<Message> {
 pub enum Event {
     EditedSource { action: EditAction },
     EditedSourceKind { index: usize, kind: media::SourceKind },
+    SelectedGridTab { tab: GridTab },
+    EditedGridOrientation { orientation: config::Orientation },
+    EditedGridOrientationLimitKind { fixed: bool },
+    EditedGridOrientationLimit { raw_limit: String },
     Save,
 }
 
 pub enum Update {
-    SavedSources {
+    SavedGridSettings {
         grid_id: grid::Id,
-        sources: Vec<media::Source>,
+        settings: grid::Settings,
     },
     Task(Task<Message>),
 }
@@ -57,13 +61,14 @@ pub enum ModalVariant {
     Editor,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum Modal {
     Settings,
-    Sources {
+    GridSettings {
         grid_id: grid::Id,
-        sources: Vec<media::Source>,
-        histories: Vec<TextHistory>,
+        tab: GridTab,
+        settings: grid::Settings,
+        histories: GridHistories,
     },
     Error {
         variant: Error,
@@ -77,21 +82,28 @@ pub enum Modal {
 }
 
 impl Modal {
-    pub fn new_sources(grid_id: grid::Id, mut sources: Vec<media::Source>) -> Self {
-        let mut histories = vec![];
+    pub fn new_grid_settings(grid_id: grid::Id, mut settings: grid::Settings) -> Self {
+        let mut histories = GridHistories::default();
 
-        if sources.is_empty() {
-            sources.push(media::Source::default());
-            histories.push(TextHistory::default())
+        if settings.sources.is_empty() {
+            settings.sources.push(media::Source::default());
+            histories.sources.push(TextHistory::default())
         } else {
-            for source in &sources {
-                histories.push(TextHistory::raw(source.raw()));
+            for source in &settings.sources {
+                histories.sources.push(TextHistory::raw(source.raw()));
             }
         }
 
-        Self::Sources {
+        let raw_limit = match settings.orientation_limit {
+            config::OrientationLimit::Automatic => config::OrientationLimit::DEFAULT_FIXED.to_string(),
+            config::OrientationLimit::Fixed(limit) => limit.to_string(),
+        };
+        histories.orientation_limit.push(&raw_limit);
+
+        Self::GridSettings {
             grid_id,
-            sources,
+            tab: GridTab::default(),
+            settings,
             histories,
         }
     }
@@ -99,15 +111,21 @@ impl Modal {
     pub fn variant(&self) -> ModalVariant {
         match self {
             Self::Error { .. } | Self::Errors { .. } => ModalVariant::Info,
-            Self::Sources { .. } | Self::AppUpdate { .. } => ModalVariant::Confirm,
+            Self::GridSettings { .. } | Self::AppUpdate { .. } => ModalVariant::Confirm,
             Self::Settings => ModalVariant::Editor,
         }
     }
 
-    pub fn title(&self, _config: &Config) -> Option<String> {
+    pub fn title(&self, _config: &Config) -> Option<Element> {
         match self {
             Self::Settings => None,
-            Self::Sources { .. } => Some(lang::action::configure_media_sources()),
+            Self::GridSettings { tab, .. } => Some(
+                Row::new()
+                    .spacing(20)
+                    .push(GridTab::Sources.view(*tab))
+                    .push(GridTab::Layout.view(*tab))
+                    .into(),
+            ),
             Self::Error { .. } => None,
             Self::Errors { .. } => None,
             Self::AppUpdate { .. } => None,
@@ -117,7 +135,7 @@ impl Modal {
     pub fn message(&self) -> Option<Message> {
         match self {
             Self::Settings => Some(Message::CloseModal),
-            Self::Sources { .. } => Some(Message::Modal { event: Event::Save }),
+            Self::GridSettings { .. } => Some(Message::Modal { event: Event::Save }),
             Self::Error { .. } => Some(Message::CloseModal),
             Self::Errors { .. } => Some(Message::CloseModal),
             Self::AppUpdate { release } => Some(Message::OpenUrlAndCloseModal(release.url.clone())),
@@ -205,8 +223,13 @@ impl Modal {
                         .class(style::Container::Player),
                     );
             }
-            Self::Sources { sources, .. } => {
-                for (index, source) in sources.iter().enumerate() {
+            Self::GridSettings {
+                tab: GridTab::Sources,
+                settings,
+                histories,
+                ..
+            } => {
+                for (index, source) in settings.sources.iter().enumerate() {
                     col = col.push(
                         Row::new()
                             .spacing(20)
@@ -226,7 +249,7 @@ impl Modal {
                                             event: Event::EditedSource { action },
                                         },
                                         index,
-                                        sources.len(),
+                                        settings.sources.len(),
                                     ))
                                     .push(pick_list(media::SourceKind::ALL, Some(source.kind()), move |kind| {
                                         Message::Modal {
@@ -234,7 +257,7 @@ impl Modal {
                                         }
                                     })),
                             )
-                            .push(UndoSubject::Source { index }.view(sources[index].raw()))
+                            .push(UndoSubject::Source { index }.view(&histories.sources[index].current()))
                             .push(match source {
                                 media::Source::Path { path } => Row::new()
                                     .spacing(10)
@@ -256,7 +279,7 @@ impl Modal {
                                                     action: EditAction::Remove(index),
                                                 },
                                             })
-                                            .enabled(sources.len() > 1),
+                                            .enabled(settings.sources.len() > 1),
                                     ),
                                 media::Source::Glob { .. } => {
                                     Row::new().spacing(10).align_y(alignment::Vertical::Center).push(
@@ -266,7 +289,7 @@ impl Modal {
                                                     action: EditAction::Remove(index),
                                                 },
                                             })
-                                            .enabled(sources.len() > 1),
+                                            .enabled(settings.sources.len() > 1),
                                     )
                                 }
                             }),
@@ -278,6 +301,40 @@ impl Modal {
                         action: EditAction::Add,
                     },
                 }));
+            }
+            Self::GridSettings {
+                tab: GridTab::Layout,
+                settings,
+                histories,
+                ..
+            } => {
+                col = col
+                    .push(
+                        Row::new()
+                            .align_y(Alignment::Center)
+                            .spacing(20)
+                            .push(text(lang::field(&lang::thing::orientation())))
+                            .push(pick_list(
+                                config::Orientation::ALL,
+                                Some(settings.orientation),
+                                |orientation| Message::Modal {
+                                    event: Event::EditedGridOrientation { orientation },
+                                },
+                            )),
+                    )
+                    .push(
+                        Row::new()
+                            .align_y(Alignment::Center)
+                            .spacing(20)
+                            .push(checkbox(
+                                lang::thing::items_per_line(),
+                                settings.orientation_limit.is_fixed(),
+                                |fixed| Message::Modal {
+                                    event: Event::EditedGridOrientationLimitKind { fixed },
+                                },
+                            ))
+                            .push(UndoSubject::OrientationLimit.view(&histories.orientation_limit.current())),
+                    );
             }
             Self::Error { variant } => {
                 col = col.push(text(lang::handle_error(variant)));
@@ -312,7 +369,7 @@ impl Modal {
             ModalVariant::Confirm => Row::new().push(positive_button).push(negative_button),
         };
 
-        row.spacing(20).into()
+        row.spacing(20).padding([0, 30]).into()
     }
 
     fn content(
@@ -327,7 +384,7 @@ impl Modal {
                 .spacing(30)
                 .padding(padding::top(30).bottom(30))
                 .align_x(Alignment::Center)
-                .push_maybe(self.title(config).map(text))
+                .push_maybe(self.title(config))
                 .push_maybe(self.body(config, histories, modifiers).map(|body| {
                     Container::new(Scrollable::new(body.padding([0, 30])).id((*SCROLLABLE).clone()))
                         .padding(padding::right(5))
@@ -341,11 +398,19 @@ impl Modal {
     pub fn apply_shortcut(&mut self, subject: UndoSubject, shortcut: Shortcut) -> bool {
         match self {
             Self::Settings | Self::Error { .. } | Self::Errors { .. } | Self::AppUpdate { .. } => false,
-            Self::Sources { sources, histories, .. } => match subject {
+            Self::GridSettings {
+                settings, histories, ..
+            } => match subject {
                 UndoSubject::MaxInitialMedia => false,
                 UndoSubject::ImageDuration => false,
                 UndoSubject::Source { index } => {
-                    sources[index].reset(histories[index].apply(shortcut));
+                    settings.sources[index].reset(histories.sources[index].apply(shortcut));
+                    true
+                }
+                UndoSubject::OrientationLimit => {
+                    if let Ok(value) = histories.orientation_limit.apply(shortcut).parse::<NonZeroUsize>() {
+                        settings.orientation_limit = config::OrientationLimit::Fixed(value);
+                    }
                     true
                 }
             },
@@ -356,49 +421,80 @@ impl Modal {
     pub fn update(&mut self, event: Event) -> Option<Update> {
         match self {
             Self::Settings | Self::Error { .. } | Self::Errors { .. } | Self::AppUpdate { .. } => None,
-            Self::Sources {
+            Self::GridSettings {
                 grid_id,
-                sources,
+                tab,
+                settings,
                 histories,
             } => match event {
                 Event::EditedSource { action } => {
                     match action {
                         EditAction::Add => {
                             let value = StrictPath::default();
-                            histories.push(TextHistory::path(&value));
-                            sources.push(media::Source::new_path(value));
+                            histories.sources.push(TextHistory::path(&value));
+                            settings.sources.push(media::Source::new_path(value));
                             return Some(Update::Task(scroll_down()));
                         }
                         EditAction::Change(index, value) => {
-                            histories[index].push(&value);
-                            sources[index].reset(value);
+                            histories.sources[index].push(&value);
+                            settings.sources[index].reset(value);
                         }
                         EditAction::Remove(index) => {
-                            histories.remove(index);
-                            sources.remove(index);
+                            histories.sources.remove(index);
+                            settings.sources.remove(index);
                         }
                         EditAction::Move(index, direction) => {
                             let offset = direction.shift(index);
-                            histories.swap(index, offset);
-                            sources.swap(index, offset);
+                            histories.sources.swap(index, offset);
+                            settings.sources.swap(index, offset);
                         }
                     }
                     None
                 }
                 Event::EditedSourceKind { index, kind } => {
-                    sources[index].set_kind(kind);
+                    settings.sources[index].set_kind(kind);
+                    None
+                }
+                Event::SelectedGridTab { tab: new_tab } => {
+                    *tab = new_tab;
+                    None
+                }
+                Event::EditedGridOrientation { orientation } => {
+                    settings.orientation = orientation;
+                    None
+                }
+                Event::EditedGridOrientationLimitKind { fixed } => {
+                    if fixed {
+                        let limit = histories
+                            .orientation_limit
+                            .current()
+                            .parse::<NonZeroUsize>()
+                            .unwrap_or(config::OrientationLimit::DEFAULT_FIXED);
+                        settings.orientation_limit = config::OrientationLimit::Fixed(limit);
+                    } else {
+                        settings.orientation_limit = config::OrientationLimit::Automatic;
+                    }
+                    None
+                }
+                Event::EditedGridOrientationLimit { raw_limit } => {
+                    histories.orientation_limit.push(&raw_limit);
+                    if settings.orientation_limit.is_fixed() {
+                        if let Ok(limit) = raw_limit.parse::<NonZeroUsize>() {
+                            settings.orientation_limit = config::OrientationLimit::Fixed(limit);
+                        }
+                    }
                     None
                 }
                 Event::Save => {
-                    for index in (0..sources.len()).rev() {
-                        if sources[index].is_empty() {
-                            sources.remove(index);
+                    for index in (0..settings.sources.len()).rev() {
+                        if settings.sources[index].is_empty() {
+                            settings.sources.remove(index);
                         }
                     }
 
-                    Some(Update::SavedSources {
+                    Some(Update::SavedGridSettings {
                         grid_id: *grid_id,
-                        sources: sources.clone(),
+                        settings: settings.clone(),
                     })
                 }
             },
@@ -433,4 +529,36 @@ impl Modal {
             )
             .into()
     }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum GridTab {
+    #[default]
+    Sources,
+    Layout,
+}
+
+impl GridTab {
+    fn view(&self, selected: Self) -> Element {
+        let label = match self {
+            GridTab::Sources => lang::thing::sources(),
+            GridTab::Layout => lang::thing::layout(),
+        };
+
+        Column::new()
+            .width(80)
+            .spacing(2)
+            .align_x(alignment::Horizontal::Center)
+            .push(button::bare(label).on_press(Message::Modal {
+                event: Event::SelectedGridTab { tab: *self },
+            }))
+            .push_maybe((*self == selected).then_some(horizontal_rule(2)))
+            .into()
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct GridHistories {
+    pub sources: Vec<TextHistory>,
+    pub orientation_limit: TextHistory,
 }

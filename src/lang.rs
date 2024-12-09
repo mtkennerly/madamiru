@@ -191,12 +191,24 @@ pub mod thing {
         translate("thing-image")
     }
 
+    pub fn items_per_line() -> String {
+        translate("thing-items-per-line")
+    }
+
     pub fn language() -> String {
         translate("thing-language")
     }
 
+    pub fn layout() -> String {
+        translate("thing-layout")
+    }
+
     pub fn max_initial_media() -> String {
         translate("thing-max-initial-media")
+    }
+
+    pub fn orientation() -> String {
+        translate("thing-orientation")
     }
 
     pub fn path() -> String {
@@ -205,6 +217,10 @@ pub mod thing {
 
     pub fn settings() -> String {
         translate("thing-settings")
+    }
+
+    pub fn sources() -> String {
+        translate("thing-sources")
     }
 
     pub fn theme() -> String {
@@ -309,6 +325,18 @@ pub mod action {
 
     pub fn view_releases() -> String {
         translate("action-view-releases")
+    }
+}
+
+pub mod state {
+    use super::*;
+
+    pub fn horizontal() -> String {
+        translate("state-horizontal")
+    }
+
+    pub fn vertical() -> String {
+        translate("state-vertical")
     }
 }
 

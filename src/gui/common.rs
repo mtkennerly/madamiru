@@ -17,6 +17,14 @@ use crate::{
     resource::config,
 };
 
+const ERROR_ICON: text_input::Icon<iced::Font> = text_input::Icon {
+    font: crate::gui::font::ICONS,
+    code_point: crate::gui::icon::Icon::Error.as_char(),
+    size: None,
+    spacing: 5.0,
+    side: text_input::Side::Right,
+};
+
 #[derive(Clone, Debug, Default)]
 pub struct Flags {
     pub sources: Vec<media::Source>,
@@ -158,6 +166,7 @@ pub enum UndoSubject {
     MaxInitialMedia,
     ImageDuration,
     Source { index: usize },
+    OrientationLimit,
 }
 
 impl UndoSubject {
@@ -166,6 +175,7 @@ impl UndoSubject {
             Self::MaxInitialMedia => self.view(&histories.max_initial_media.current()),
             Self::ImageDuration => self.view(&histories.image_duration.current()),
             Self::Source { .. } => self.view(""),
+            Self::OrientationLimit { .. } => self.view(""),
         }
     }
 
@@ -182,47 +192,30 @@ impl UndoSubject {
                     action: EditAction::Change(index, value),
                 },
             }),
+            UndoSubject::OrientationLimit => Box::new(move |value| Message::Modal {
+                event: modal::Event::EditedGridOrientationLimit { raw_limit: value },
+            }),
         };
 
-        let placeholder = match self {
-            UndoSubject::MaxInitialMedia => "".to_string(),
-            UndoSubject::ImageDuration => "".to_string(),
-            UndoSubject::Source { .. } => "".to_string(),
-        };
+        let placeholder = "";
 
         let icon = match self {
-            UndoSubject::MaxInitialMedia => (current.parse::<NonZeroUsize>().is_err()).then_some(text_input::Icon {
-                font: crate::gui::font::ICONS,
-                code_point: crate::gui::icon::Icon::Error.as_char(),
-                size: None,
-                spacing: 5.0,
-                side: text_input::Side::Right,
-            }),
-            UndoSubject::ImageDuration => (current.parse::<NonZeroUsize>().is_err()).then_some(text_input::Icon {
-                font: crate::gui::font::ICONS,
-                code_point: crate::gui::icon::Icon::Error.as_char(),
-                size: None,
-                spacing: 5.0,
-                side: text_input::Side::Right,
-            }),
-            UndoSubject::Source { .. } => (!path_appears_valid(current)).then_some(text_input::Icon {
-                font: crate::gui::font::ICONS,
-                code_point: crate::gui::icon::Icon::Error.as_char(),
-                size: None,
-                spacing: 5.0,
-                side: text_input::Side::Right,
-            }),
+            UndoSubject::MaxInitialMedia => (current.parse::<NonZeroUsize>().is_err()).then_some(ERROR_ICON),
+            UndoSubject::ImageDuration => (current.parse::<NonZeroUsize>().is_err()).then_some(ERROR_ICON),
+            UndoSubject::Source { .. } => (!path_appears_valid(current)).then_some(ERROR_ICON),
+            UndoSubject::OrientationLimit => (current.parse::<NonZeroUsize>().is_err()).then_some(ERROR_ICON),
         };
 
         let width = match self {
             UndoSubject::MaxInitialMedia => Length::Fixed(80.0),
             UndoSubject::ImageDuration => Length::Fixed(80.0),
             UndoSubject::Source { .. } => Length::Fill,
+            UndoSubject::OrientationLimit => Length::Fixed(80.0),
         };
 
         Undoable::new(
             {
-                let mut input = TextInput::new(&placeholder, current)
+                let mut input = TextInput::new(placeholder, current)
                     .on_input(event)
                     .class(style::TextInput)
                     .padding(5)
@@ -251,7 +244,7 @@ pub enum PaneEvent {
     Split { grid_id: grid::Id, axis: pane_grid::Axis },
     Close { grid_id: grid::Id },
     AddPlayer { grid_id: grid::Id },
-    ShowSources { grid_id: grid::Id },
+    ShowSettings { grid_id: grid::Id },
     ShowControls { grid_id: grid::Id },
     CloseControls,
     SetMute { grid_id: grid::Id, muted: bool },

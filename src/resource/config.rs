@@ -115,6 +115,44 @@ impl Default for Playback {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+pub enum Orientation {
+    #[default]
+    Horizontal,
+    Vertical,
+}
+
+impl Orientation {
+    pub const ALL: &[Self] = &[Self::Horizontal, Self::Vertical];
+}
+
+impl ToString for Orientation {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Horizontal => lang::state::horizontal(),
+            Self::Vertical => lang::state::vertical(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+pub enum OrientationLimit {
+    #[default]
+    Automatic,
+    Fixed(NonZeroUsize),
+}
+
+impl OrientationLimit {
+    pub const DEFAULT_FIXED: NonZeroUsize = NonZeroUsize::new(4).unwrap();
+
+    pub fn is_fixed(&self) -> bool {
+        match self {
+            Self::Automatic => false,
+            Self::Fixed(_) => true,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;

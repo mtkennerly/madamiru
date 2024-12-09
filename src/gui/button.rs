@@ -81,6 +81,19 @@ impl<'a> From<CustomButton<'a>> for Element<'a> {
     }
 }
 
+pub fn bare<'a>(content: String) -> CustomButton<'a> {
+    CustomButton {
+        content: text(content).align_x(alignment::Horizontal::Center).into(),
+        on_press: None,
+        enabled: true,
+        class: style::Button::Bare,
+        padding: Some([0, 5].into()),
+        tooltip: None,
+        tooltip_position: tooltip::Position::Top,
+        obscured: false,
+    }
+}
+
 pub fn primary<'a>(content: String) -> CustomButton<'a> {
     CustomButton {
         content: text(content).align_x(alignment::Horizontal::Center).into(),

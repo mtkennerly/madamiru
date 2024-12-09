@@ -17,7 +17,7 @@ use crate::{
     },
     lang,
     media::{self, Media},
-    resource::config::Playback,
+    resource::config::{Orientation, OrientationLimit, Playback},
 };
 
 pub type Id = pane_grid::Pane;
@@ -46,13 +46,17 @@ pub enum Update {
 pub struct Grid {
     sources: Vec<media::Source>,
     players: Vec<Player>,
+    orientation: Orientation,
+    orientation_limit: OrientationLimit,
 }
 
 impl Grid {
-    pub fn new(sources: &[media::Source]) -> Self {
+    pub fn new(settings: &Settings) -> Self {
         Self {
-            sources: sources.to_vec(),
+            sources: settings.sources.clone(),
             players: vec![Player::Idle],
+            orientation: settings.orientation,
+            orientation_limit: settings.orientation_limit,
         }
     }
 
@@ -134,12 +138,28 @@ impl Grid {
         relevant.then_some(true)
     }
 
-    pub fn sources(&self) -> &[media::Source] {
-        &self.sources
+    pub fn settings(&self) -> Settings {
+        Settings {
+            sources: self.sources.clone(),
+            orientation: self.orientation,
+            orientation_limit: self.orientation_limit,
+        }
     }
 
-    pub fn set_sources(&mut self, sources: Vec<media::Source>) {
+    pub fn set_settings(&mut self, settings: Settings) {
+        let Settings {
+            sources,
+            orientation,
+            orientation_limit,
+        } = settings;
+
         self.sources = sources;
+        self.orientation = orientation;
+        self.orientation_limit = orientation_limit;
+    }
+
+    pub fn sources(&self) -> &[media::Source] {
+        &self.sources
     }
 
     fn active_media(&self) -> HashSet<&Media> {
@@ -356,27 +376,48 @@ impl Grid {
         let mut row = Row::new().spacing(5);
         let mut column = Column::new().spacing(5);
         let mut count = 0;
-        let limit = self.calculate_row_limit();
+        let limit = match self.orientation_limit {
+            OrientationLimit::Automatic => self.calculate_row_limit(),
+            OrientationLimit::Fixed(limit) => limit.get(),
+        };
 
         for (i, player) in self.players.iter().enumerate() {
-            row = row.push(
-                Container::new(player.view(grid_id, player::Id(i), obscured))
-                    .padding(5)
-                    .class(style::Container::Player),
-            );
+            let new = Container::new(player.view(grid_id, player::Id(i), obscured))
+                .padding(5)
+                .class(style::Container::Player);
+
+            match self.orientation {
+                Orientation::Horizontal => {
+                    row = row.push(new);
+                }
+                Orientation::Vertical => {
+                    column = column.push(new);
+                }
+            }
             count += 1;
 
             if count == limit {
                 count = 0;
-                column = column.push(row);
-                row = Row::new().spacing(5);
+                match self.orientation {
+                    Orientation::Horizontal => {
+                        column = column.push(row);
+                        row = Row::new().spacing(5);
+                    }
+                    Orientation::Vertical => {
+                        row = row.push(column);
+                        column = Column::new().spacing(5);
+                    }
+                }
             }
         }
 
-        column = column.push(row);
+        let body = match self.orientation {
+            Orientation::Horizontal => Container::new(column.push(row)),
+            Orientation::Vertical => Container::new(row.push(column)),
+        };
 
         Stack::new()
-            .push(column)
+            .push(body)
             .push_maybe(
                 dragging_file.then_some(
                     Container::new("")
@@ -483,9 +524,9 @@ impl Grid {
                     .tooltip_below(lang::action::add_player()),
             )
             .push(
-                button::mini_icon(Icon::PlaylistAdd)
+                button::mini_icon(Icon::Settings)
                     .on_press(Message::Pane {
-                        event: PaneEvent::ShowSources { grid_id },
+                        event: PaneEvent::ShowSettings { grid_id },
                     })
                     .obscured(obscured)
                     .tooltip_below(lang::action::configure_media_sources()),
@@ -500,5 +541,24 @@ impl Grid {
                     .tooltip_below(lang::action::close()),
             )
             .into()
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Settings {
+    pub sources: Vec<media::Source>,
+    pub orientation: Orientation,
+    pub orientation_limit: OrientationLimit,
+}
+
+impl Settings {
+    pub fn with_source(mut self, source: media::Source) -> Self {
+        self.sources.push(source);
+        self
+    }
+
+    pub fn with_sources(mut self, sources: Vec<media::Source>) -> Self {
+        self.sources.extend(sources);
+        self
     }
 }
