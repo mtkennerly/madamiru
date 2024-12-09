@@ -238,6 +238,24 @@ impl App {
         relevant.then_some(true)
     }
 
+    fn set_paused(&mut self, paused: bool) {
+        self.config.playback.paused = paused;
+        self.save_config();
+
+        for (_grid_id, grid) in self.grids.iter_mut() {
+            grid.update_all_players(player::Event::SetPause(paused), &mut self.media, &self.config.playback);
+        }
+    }
+
+    fn set_muted(&mut self, muted: bool) {
+        self.config.playback.muted = muted;
+        self.save_config();
+
+        for (_grid_id, grid) in self.grids.iter_mut() {
+            grid.update_all_players(player::Event::SetMute(muted), &mut self.media, &self.config.playback);
+        }
+    }
+
     fn can_jump(&self) -> bool {
         self.grids.iter().any(|(_grid_id, grid)| grid.can_jump())
     }
@@ -456,6 +474,23 @@ impl App {
                             iced::widget::focus_next()
                         }
                     }
+                    iced::keyboard::Event::KeyPressed { key, .. } => {
+                        if self.modals.is_empty() {
+                            match key {
+                                iced::keyboard::Key::Named(iced::keyboard::key::Named::Space) => {
+                                    self.set_paused(!self.config.playback.paused);
+                                }
+                                iced::keyboard::Key::Character(c) => match c.as_str() {
+                                    "M" | "m" => {
+                                        self.set_muted(!self.config.playback.muted);
+                                    }
+                                    _ => {}
+                                },
+                                _ => {}
+                            }
+                        }
+                        Task::none()
+                    }
                     _ => Task::none(),
                 }
             }
@@ -504,22 +539,11 @@ impl App {
             }
             Message::Refresh => self.refresh(),
             Message::SetPause(flag) => {
-                self.config.playback.paused = flag;
-
-                for (_grid_id, grid) in self.grids.iter_mut() {
-                    grid.update_all_players(player::Event::SetPause(flag), &mut self.media, &self.config.playback);
-                }
-
+                self.set_paused(flag);
                 Task::none()
             }
             Message::SetMute(flag) => {
-                self.config.playback.muted = flag;
-                self.save_config();
-
-                for (_grid_id, grid) in self.grids.iter_mut() {
-                    grid.update_all_players(player::Event::SetMute(flag), &mut self.media, &self.config.playback);
-                }
-
+                self.set_muted(flag);
                 Task::none()
             }
             Message::Player {
