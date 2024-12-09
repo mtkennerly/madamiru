@@ -64,6 +64,8 @@ pub enum Subcommand {
 pub enum SchemaSubcommand {
     #[clap(about = "Schema for config.yaml")]
     Config,
+    #[clap(about = "Schema for playlist.madamiru")]
+    Playlist,
 }
 
 /// Play multiple videos at once

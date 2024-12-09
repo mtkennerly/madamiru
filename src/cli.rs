@@ -7,7 +7,7 @@ use crate::{
     lang, media,
     path::StrictPath,
     prelude::Error,
-    resource::{cache::Cache, config::Config, ResourceFile},
+    resource::{cache::Cache, config::Config, playlist::Playlist, ResourceFile},
 };
 
 pub fn parse_sources(sources: Vec<StrictPath>) -> Vec<media::Source> {
@@ -71,6 +71,7 @@ pub fn run(sub: Subcommand) -> Result<(), Error> {
             let format = format.unwrap_or_default();
             let schema = match kind {
                 parse::SchemaSubcommand::Config => schemars::schema_for!(Config),
+                parse::SchemaSubcommand::Playlist => schemars::schema_for!(Playlist),
             };
 
             let serialized = match format {
