@@ -1,5 +1,6 @@
 pub mod cache;
 pub mod config;
+pub mod playlist;
 
 use crate::prelude::{app_dir, AnyError, StrictPath};
 

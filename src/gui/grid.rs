@@ -17,7 +17,10 @@ use crate::{
     },
     lang,
     media::{self, Media},
-    resource::config::{ContentFit, Orientation, OrientationLimit, Playback},
+    resource::{
+        config::Playback,
+        playlist::{ContentFit, Orientation, OrientationLimit},
+    },
 };
 
 pub type Id = pane_grid::Pane;
@@ -42,6 +45,26 @@ pub enum Update {
     PlayerClosed,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Settings {
+    pub sources: Vec<media::Source>,
+    pub content_fit: ContentFit,
+    pub orientation: Orientation,
+    pub orientation_limit: OrientationLimit,
+}
+
+impl Settings {
+    pub fn with_source(mut self, source: media::Source) -> Self {
+        self.sources.push(source);
+        self
+    }
+
+    pub fn with_sources(mut self, sources: Vec<media::Source>) -> Self {
+        self.sources.extend(sources);
+        self
+    }
+}
+
 #[derive(Default)]
 pub struct Grid {
     sources: Vec<media::Source>,
@@ -55,7 +78,17 @@ impl Grid {
     pub fn new(settings: &Settings) -> Self {
         Self {
             sources: settings.sources.clone(),
-            players: vec![Player::Idle],
+            players: vec![],
+            content_fit: settings.content_fit,
+            orientation: settings.orientation,
+            orientation_limit: settings.orientation_limit,
+        }
+    }
+
+    pub fn new_with_players(settings: &Settings, players: usize) -> Self {
+        Self {
+            sources: settings.sources.clone(),
+            players: std::iter::repeat_with(|| Player::Idle).take(players).collect(),
             content_fit: settings.content_fit,
             orientation: settings.orientation,
             orientation_limit: settings.orientation_limit,
@@ -63,7 +96,7 @@ impl Grid {
     }
 
     pub fn is_idle(&self) -> bool {
-        self.players.is_empty() || (self.players.len() == 1 && matches!(self.players[0], Player::Idle))
+        self.players.is_empty()
     }
 
     pub fn tick(&mut self, elapsed: Duration, collection: &mut media::Collection, playback: &Playback) {
@@ -104,10 +137,6 @@ impl Grid {
 
     pub fn remove(&mut self, id: player::Id) {
         self.players.remove(id.0);
-
-        if self.players.is_empty() {
-            self.players.push(Player::Idle);
-        }
     }
 
     pub fn all_paused(&self) -> Option<bool> {
@@ -179,9 +208,13 @@ impl Grid {
         self.players.iter().filter_map(|x| x.media()).collect()
     }
 
+    pub fn total_players(&self) -> usize {
+        self.players.len()
+    }
+
     pub fn refresh(&mut self, collection: &mut media::Collection, playback: &Playback) {
         let total = if self.is_idle() {
-            playback.max_initial_media.get()
+            playback.max_initial_media
         } else {
             self.players.len()
         };
@@ -202,7 +235,6 @@ impl Grid {
             }
         } else {
             self.players.clear();
-            self.players.push(Player::Idle);
         }
     }
 
@@ -211,19 +243,29 @@ impl Grid {
         let mut active: HashSet<_> = self.active_media().into_iter().cloned().collect();
 
         for (index, player) in self.players.iter_mut().enumerate() {
-            if let Some(old_media) = player.media() {
-                if collection.is_outdated(old_media, &self.sources) {
+            if player.is_error() {
+                continue;
+            }
+
+            let old_media = player.media();
+            let outdated = old_media
+                .map(|old_media| collection.is_outdated(old_media, &self.sources))
+                .unwrap_or(true);
+
+            if outdated {
+                if let Some(old_media) = old_media {
                     active.remove(old_media);
-                    match collection.one_new(&self.sources, active.iter().collect()) {
-                        Some(new_media) => {
-                            if player.swap_media(&new_media, playback).is_err() {
-                                collection.mark_error(&new_media);
-                            }
-                            active.insert(new_media);
+                }
+
+                match collection.one_new(&self.sources, active.iter().collect()) {
+                    Some(new_media) => {
+                        if player.swap_media(&new_media, playback).is_err() {
+                            collection.mark_error(&new_media);
                         }
-                        None => {
-                            remove.push(player::Id(index));
-                        }
+                        active.insert(new_media);
+                    }
+                    None => {
+                        remove.push(player::Id(index));
                     }
                 }
             }
@@ -250,6 +292,9 @@ impl Grid {
                 } else {
                     self.refresh_outdated(collection, playback);
                 }
+            }
+            media::RefreshContext::Playlist => {
+                self.refresh(collection, &playback.with_max_initial_media(self.players.len()));
             }
             media::RefreshContext::Automatic => {
                 self.refresh_outdated(collection, playback);
@@ -418,10 +463,18 @@ impl Grid {
             }
         }
 
-        let body = match self.orientation {
+        let mut body = match self.orientation {
             Orientation::Horizontal => Container::new(column.push(row)),
             Orientation::Vertical => Container::new(row.push(column)),
         };
+
+        if self.players.is_empty() {
+            body = Container::new("")
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(5)
+                .class(style::Container::Player);
+        }
 
         Stack::new()
             .push(body)
@@ -526,7 +579,7 @@ impl Grid {
                     .on_press(Message::Pane {
                         event: PaneEvent::AddPlayer { grid_id },
                     })
-                    .enabled(!self.is_idle())
+                    .enabled(!self.sources.is_empty())
                     .obscured(obscured)
                     .tooltip(lang::action::add_player()),
             )
@@ -548,25 +601,5 @@ impl Grid {
                     .tooltip(lang::action::close()),
             )
             .into()
-    }
-}
-
-#[derive(Debug, Default, Clone)]
-pub struct Settings {
-    pub sources: Vec<media::Source>,
-    pub content_fit: ContentFit,
-    pub orientation: Orientation,
-    pub orientation_limit: OrientationLimit,
-}
-
-impl Settings {
-    pub fn with_source(mut self, source: media::Source) -> Self {
-        self.sources.push(source);
-        self
-    }
-
-    pub fn with_sources(mut self, sources: Vec<media::Source>) -> Self {
-        self.sources.extend(sources);
-        self
     }
 }

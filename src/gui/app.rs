@@ -10,7 +10,7 @@ use itertools::Itertools;
 use crate::{
     gui::{
         button,
-        common::{Flags, Message, PaneEvent, UndoSubject},
+        common::{BrowseFileSubject, Flags, Message, PaneEvent, UndoSubject},
         grid::{self, Grid},
         icon::Icon,
         modal::{self, Modal},
@@ -25,6 +25,7 @@ use crate::{
     resource::{
         cache::Cache,
         config::{self, Config},
+        playlist::{self, Playlist},
         ResourceFile, SaveableResourceFile,
     },
 };
@@ -49,6 +50,8 @@ pub struct App {
     dragging_pane: bool,
     dragged_file: Option<StrictPath>,
     viewing_pane_controls: Option<grid::Id>,
+    playlist_path: Option<StrictPath>,
+    playlist_dirty: bool,
 }
 
 impl App {
@@ -126,7 +129,7 @@ impl App {
             config.playback.max_initial_media = max;
         }
 
-        let text_histories = TextHistories::new(&config, &sources);
+        let text_histories = TextHistories::new(&config);
 
         log::debug!("Config on startup: {config:?}");
 
@@ -145,14 +148,41 @@ impl App {
             }))
         }
 
-        let grid_settings = grid::Settings::default().with_sources(sources.clone());
-        let (grids, grid_id) = pane_grid::State::new(Grid::new(&grid_settings));
+        let mut playlist_dirty = false;
+        let mut playlist_path = sources.first().and_then(|source| match source {
+            media::Source::Path { path } => path
+                .file_extension()
+                .is_some_and(|ext| ext == Playlist::EXTENSION)
+                .then_some(path.clone()),
+            media::Source::Glob { .. } => None,
+        });
 
-        if sources.is_empty() {
-            modals.push(Modal::new_grid_settings(grid_id, grid_settings));
-        } else {
-            commands.push(Self::find_media(sources, media::RefreshContext::Launch))
-        }
+        let grids = match playlist_path.as_ref() {
+            Some(path) => match Playlist::load_from(path) {
+                Ok(playlist) => {
+                    commands.push(Self::find_media(playlist.sources(), media::RefreshContext::Launch));
+                    Self::load_playlist(playlist)
+                }
+                Err(e) => {
+                    playlist_path = None;
+                    errors.push(e);
+                    let (grids, _grid_id) = pane_grid::State::new(Grid::new(&grid::Settings::default()));
+                    grids
+                }
+            },
+            None => {
+                let grid_settings = grid::Settings::default().with_sources(sources.clone());
+                let (grids, grid_id) = pane_grid::State::new(Grid::new(&grid_settings));
+
+                if sources.is_empty() {
+                    modals.push(Modal::new_grid_settings(grid_id, grid_settings));
+                } else {
+                    playlist_dirty = true;
+                }
+                commands.push(Self::find_media(sources, media::RefreshContext::Launch));
+                grids
+            }
+        };
 
         if !errors.is_empty() {
             modals.push(Modal::Errors { errors });
@@ -172,25 +202,24 @@ impl App {
                 dragging_pane: false,
                 dragged_file: None,
                 viewing_pane_controls: None,
+                playlist_path,
+                playlist_dirty,
             },
             Task::batch(commands),
         )
     }
 
     pub fn title(&self) -> String {
-        lang::window_title()
+        let base = lang::window_title();
+
+        match self.playlist_path.as_ref().map(|x| x.render()) {
+            Some(playlist) => format!("{base} | {}{playlist}", if self.playlist_dirty { "*" } else { "" }),
+            None => base,
+        }
     }
 
     pub fn theme(&self) -> crate::gui::style::Theme {
         crate::gui::style::Theme::from(self.config.theme)
-    }
-
-    fn grid(&self, id: grid::Id) -> Option<&Grid> {
-        self.grids.get(id)
-    }
-
-    fn grid_mut(&mut self, id: grid::Id) -> Option<&mut Grid> {
-        self.grids.get_mut(id)
     }
 
     fn refresh(&mut self) -> Task<Message> {
@@ -284,10 +313,96 @@ impl App {
         })
     }
 
+    fn build_playlist(&self) -> Playlist {
+        Playlist::new(Self::build_playlist_layout(&self.grids, self.grids.layout()))
+    }
+
+    fn build_playlist_layout(panes: &pane_grid::State<Grid>, node: &pane_grid::Node) -> playlist::Layout {
+        match node {
+            pane_grid::Node::Split {
+                axis,
+                ratio,
+                a: first,
+                b: second,
+                ..
+            } => playlist::Layout::Split(playlist::Split {
+                axis: match axis {
+                    pane_grid::Axis::Horizontal => playlist::SplitAxis::Horizontal,
+                    pane_grid::Axis::Vertical => playlist::SplitAxis::Vertical,
+                },
+                ratio: *ratio,
+                first: Box::new(Self::build_playlist_layout(panes, first)),
+                second: Box::new(Self::build_playlist_layout(panes, second)),
+            }),
+            pane_grid::Node::Pane(pane) => match panes.get(*pane) {
+                Some(grid) => {
+                    let grid::Settings {
+                        sources,
+                        content_fit,
+                        orientation,
+                        orientation_limit,
+                    } = grid.settings();
+                    playlist::Layout::Group(playlist::Group {
+                        sources,
+                        max_media: grid.total_players(),
+                        content_fit,
+                        orientation,
+                        orientation_limit,
+                    })
+                }
+                None => playlist::Layout::Group(playlist::Group::default()),
+            },
+        }
+    }
+
+    fn load_playlist(playlist: Playlist) -> pane_grid::State<Grid> {
+        let configuration = Self::load_playlist_layout(playlist.layout);
+        pane_grid::State::with_configuration(configuration)
+    }
+
+    fn load_playlist_layout(layout: playlist::Layout) -> pane_grid::Configuration<Grid> {
+        match layout {
+            playlist::Layout::Split(playlist::Split {
+                axis,
+                ratio,
+                first,
+                second,
+            }) => pane_grid::Configuration::Split {
+                axis: match axis {
+                    playlist::SplitAxis::Horizontal => pane_grid::Axis::Horizontal,
+                    playlist::SplitAxis::Vertical => pane_grid::Axis::Vertical,
+                },
+                ratio,
+                a: Box::new(Self::load_playlist_layout(*first)),
+                b: Box::new(Self::load_playlist_layout(*second)),
+            },
+            playlist::Layout::Group(playlist::Group {
+                sources,
+                max_media,
+                content_fit,
+                orientation,
+                orientation_limit,
+            }) => {
+                let settings = grid::Settings {
+                    sources,
+                    content_fit,
+                    orientation,
+                    orientation_limit,
+                };
+                pane_grid::Configuration::Pane(Grid::new_with_players(&settings, max_media))
+            }
+        }
+    }
+
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Ignore => Task::none(),
-            Message::Exit => {
+            Message::Exit { force } => {
+                if self.playlist_dirty && !force {
+                    self.show_modal(Modal::ConfirmDiscardPlaylist { exit: true });
+                    return Task::none();
+                }
+
                 // If we don't pause first, you may still hear the videos for a moment after the app closes.
                 for (_grid_id, grid) in self.grids.iter_mut() {
                     grid.update_all_players(player::Event::SetPause(true), &mut self.media, &self.config.playback);
@@ -349,7 +464,7 @@ impl App {
                     }
                     config::Event::MaxInitialMediaRaw(value) => {
                         self.text_histories.max_initial_media.push(&value.to_string());
-                        if let Ok(value) = value.parse::<NonZeroUsize>() {
+                        if let Ok(value) = value.parse::<usize>() {
                             self.config.playback.max_initial_media = value;
                         }
                     }
@@ -505,12 +620,7 @@ impl App {
                 if !captured {
                     match subject {
                         UndoSubject::MaxInitialMedia => {
-                            if let Ok(value) = self
-                                .text_histories
-                                .max_initial_media
-                                .apply(shortcut)
-                                .parse::<NonZeroUsize>()
-                            {
+                            if let Ok(value) = self.text_histories.max_initial_media.apply(shortcut).parse::<usize>() {
                                 self.config.playback.max_initial_media = value;
                             }
                         }
@@ -560,7 +670,7 @@ impl App {
                     &mut self.media,
                     &self.config.playback,
                 ) {
-                    let Some(grid) = self.grid(grid_id) else {
+                    let Some(grid) = self.grids.get(grid_id) else {
                         return Task::none();
                     };
 
@@ -578,6 +688,7 @@ impl App {
                             }
                         }
                         grid::Update::PlayerClosed => {
+                            self.playlist_dirty = true;
                             if grid.is_idle() {
                                 self.show_modal(Modal::new_grid_settings(grid_id, grid.settings()));
                             }
@@ -599,7 +710,8 @@ impl App {
                             modal::Update::SavedGridSettings { grid_id, settings } => {
                                 self.modals.pop();
                                 let sources = settings.sources.clone();
-                                if let Some(grid) = self.grid_mut(grid_id) {
+                                if let Some(grid) = self.grids.get_mut(grid_id) {
+                                    self.playlist_dirty = true;
                                     grid.set_settings(settings);
                                 }
                                 return Self::find_media(sources, media::RefreshContext::Edit);
@@ -624,35 +736,51 @@ impl App {
                 }
                 Task::none()
             }
-            Message::FileDragDrop(path) => match self.modals.last_mut() {
-                Some(Modal::GridSettings {
-                    settings, histories, ..
-                }) => {
-                    histories.sources.push(TextHistory::path(&path));
-                    settings.sources.push(media::Source::new_path(path));
-                    Task::batch([
-                        iced::window::get_oldest().and_then(iced::window::gain_focus),
-                        modal::scroll_down(),
-                    ])
-                }
-                Some(_) => Task::none(),
-                None => {
-                    if self.grids.len() == 1 {
-                        let (grid_id, grid) = self.grids.iter().last().unwrap();
+            Message::FileDragDrop(path) => {
+                if path.file_extension().is_some_and(|ext| ext == Playlist::EXTENSION) {
+                    match self.modals.last() {
+                        Some(_) => Task::none(),
+                        None => {
+                            if self.playlist_dirty {
+                                self.show_modal(Modal::ConfirmLoadPlaylist { path: Some(path) });
+                                Task::none()
+                            } else {
+                                Task::done(Message::PlaylistLoad { path })
+                            }
+                        }
+                    }
+                } else {
+                    match self.modals.last_mut() {
+                        Some(Modal::GridSettings {
+                            settings, histories, ..
+                        }) => {
+                            histories.sources.push(TextHistory::path(&path));
+                            settings.sources.push(media::Source::new_path(path));
+                            Task::batch([
+                                iced::window::get_oldest().and_then(iced::window::gain_focus),
+                                modal::scroll_down(),
+                            ])
+                        }
+                        Some(_) => Task::none(),
+                        None => {
+                            if self.grids.len() == 1 {
+                                let (grid_id, grid) = self.grids.iter().last().unwrap();
 
-                        let settings = grid.settings().with_source(media::Source::new_path(path));
+                                let settings = grid.settings().with_source(media::Source::new_path(path));
 
-                        self.show_modal(Modal::new_grid_settings(*grid_id, settings));
-                        Task::batch([
-                            iced::window::get_oldest().and_then(iced::window::gain_focus),
-                            modal::scroll_down(),
-                        ])
-                    } else {
-                        self.dragged_file = Some(path);
-                        iced::window::get_oldest().and_then(iced::window::gain_focus)
+                                self.show_modal(Modal::new_grid_settings(*grid_id, settings));
+                                Task::batch([
+                                    iced::window::get_oldest().and_then(iced::window::gain_focus),
+                                    modal::scroll_down(),
+                                ])
+                            } else {
+                                self.dragged_file = Some(path);
+                                iced::window::get_oldest().and_then(iced::window::gain_focus)
+                            }
+                        }
                     }
                 }
-            },
+            }
             Message::FileDragDropGridSelected(grid_id) => {
                 let Some(grid) = self.grids.get(grid_id) else {
                     return Task::none();
@@ -686,6 +814,7 @@ impl App {
                             self.dragging_pane = true;
                         }
                         pane_grid::DragEvent::Dropped { pane, target } => {
+                            self.playlist_dirty = true;
                             self.dragging_pane = false;
                             self.grids.drop(pane, target);
                         }
@@ -694,10 +823,12 @@ impl App {
                         }
                     },
                     PaneEvent::Resize(event) => {
+                        self.playlist_dirty = true;
                         self.grids.resize(event.split, event.ratio);
                     }
                     PaneEvent::Split { grid_id, axis } => {
-                        let idle = self.grid(grid_id).is_some_and(|grid| grid.is_idle());
+                        self.playlist_dirty = true;
+                        let idle = self.grids.get(grid_id).is_some_and(|grid| grid.is_idle());
                         let settings = grid::Settings::default();
                         if let Some((grid_id, _split)) = self.grids.split(axis, grid_id, Grid::new(&settings)) {
                             if !idle {
@@ -706,9 +837,11 @@ impl App {
                         }
                     }
                     PaneEvent::Close { grid_id } => {
+                        self.playlist_dirty = true;
                         self.grids.close(grid_id);
                     }
                     PaneEvent::AddPlayer { grid_id } => {
+                        self.playlist_dirty = true;
                         let Some(grid) = self.grids.get_mut(grid_id) else {
                             return Task::none();
                         };
@@ -725,7 +858,7 @@ impl App {
                         }
                     }
                     PaneEvent::ShowSettings { grid_id } => {
-                        if let Some(grid) = self.grid(grid_id) {
+                        if let Some(grid) = self.grids.get(grid_id) {
                             self.show_modal(Modal::new_grid_settings(grid_id, grid.settings()));
                         }
                     }
@@ -780,6 +913,104 @@ impl App {
                 }
                 Task::none()
             }
+            Message::PlaylistReset { force } => {
+                if self.playlist_dirty && !force {
+                    self.show_modal(Modal::ConfirmDiscardPlaylist { exit: false });
+                    return Task::none();
+                }
+
+                self.close_modal();
+                let (grids, _grid_id) = pane_grid::State::new(Grid::new(&grid::Settings::default()));
+                self.grids = grids;
+                self.playlist_dirty = false;
+                self.playlist_path = None;
+
+                Task::none()
+            }
+            Message::PlaylistSelect { force } => {
+                if self.playlist_dirty && !force {
+                    self.show_modal(Modal::ConfirmLoadPlaylist { path: None });
+                    return Task::none();
+                }
+
+                self.close_modal();
+
+                Task::future(async move {
+                    let choice = async move {
+                        rfd::AsyncFileDialog::new()
+                            .add_filter(lang::thing::playlist(), &[Playlist::EXTENSION])
+                            .pick_file()
+                            .await
+                    }
+                    .await;
+
+                    Message::browsed_file(
+                        BrowseFileSubject::Playlist { save: false },
+                        choice.map(|x| x.path().to_path_buf()),
+                    )
+                })
+            }
+            Message::PlaylistLoad { path } => {
+                self.playlist_dirty = false;
+                self.playlist_path = Some(path.clone());
+                self.modals.clear();
+
+                match Playlist::load_from(&path) {
+                    Ok(playlist) => {
+                        self.grids = Self::load_playlist(playlist);
+                        Self::find_media(self.all_sources(), media::RefreshContext::Playlist)
+                    }
+                    Err(e) => {
+                        self.show_error(e);
+                        Task::none()
+                    }
+                }
+            }
+            Message::PlaylistSave => {
+                if let Some(path) = self.playlist_path.as_ref() {
+                    let playlist = self.build_playlist();
+                    match playlist.save_to(path) {
+                        Ok(_) => {
+                            self.playlist_dirty = false;
+                        }
+                        Err(e) => {
+                            self.show_error(e);
+                        }
+                    }
+                }
+
+                Task::none()
+            }
+            Message::PlaylistSaveAs => Task::future(async move {
+                let choice = async move {
+                    rfd::AsyncFileDialog::new()
+                        .set_file_name(Playlist::FILE_NAME)
+                        .add_filter(lang::thing::playlist(), &[Playlist::EXTENSION])
+                        .save_file()
+                        .await
+                }
+                .await;
+
+                Message::browsed_file(
+                    BrowseFileSubject::Playlist { save: true },
+                    choice.map(|x| x.path().to_path_buf()),
+                )
+            }),
+            Message::PlaylistSavedAs { path } => {
+                self.playlist_path = Some(path.clone());
+
+                let playlist = self.build_playlist();
+                match playlist.save_to(&path) {
+                    Ok(_) => {
+                        self.playlist_dirty = false;
+                    }
+                    Err(e) => {
+                        self.show_error(e);
+                    }
+                }
+
+                Task::none()
+            }
         }
     }
 
@@ -787,7 +1018,7 @@ impl App {
         let mut subscriptions = vec![
             iced::event::listen_with(|event, _status, _window| match event {
                 iced::Event::Keyboard(event) => Some(Message::KeyboardEvent(event)),
-                iced::Event::Window(iced::window::Event::CloseRequested) => Some(Message::Exit),
+                iced::Event::Window(iced::window::Event::CloseRequested) => Some(Message::Exit { force: false }),
                 iced::Event::Window(iced::window::Event::FileDropped(path)) => {
                     Some(Message::FileDragDrop(StrictPath::from(path)))
                 }
@@ -823,27 +1054,57 @@ impl App {
                             Stack::new()
                                 .push(
                                     Container::new(
-                                        button::icon(Icon::Settings)
-                                            .on_press(Message::ShowSettings)
-                                            .obscured(obscured)
-                                            .tooltip_below(lang::thing::settings()),
+                                        Row::new().push(
+                                            button::icon(Icon::Settings)
+                                                .on_press(Message::ShowSettings)
+                                                .obscured(obscured)
+                                                .tooltip_below(lang::thing::settings()),
+                                        ),
                                     )
                                     .align_right(Length::Fill),
                                 )
-                                .push_maybe(STEAM_DECK.then(|| {
+                                .push(
                                     Container::new(
-                                        button::icon(Icon::LogOut)
-                                            .on_press(Message::Exit)
-                                            .obscured(obscured)
-                                            .tooltip_below(lang::action::exit_app()),
+                                        Row::new()
+                                            .push_maybe(STEAM_DECK.then(|| {
+                                                button::icon(Icon::LogOut)
+                                                    .on_press(Message::Exit { force: false })
+                                                    .obscured(obscured)
+                                                    .tooltip_below(lang::action::exit_app())
+                                            }))
+                                            .push(
+                                                button::icon(Icon::PlaylistRemove)
+                                                    .on_press(Message::PlaylistReset { force: false })
+                                                    .enabled(self.playlist_dirty || self.playlist_path.is_some())
+                                                    .obscured(obscured)
+                                                    .tooltip_below(lang::action::start_new_playlist()),
+                                            )
+                                            .push(
+                                                button::icon(Icon::FolderOpen)
+                                                    .on_press(Message::PlaylistSelect { force: false })
+                                                    .obscured(obscured)
+                                                    .tooltip_below(lang::action::open_playlist()),
+                                            )
+                                            .push(
+                                                button::icon(Icon::Save)
+                                                    .on_press(Message::PlaylistSave)
+                                                    .enabled(self.playlist_dirty && self.playlist_path.is_some())
+                                                    .obscured(obscured)
+                                                    .tooltip_below(lang::action::save_playlist()),
+                                            )
+                                            .push(
+                                                button::icon(Icon::SaveAs)
+                                                    .on_press(Message::PlaylistSaveAs)
+                                                    .obscured(obscured)
+                                                    .tooltip_below(lang::action::save_playlist_as_new_file()),
+                                            ),
                                     )
-                                    .align_left(Length::Fill)
-                                }))
+                                    .align_left(Length::Fill),
+                                )
                                 .push(
                                     Container::new(
                                         Container::new(
                                             Row::new()
-                                                .spacing(5)
                                                 .push(
                                                     button::icon(if self.config.playback.muted {
                                                         Icon::Mute

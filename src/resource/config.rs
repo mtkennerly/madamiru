@@ -87,7 +87,7 @@ pub struct Playback {
     /// Whether all players are muted.
     pub muted: bool,
     /// How many players to show at most by default.
-    pub max_initial_media: NonZeroUsize,
+    pub max_initial_media: usize,
     /// How long to show images, in seconds.
     pub image_duration: NonZeroUsize,
     /// Whether to pause when window loses focus.
@@ -101,6 +101,13 @@ impl Playback {
             ..self.clone()
         }
     }
+
+    pub fn with_max_initial_media(&self, max: usize) -> Self {
+        Self {
+            max_initial_media: max,
+            ..self.clone()
+        }
+    }
 }
 
 impl Default for Playback {
@@ -108,94 +115,9 @@ impl Default for Playback {
         Self {
             paused: false,
             muted: false,
-            max_initial_media: NonZeroUsize::new(4).unwrap(),
+            max_initial_media: 4,
             image_duration: NonZeroUsize::new(10).unwrap(),
             pause_on_unfocus: false,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
-pub enum Orientation {
-    #[default]
-    Horizontal,
-    Vertical,
-}
-
-impl Orientation {
-    pub const ALL: &[Self] = &[Self::Horizontal, Self::Vertical];
-}
-
-impl ToString for Orientation {
-    fn to_string(&self) -> String {
-        match self {
-            Self::Horizontal => lang::state::horizontal(),
-            Self::Vertical => lang::state::vertical(),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
-pub enum OrientationLimit {
-    #[default]
-    Automatic,
-    Fixed(NonZeroUsize),
-}
-
-impl OrientationLimit {
-    pub const DEFAULT_FIXED: NonZeroUsize = NonZeroUsize::new(4).unwrap();
-
-    pub fn is_fixed(&self) -> bool {
-        match self {
-            Self::Automatic => false,
-            Self::Fixed(_) => true,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
-pub enum ContentFit {
-    /// Scale the media up or down to fill as much of the available space as possible
-    /// while maintaining the media's aspect ratio.
-    #[default]
-    Scale,
-
-    /// Scale the media down to fill as much of the available space as possible
-    /// while maintaining the media's aspect ratio.
-    /// Don't scale up if it's smaller than the available space.
-    ScaleDown,
-
-    /// Crop the media to fill all of the available space.
-    /// Maintain the aspect ratio, cutting off parts of the media as needed to fit.
-    Crop,
-
-    /// Stretch the media to fill all of the available space.
-    /// Preserve the whole media, disregarding the aspect ratio.
-    Stretch,
-}
-
-impl ContentFit {
-    pub const ALL: &'static [Self] = &[Self::Scale, Self::ScaleDown, Self::Crop, Self::Stretch];
-}
-
-impl ToString for ContentFit {
-    fn to_string(&self) -> String {
-        match self {
-            ContentFit::Scale => lang::action::scale(),
-            ContentFit::ScaleDown => lang::action::scale_down(),
-            ContentFit::Crop => lang::action::crop(),
-            ContentFit::Stretch => lang::action::stretch(),
-        }
-    }
-}
-
-impl From<ContentFit> for iced::ContentFit {
-    fn from(value: ContentFit) -> Self {
-        match value {
-            ContentFit::Scale => iced::ContentFit::Contain,
-            ContentFit::ScaleDown => iced::ContentFit::ScaleDown,
-            ContentFit::Crop => iced::ContentFit::Cover,
-            ContentFit::Stretch => iced::ContentFit::Fill,
         }
     }
 }
@@ -237,7 +159,7 @@ mod tests {
                 playback: Playback {
                     paused: false,
                     muted: true,
-                    max_initial_media: NonZeroUsize::new(1).unwrap(),
+                    max_initial_media: 1,
                     image_duration: NonZeroUsize::new(2).unwrap(),
                     pause_on_unfocus: true,
                 },

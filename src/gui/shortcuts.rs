@@ -3,7 +3,7 @@
 
 use std::collections::VecDeque;
 
-use crate::{media::Source, prelude::StrictPath, resource::config::Config};
+use crate::{prelude::StrictPath, resource::config::Config};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Shortcut {
@@ -95,15 +95,13 @@ impl TextHistory {
 pub struct TextHistories {
     pub max_initial_media: TextHistory,
     pub image_duration: TextHistory,
-    pub sources: Vec<TextHistory>,
 }
 
 impl TextHistories {
-    pub fn new(config: &Config, sources: &[Source]) -> Self {
+    pub fn new(config: &Config) -> Self {
         Self {
             max_initial_media: TextHistory::raw(&config.playback.max_initial_media.to_string()),
             image_duration: TextHistory::raw(&config.playback.image_duration.to_string()),
-            sources: sources.iter().map(|source| TextHistory::raw(source.raw())).collect(),
         }
     }
 }

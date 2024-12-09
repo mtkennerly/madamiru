@@ -21,7 +21,7 @@ use crate::{
     media::Media,
     path::StrictPath,
     prelude::{timestamp_hhmmss, timestamp_mmss},
-    resource::config::{ContentFit, Playback},
+    resource::{config::Playback, playlist::ContentFit},
 };
 
 fn timestamps<'a>(current: f64, total: Duration) -> Element<'a> {

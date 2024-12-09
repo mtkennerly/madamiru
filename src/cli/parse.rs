@@ -1,4 +1,4 @@
-use std::{num::NonZeroUsize, path::PathBuf};
+use std::path::PathBuf;
 
 use crate::prelude::StrictPath;
 
@@ -85,7 +85,7 @@ pub struct Cli {
 
     /// How many items to load at most.
     #[clap(long)]
-    pub max_initial_media: Option<NonZeroUsize>,
+    pub max_initial_media: Option<usize>,
 
     #[clap(subcommand)]
     pub sub: Option<Subcommand>,

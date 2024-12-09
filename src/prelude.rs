@@ -39,8 +39,10 @@ pub const ENV_DEBUG: &str = "MADAMIRU_DEBUG";
 pub enum Error {
     ConfigInvalid { why: String },
     NoMediaFound,
+    PlaylistInvalid { why: String },
     UnableToOpenDir(StrictPath),
     UnableToOpenUrl(String),
+    UnableToSavePlaylist { why: String },
 }
 
 pub fn app_dir() -> StrictPath {

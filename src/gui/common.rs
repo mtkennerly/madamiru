@@ -28,13 +28,15 @@ const ERROR_ICON: text_input::Icon<iced::Font> = text_input::Icon {
 #[derive(Clone, Debug, Default)]
 pub struct Flags {
     pub sources: Vec<media::Source>,
-    pub max_initial_media: Option<NonZeroUsize>,
+    pub max_initial_media: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     Ignore,
-    Exit,
+    Exit {
+        force: bool,
+    },
     Tick(Instant),
     Save,
     CloseModal,
@@ -88,6 +90,20 @@ pub enum Message {
     Pane {
         event: PaneEvent,
     },
+    PlaylistReset {
+        force: bool,
+    },
+    PlaylistSelect {
+        force: bool,
+    },
+    PlaylistLoad {
+        path: StrictPath,
+    },
+    PlaylistSave,
+    PlaylistSaveAs,
+    PlaylistSavedAs {
+        path: StrictPath,
+    },
 }
 
 impl Message {
@@ -112,6 +128,17 @@ impl Message {
                         action: EditAction::Change(index, crate::path::render_pathbuf(&path)),
                     },
                 },
+                BrowseFileSubject::Playlist { save } => {
+                    if save {
+                        Self::PlaylistSavedAs {
+                            path: StrictPath::from(path),
+                        }
+                    } else {
+                        Self::PlaylistLoad {
+                            path: StrictPath::from(path),
+                        }
+                    }
+                }
             },
             None => Self::Ignore,
         }
@@ -159,6 +186,7 @@ pub enum BrowseSubject {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BrowseFileSubject {
     Source { index: usize },
+    Playlist { save: bool },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -200,7 +228,7 @@ impl UndoSubject {
         let placeholder = "";
 
         let icon = match self {
-            UndoSubject::MaxInitialMedia => (current.parse::<NonZeroUsize>().is_err()).then_some(ERROR_ICON),
+            UndoSubject::MaxInitialMedia => (current.parse::<usize>().is_err()).then_some(ERROR_ICON),
             UndoSubject::ImageDuration => (current.parse::<NonZeroUsize>().is_err()).then_some(ERROR_ICON),
             UndoSubject::Source { .. } => (!path_appears_valid(current)).then_some(ERROR_ICON),
             UndoSubject::OrientationLimit => (current.parse::<NonZeroUsize>().is_err()).then_some(ERROR_ICON),

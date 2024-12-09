@@ -158,8 +158,10 @@ pub fn handle_error(error: &Error) -> String {
     let error = match error {
         Error::ConfigInvalid { why } => format!("{}\n\n{why}", tell::config_is_invalid()),
         Error::NoMediaFound => tell::no_media_found(),
+        Error::PlaylistInvalid { why } => format!("{}\n\n{why}", tell::playlist_is_invalid()),
         Error::UnableToOpenDir(path) => format!("{}\n\n{}", tell::unable_to_open_directory(), path.render()),
         Error::UnableToOpenUrl(url) => format!("{}\n\n{}", tell::unable_to_open_url(), url),
+        Error::UnableToSavePlaylist { why } => format!("{}\n\n{why}", tell::unable_to_save_playlist()),
     };
 
     format!("{} {}", field(&thing::error()), error)
@@ -171,6 +173,14 @@ pub fn theme_name(theme: &Theme) -> String {
         Theme::Dark => "thing-theme-dark",
     })
 }
+
+macro_rules! join {
+    ($a:expr, $b:expr) => {
+        format!("{} {}", $a, $b)
+    };
+}
+
+pub(crate) use join;
 
 pub mod thing {
     use super::*;
@@ -217,6 +227,10 @@ pub mod thing {
 
     pub fn path() -> String {
         translate("thing-path")
+    }
+
+    pub fn playlist() -> String {
+        translate("thing-playlist")
     }
 
     pub fn settings() -> String {
@@ -287,6 +301,10 @@ pub mod action {
         translate("action-open-folder-of-file")
     }
 
+    pub fn open_playlist() -> String {
+        translate("action-open-playlist")
+    }
+
     pub fn pause() -> String {
         translate("action-pause")
     }
@@ -301,6 +319,14 @@ pub mod action {
 
     pub fn play_for_this_many_seconds() -> String {
         translate("action-play-for-this-many-seconds")
+    }
+
+    pub fn save_playlist() -> String {
+        translate("action-save-playlist")
+    }
+
+    pub fn save_playlist_as_new_file() -> String {
+        translate("action-save-playlist-as-new-file")
     }
 
     pub fn scale() -> String {
@@ -329,6 +355,10 @@ pub mod action {
 
     pub fn split_vertically() -> String {
         translate("action-split-vertically")
+    }
+
+    pub fn start_new_playlist() -> String {
+        translate("action-start-new-playlist")
     }
 
     pub fn stretch() -> String {
@@ -371,6 +401,14 @@ pub mod tell {
         translate("tell-player-will-shuffle")
     }
 
+    pub fn playlist_has_unsaved_changes() -> String {
+        translate("tell-playlist-has-unsaved-changes")
+    }
+
+    pub fn playlist_is_invalid() -> String {
+        translate("tell-playlist-is-invalid")
+    }
+
     pub fn new_version_available(version: &str) -> String {
         let mut args = FluentArgs::new();
         args.set(VERSION, version);
@@ -388,10 +426,22 @@ pub mod tell {
     pub fn unable_to_open_url() -> String {
         translate("tell-unable-to-open-url")
     }
+
+    pub fn unable_to_save_playlist() -> String {
+        translate("tell-unable-to-save-playlist")
+    }
 }
 
 pub mod ask {
     use super::*;
+
+    pub fn discard_changes() -> String {
+        translate("ask-discard-changes")
+    }
+
+    pub fn load_new_playlist_anyway() -> String {
+        translate("ask-load-new-playlist-anyway")
+    }
 
     pub fn view_release_notes() -> String {
         translate("ask-view-release-notes")

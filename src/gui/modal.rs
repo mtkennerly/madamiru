@@ -23,7 +23,10 @@ use crate::{
     media,
     path::StrictPath,
     prelude::Error,
-    resource::config::{self, Config, Theme},
+    resource::{
+        config::{self, Config, Theme},
+        playlist,
+    },
 };
 
 const RELEASE_URL: &str = "https://github.com/mtkennerly/madamiru/releases";
@@ -41,8 +44,8 @@ pub enum Event {
     EditedSource { action: EditAction },
     EditedSourceKind { index: usize, kind: media::SourceKind },
     SelectedGridTab { tab: GridTab },
-    EditedGridContentFit { content_fit: config::ContentFit },
-    EditedGridOrientation { orientation: config::Orientation },
+    EditedGridContentFit { content_fit: playlist::ContentFit },
+    EditedGridOrientation { orientation: playlist::Orientation },
     EditedGridOrientationLimitKind { fixed: bool },
     EditedGridOrientationLimit { raw_limit: String },
     Save,
@@ -80,6 +83,12 @@ pub enum Modal {
     AppUpdate {
         release: crate::metadata::Release,
     },
+    ConfirmLoadPlaylist {
+        path: Option<StrictPath>,
+    },
+    ConfirmDiscardPlaylist {
+        exit: bool,
+    },
 }
 
 impl Modal {
@@ -96,8 +105,8 @@ impl Modal {
         }
 
         let raw_limit = match settings.orientation_limit {
-            config::OrientationLimit::Automatic => config::OrientationLimit::DEFAULT_FIXED.to_string(),
-            config::OrientationLimit::Fixed(limit) => limit.to_string(),
+            playlist::OrientationLimit::Automatic => playlist::OrientationLimit::DEFAULT_FIXED.to_string(),
+            playlist::OrientationLimit::Fixed(limit) => limit.to_string(),
         };
         histories.orientation_limit.push(&raw_limit);
 
@@ -112,7 +121,10 @@ impl Modal {
     pub fn variant(&self) -> ModalVariant {
         match self {
             Self::Error { .. } | Self::Errors { .. } => ModalVariant::Info,
-            Self::GridSettings { .. } | Self::AppUpdate { .. } => ModalVariant::Confirm,
+            Self::GridSettings { .. }
+            | Self::AppUpdate { .. }
+            | Self::ConfirmLoadPlaylist { .. }
+            | Self::ConfirmDiscardPlaylist { .. } => ModalVariant::Confirm,
             Self::Settings => ModalVariant::Editor,
         }
     }
@@ -130,6 +142,8 @@ impl Modal {
             Self::Error { .. } => None,
             Self::Errors { .. } => None,
             Self::AppUpdate { .. } => None,
+            Self::ConfirmLoadPlaylist { .. } => None,
+            Self::ConfirmDiscardPlaylist { .. } => None,
         }
     }
 
@@ -140,6 +154,17 @@ impl Modal {
             Self::Error { .. } => Some(Message::CloseModal),
             Self::Errors { .. } => Some(Message::CloseModal),
             Self::AppUpdate { release } => Some(Message::OpenUrlAndCloseModal(release.url.clone())),
+            Self::ConfirmLoadPlaylist { path } => match path {
+                Some(path) => Some(Message::PlaylistLoad { path: path.clone() }),
+                None => Some(Message::PlaylistSelect { force: true }),
+            },
+            Self::ConfirmDiscardPlaylist { exit } => {
+                if *exit {
+                    Some(Message::Exit { force: true })
+                } else {
+                    Some(Message::PlaylistReset { force: true })
+                }
+            }
         }
     }
 
@@ -316,7 +341,7 @@ impl Modal {
                             .spacing(20)
                             .push(text(lang::field(&lang::thing::orientation())))
                             .push(pick_list(
-                                config::Orientation::ALL,
+                                playlist::Orientation::ALL,
                                 Some(settings.orientation),
                                 |orientation| Message::Modal {
                                     event: Event::EditedGridOrientation { orientation },
@@ -342,7 +367,7 @@ impl Modal {
                             .spacing(20)
                             .push(text(lang::field(&lang::thing::content_fit())))
                             .push(pick_list(
-                                config::ContentFit::ALL,
+                                playlist::ContentFit::ALL,
                                 Some(settings.content_fit),
                                 |content_fit| Message::Modal {
                                     event: Event::EditedGridContentFit { content_fit },
@@ -362,6 +387,18 @@ impl Modal {
                         release.version.to_string().as_str(),
                     )))
                     .push(text(lang::ask::view_release_notes()));
+            }
+            Self::ConfirmLoadPlaylist { .. } => {
+                col = col.push(text(lang::join!(
+                    lang::tell::playlist_has_unsaved_changes(),
+                    lang::ask::load_new_playlist_anyway()
+                )));
+            }
+            Self::ConfirmDiscardPlaylist { .. } => {
+                col = col.push(text(lang::join!(
+                    lang::tell::playlist_has_unsaved_changes(),
+                    lang::ask::discard_changes()
+                )));
             }
         }
 
@@ -411,7 +448,12 @@ impl Modal {
 
     pub fn apply_shortcut(&mut self, subject: UndoSubject, shortcut: Shortcut) -> bool {
         match self {
-            Self::Settings | Self::Error { .. } | Self::Errors { .. } | Self::AppUpdate { .. } => false,
+            Self::Settings
+            | Self::Error { .. }
+            | Self::Errors { .. }
+            | Self::AppUpdate { .. }
+            | Self::ConfirmLoadPlaylist { .. }
+            | Self::ConfirmDiscardPlaylist { .. } => false,
             Self::GridSettings {
                 settings, histories, ..
             } => match subject {
@@ -423,7 +465,7 @@ impl Modal {
                 }
                 UndoSubject::OrientationLimit => {
                     if let Ok(value) = histories.orientation_limit.apply(shortcut).parse::<NonZeroUsize>() {
-                        settings.orientation_limit = config::OrientationLimit::Fixed(value);
+                        settings.orientation_limit = playlist::OrientationLimit::Fixed(value);
                     }
                     true
                 }
@@ -434,7 +476,12 @@ impl Modal {
     #[must_use]
     pub fn update(&mut self, event: Event) -> Option<Update> {
         match self {
-            Self::Settings | Self::Error { .. } | Self::Errors { .. } | Self::AppUpdate { .. } => None,
+            Self::Settings
+            | Self::Error { .. }
+            | Self::Errors { .. }
+            | Self::AppUpdate { .. }
+            | Self::ConfirmLoadPlaylist { .. }
+            | Self::ConfirmDiscardPlaylist { .. } => None,
             Self::GridSettings {
                 grid_id,
                 tab,
@@ -487,10 +534,10 @@ impl Modal {
                             .orientation_limit
                             .current()
                             .parse::<NonZeroUsize>()
-                            .unwrap_or(config::OrientationLimit::DEFAULT_FIXED);
-                        settings.orientation_limit = config::OrientationLimit::Fixed(limit);
+                            .unwrap_or(playlist::OrientationLimit::DEFAULT_FIXED);
+                        settings.orientation_limit = playlist::OrientationLimit::Fixed(limit);
                     } else {
-                        settings.orientation_limit = config::OrientationLimit::Automatic;
+                        settings.orientation_limit = playlist::OrientationLimit::Automatic;
                     }
                     None
                 }
@@ -498,7 +545,7 @@ impl Modal {
                     histories.orientation_limit.push(&raw_limit);
                     if settings.orientation_limit.is_fixed() {
                         if let Ok(limit) = raw_limit.parse::<NonZeroUsize>() {
-                            settings.orientation_limit = config::OrientationLimit::Fixed(limit);
+                            settings.orientation_limit = playlist::OrientationLimit::Fixed(limit);
                         }
                     }
                     None

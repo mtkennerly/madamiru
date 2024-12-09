@@ -8,10 +8,13 @@ use crate::{lang, path::StrictPath};
 pub enum RefreshContext {
     Launch,
     Edit,
+    Playlist,
     Automatic,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
+)]
 pub enum Source {
     Path { path: StrictPath },
     Glob { pattern: String },
@@ -233,14 +236,11 @@ impl Collection {
 
     pub fn update(&mut self, new: SourceMap, context: RefreshContext) {
         match context {
-            RefreshContext::Launch => {
+            RefreshContext::Launch | RefreshContext::Playlist | RefreshContext::Automatic => {
                 self.media = new;
             }
             RefreshContext::Edit => {
                 self.media.extend(new);
-            }
-            RefreshContext::Automatic => {
-                self.media = new;
             }
         }
     }

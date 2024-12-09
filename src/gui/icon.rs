@@ -25,7 +25,10 @@ pub enum Icon {
     Pause,
     Play,
     PlaylistAdd,
+    PlaylistRemove,
     Refresh,
+    Save,
+    SaveAs,
     Settings,
     Shuffle,
     SplitHorizontal,
@@ -56,6 +59,8 @@ impl Icon {
             Self::Pause => '\u{e034}',
             Self::Play => '\u{e037}',
             Self::Refresh => '\u{E5D5}',
+            Self::Save => '\u{e161}',
+            Self::SaveAs => '\u{eb60}',
             Self::Settings => '\u{E8B8}',
             Self::Shuffle => '\u{e043}',
             Self::SplitHorizontal => '\u{e8d4}',
@@ -63,6 +68,7 @@ impl Icon {
             Self::TimerRefresh => '\u{e889}',
             Self::VolumeHigh => '\u{e050}',
             Self::PlaylistAdd => '\u{e03b}',
+            Self::PlaylistRemove => '\u{eb80}',
         }
     }
 
