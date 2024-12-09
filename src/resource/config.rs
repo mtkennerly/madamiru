@@ -153,6 +153,53 @@ impl OrientationLimit {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+pub enum ContentFit {
+    /// Scale the media up or down to fill as much of the available space as possible
+    /// while maintaining the media's aspect ratio.
+    #[default]
+    Scale,
+
+    /// Scale the media down to fill as much of the available space as possible
+    /// while maintaining the media's aspect ratio.
+    /// Don't scale up if it's smaller than the available space.
+    ScaleDown,
+
+    /// Crop the media to fill all of the available space.
+    /// Maintain the aspect ratio, cutting off parts of the media as needed to fit.
+    Crop,
+
+    /// Stretch the media to fill all of the available space.
+    /// Preserve the whole media, disregarding the aspect ratio.
+    Stretch,
+}
+
+impl ContentFit {
+    pub const ALL: &'static [Self] = &[Self::Scale, Self::ScaleDown, Self::Crop, Self::Stretch];
+}
+
+impl ToString for ContentFit {
+    fn to_string(&self) -> String {
+        match self {
+            ContentFit::Scale => lang::action::scale(),
+            ContentFit::ScaleDown => lang::action::scale_down(),
+            ContentFit::Crop => lang::action::crop(),
+            ContentFit::Stretch => lang::action::stretch(),
+        }
+    }
+}
+
+impl From<ContentFit> for iced::ContentFit {
+    fn from(value: ContentFit) -> Self {
+        match value {
+            ContentFit::Scale => iced::ContentFit::Contain,
+            ContentFit::ScaleDown => iced::ContentFit::ScaleDown,
+            ContentFit::Crop => iced::ContentFit::Cover,
+            ContentFit::Stretch => iced::ContentFit::Fill,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;

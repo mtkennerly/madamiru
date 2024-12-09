@@ -179,6 +179,10 @@ pub mod thing {
         translate("thing-application")
     }
 
+    pub fn content_fit() -> String {
+        translate("thing-content-fit")
+    }
+
     pub fn error() -> String {
         translate("thing-error")
     }
@@ -263,6 +267,10 @@ pub mod action {
         translate("action-confirm")
     }
 
+    pub fn crop() -> String {
+        translate("action-crop")
+    }
+
     pub fn exit_app() -> String {
         translate("action-exit-app")
     }
@@ -299,6 +307,14 @@ pub mod action {
         translate("action-play-for-this-many-seconds")
     }
 
+    pub fn scale() -> String {
+        translate("action-scale")
+    }
+
+    pub fn scale_down() -> String {
+        translate("action-scale-down")
+    }
+
     pub fn select_folder() -> String {
         translate("action-select-folder")
     }
@@ -317,6 +333,10 @@ pub mod action {
 
     pub fn split_vertically() -> String {
         translate("action-split-vertically")
+    }
+
+    pub fn stretch() -> String {
+        translate("action-stretch")
     }
 
     pub fn unmute() -> String {

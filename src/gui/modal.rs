@@ -41,6 +41,7 @@ pub enum Event {
     EditedSource { action: EditAction },
     EditedSourceKind { index: usize, kind: media::SourceKind },
     SelectedGridTab { tab: GridTab },
+    EditedGridContentFit { content_fit: config::ContentFit },
     EditedGridOrientation { orientation: config::Orientation },
     EditedGridOrientationLimitKind { fixed: bool },
     EditedGridOrientationLimit { raw_limit: String },
@@ -327,13 +328,26 @@ impl Modal {
                             .align_y(Alignment::Center)
                             .spacing(20)
                             .push(checkbox(
-                                lang::thing::items_per_line(),
+                                lang::field(&lang::thing::items_per_line()),
                                 settings.orientation_limit.is_fixed(),
                                 |fixed| Message::Modal {
                                     event: Event::EditedGridOrientationLimitKind { fixed },
                                 },
                             ))
                             .push(UndoSubject::OrientationLimit.view(&histories.orientation_limit.current())),
+                    )
+                    .push(
+                        Row::new()
+                            .align_y(Alignment::Center)
+                            .spacing(20)
+                            .push(text(lang::field(&lang::thing::content_fit())))
+                            .push(pick_list(
+                                config::ContentFit::ALL,
+                                Some(settings.content_fit),
+                                |content_fit| Message::Modal {
+                                    event: Event::EditedGridContentFit { content_fit },
+                                },
+                            )),
                     );
             }
             Self::Error { variant } => {
@@ -457,6 +471,10 @@ impl Modal {
                 }
                 Event::SelectedGridTab { tab: new_tab } => {
                     *tab = new_tab;
+                    None
+                }
+                Event::EditedGridContentFit { content_fit } => {
+                    settings.content_fit = content_fit;
                     None
                 }
                 Event::EditedGridOrientation { orientation } => {

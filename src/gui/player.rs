@@ -21,7 +21,7 @@ use crate::{
     media::Media,
     path::StrictPath,
     prelude::{timestamp_hhmmss, timestamp_mmss},
-    resource::config::Playback,
+    resource::config::{ContentFit, Playback},
 };
 
 fn timestamps<'a>(current: f64, total: Duration) -> Element<'a> {
@@ -76,10 +76,11 @@ fn build_video(uri: &url::Url) -> Result<Video, iced_video_player::Error> {
 }
 
 #[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
-fn build_video_player(video: &Video, grid_id: grid::Id, player_id: Id) -> Element {
+fn build_video_player(video: &Video, grid_id: grid::Id, player_id: Id, content_fit: ContentFit) -> Element {
     VideoPlayer::new(video)
         .width(Length::Fill)
         .height(Length::Fill)
+        .content_fit(content_fit.into())
         .on_end_of_stream(Message::Player {
             grid_id,
             player_id,
@@ -94,7 +95,7 @@ fn build_video_player(video: &Video, grid_id: grid::Id, player_id: Id) -> Elemen
 }
 
 #[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn build_video_player(video: &Video, grid_id: grid::Id, player_id: Id) -> Element {
+fn build_video_player(video: &Video, grid_id: grid::Id, player_id: Id, _content_fit: ContentFit) -> Element {
     VideoPlayer::new(video)
         .on_end_of_stream(Message::Player {
             grid_id,
@@ -855,9 +856,9 @@ impl Player {
         }
     }
 
-    pub fn view(&self, grid_id: grid::Id, player_id: Id, obscured: bool) -> Element {
+    pub fn view(&self, grid_id: grid::Id, player_id: Id, obscured: bool, content_fit: ContentFit) -> Element {
         Responsive::new(move |viewport| {
-            mouse_area(self.view_inner(grid_id, player_id, obscured, viewport))
+            mouse_area(self.view_inner(grid_id, player_id, obscured, content_fit, viewport))
                 .on_enter(if obscured {
                     Message::Ignore
                 } else {
@@ -892,7 +893,14 @@ impl Player {
         .into()
     }
 
-    fn view_inner(&self, grid_id: grid::Id, player_id: Id, obscured: bool, viewport: iced::Size) -> Element {
+    fn view_inner(
+        &self,
+        grid_id: grid::Id,
+        player_id: Id,
+        obscured: bool,
+        content_fit: ContentFit,
+        viewport: iced::Size,
+    ) -> Element {
         match self {
             Self::Idle => Container::new("")
                 .align_x(Alignment::Center)
@@ -985,11 +993,16 @@ impl Player {
 
                 Stack::new()
                     .push(
-                        Container::new(Image::new(handle_path).width(Length::Fill).height(Length::Fill))
-                            .align_x(Alignment::Center)
-                            .align_y(Alignment::Center)
-                            .width(Length::Fill)
-                            .height(Length::Fill),
+                        Container::new(
+                            Image::new(handle_path)
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .content_fit(content_fit.into()),
+                        )
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center)
+                        .width(Length::Fill)
+                        .height(Length::Fill),
                     )
                     .push_maybe(
                         overlay.show.then_some(
@@ -1114,11 +1127,16 @@ impl Player {
 
                 Stack::new()
                     .push(
-                        Container::new(Svg::new(handle_path).width(Length::Fill).height(Length::Fill))
-                            .align_x(Alignment::Center)
-                            .align_y(Alignment::Center)
-                            .width(Length::Fill)
-                            .height(Length::Fill),
+                        Container::new(
+                            Svg::new(handle_path)
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .content_fit(content_fit.into()),
+                        )
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center)
+                        .width(Length::Fill)
+                        .height(Length::Fill),
                     )
                     .push_maybe(
                         overlay.show.then_some(
@@ -1245,9 +1263,19 @@ impl Player {
                 Stack::new()
                     .push({
                         let media = if *paused {
-                            Container::new(Image::new(handle_path).width(Length::Fill).height(Length::Fill))
+                            Container::new(
+                                Image::new(handle_path)
+                                    .width(Length::Fill)
+                                    .height(Length::Fill)
+                                    .content_fit(content_fit.into()),
+                            )
                         } else {
-                            Container::new(gif(frames).width(Length::Fill).height(Length::Fill))
+                            Container::new(
+                                gif(frames)
+                                    .width(Length::Fill)
+                                    .height(Length::Fill)
+                                    .content_fit(content_fit.into()),
+                            )
                         };
 
                         media
@@ -1376,7 +1404,7 @@ impl Player {
 
                 Stack::new()
                     .push(
-                        Container::new(build_video_player(video, grid_id, player_id))
+                        Container::new(build_video_player(video, grid_id, player_id, content_fit))
                             .align_x(Alignment::Center)
                             .align_y(Alignment::Center)
                             .width(Length::Fill)

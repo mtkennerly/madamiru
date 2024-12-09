@@ -17,7 +17,7 @@ use crate::{
     },
     lang,
     media::{self, Media},
-    resource::config::{Orientation, OrientationLimit, Playback},
+    resource::config::{ContentFit, Orientation, OrientationLimit, Playback},
 };
 
 pub type Id = pane_grid::Pane;
@@ -46,6 +46,7 @@ pub enum Update {
 pub struct Grid {
     sources: Vec<media::Source>,
     players: Vec<Player>,
+    content_fit: ContentFit,
     orientation: Orientation,
     orientation_limit: OrientationLimit,
 }
@@ -55,6 +56,7 @@ impl Grid {
         Self {
             sources: settings.sources.clone(),
             players: vec![Player::Idle],
+            content_fit: settings.content_fit,
             orientation: settings.orientation,
             orientation_limit: settings.orientation_limit,
         }
@@ -141,6 +143,7 @@ impl Grid {
     pub fn settings(&self) -> Settings {
         Settings {
             sources: self.sources.clone(),
+            content_fit: self.content_fit,
             orientation: self.orientation,
             orientation_limit: self.orientation_limit,
         }
@@ -149,11 +152,13 @@ impl Grid {
     pub fn set_settings(&mut self, settings: Settings) {
         let Settings {
             sources,
+            content_fit,
             orientation,
             orientation_limit,
         } = settings;
 
         self.sources = sources;
+        self.content_fit = content_fit;
         self.orientation = orientation;
         self.orientation_limit = orientation_limit;
     }
@@ -382,7 +387,7 @@ impl Grid {
         };
 
         for (i, player) in self.players.iter().enumerate() {
-            let new = Container::new(player.view(grid_id, player::Id(i), obscured))
+            let new = Container::new(player.view(grid_id, player::Id(i), obscured, self.content_fit))
                 .padding(5)
                 .class(style::Container::Player);
 
@@ -547,6 +552,7 @@ impl Grid {
 #[derive(Debug, Default, Clone)]
 pub struct Settings {
     pub sources: Vec<media::Source>,
+    pub content_fit: ContentFit,
     pub orientation: Orientation,
     pub orientation_limit: OrientationLimit,
 }
