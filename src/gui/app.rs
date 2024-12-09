@@ -630,7 +630,10 @@ impl App {
                 }) => {
                     histories.sources.push(TextHistory::path(&path));
                     settings.sources.push(media::Source::new_path(path));
-                    modal::scroll_down()
+                    Task::batch([
+                        iced::window::get_oldest().and_then(iced::window::gain_focus),
+                        modal::scroll_down(),
+                    ])
                 }
                 Some(_) => Task::none(),
                 None => {
@@ -640,10 +643,13 @@ impl App {
                         let settings = grid.settings().with_source(media::Source::new_path(path));
 
                         self.show_modal(Modal::new_grid_settings(*grid_id, settings));
-                        modal::scroll_down()
+                        Task::batch([
+                            iced::window::get_oldest().and_then(iced::window::gain_focus),
+                            modal::scroll_down(),
+                        ])
                     } else {
                         self.dragged_file = Some(path);
-                        Task::none()
+                        iced::window::get_oldest().and_then(iced::window::gain_focus)
                     }
                 }
             },
@@ -691,9 +697,12 @@ impl App {
                         self.grids.resize(event.split, event.ratio);
                     }
                     PaneEvent::Split { grid_id, axis } => {
+                        let idle = self.grid(grid_id).is_some_and(|grid| grid.is_idle());
                         let settings = grid::Settings::default();
                         if let Some((grid_id, _split)) = self.grids.split(axis, grid_id, Grid::new(&settings)) {
-                            self.show_modal(Modal::new_grid_settings(grid_id, settings));
+                            if !idle {
+                                self.show_modal(Modal::new_grid_settings(grid_id, settings));
+                            }
                         }
                     }
                     PaneEvent::Close { grid_id } => {
