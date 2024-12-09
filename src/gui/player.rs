@@ -462,6 +462,17 @@ impl Player {
         }
     }
 
+    pub fn can_jump(&self) -> bool {
+        match self {
+            Self::Idle => false,
+            Self::Error { .. } => false,
+            Self::Image { .. } => false,
+            Self::Svg { .. } => false,
+            Self::Gif { .. } => false,
+            Self::Video { .. } => true,
+        }
+    }
+
     pub fn is_hovered(&self) -> Option<bool> {
         match self {
             Self::Idle => None,

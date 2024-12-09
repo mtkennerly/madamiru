@@ -259,10 +259,6 @@ pub mod action {
         translate("action-close")
     }
 
-    pub fn configure_media_sources() -> String {
-        translate("action-configure-media-sources")
-    }
-
     pub fn confirm() -> String {
         translate("action-confirm")
     }

@@ -140,6 +140,10 @@ impl Grid {
         relevant.then_some(true)
     }
 
+    pub fn can_jump(&self) -> bool {
+        self.players.iter().any(|player| player.can_jump())
+    }
+
     pub fn settings(&self) -> Settings {
         Settings {
             sources: self.sources.clone(),
@@ -455,7 +459,7 @@ impl Grid {
                         },
                     })
                     .obscured(obscured)
-                    .tooltip_below(if all_muted {
+                    .tooltip(if all_muted {
                         lang::action::unmute()
                     } else {
                         lang::action::mute()
@@ -470,11 +474,19 @@ impl Grid {
                         },
                     })
                     .obscured(obscured)
-                    .tooltip_below(if all_paused {
+                    .tooltip(if all_paused {
                         lang::action::play()
                     } else {
                         lang::action::pause()
                     })
+            }))
+            .push_maybe((show_player_controls && self.can_jump()).then(|| {
+                button::mini_icon(Icon::TimerRefresh)
+                    .on_press(Message::Pane {
+                        event: PaneEvent::SeekRandom { grid_id },
+                    })
+                    .obscured(obscured)
+                    .tooltip(lang::action::jump_position())
             }))
             .push_maybe(show_player_controls.then(|| {
                 button::mini_icon(Icon::Refresh)
@@ -482,15 +494,7 @@ impl Grid {
                         event: PaneEvent::Refresh { grid_id },
                     })
                     .obscured(obscured)
-                    .tooltip_below(lang::action::shuffle_media())
-            }))
-            .push_maybe(show_player_controls.then(|| {
-                button::mini_icon(Icon::TimerRefresh)
-                    .on_press(Message::Pane {
-                        event: PaneEvent::SeekRandom { grid_id },
-                    })
-                    .obscured(obscured)
-                    .tooltip_below(lang::action::jump_position())
+                    .tooltip(lang::action::shuffle_media())
             }))
             .push_maybe(show_player_controls.then(|| {
                 Container::new(vertical_rule(2))
@@ -506,7 +510,7 @@ impl Grid {
                         },
                     })
                     .obscured(obscured)
-                    .tooltip_below(lang::action::split_vertically()),
+                    .tooltip(lang::action::split_vertically()),
             )
             .push(
                 button::mini_icon(Icon::SplitHorizontal)
@@ -517,7 +521,7 @@ impl Grid {
                         },
                     })
                     .obscured(obscured)
-                    .tooltip_below(lang::action::split_horizontally()),
+                    .tooltip(lang::action::split_horizontally()),
             )
             .push(
                 button::mini_icon(Icon::Add)
@@ -526,7 +530,7 @@ impl Grid {
                     })
                     .enabled(!self.is_idle())
                     .obscured(obscured)
-                    .tooltip_below(lang::action::add_player()),
+                    .tooltip(lang::action::add_player()),
             )
             .push(
                 button::mini_icon(Icon::Settings)
@@ -534,7 +538,7 @@ impl Grid {
                         event: PaneEvent::ShowSettings { grid_id },
                     })
                     .obscured(obscured)
-                    .tooltip_below(lang::action::configure_media_sources()),
+                    .tooltip(lang::thing::settings()),
             )
             .push(
                 button::mini_icon(Icon::Close)
@@ -543,7 +547,7 @@ impl Grid {
                     })
                     .enabled(has_siblings)
                     .obscured(obscured)
-                    .tooltip_below(lang::action::close()),
+                    .tooltip(lang::action::close()),
             )
             .into()
     }

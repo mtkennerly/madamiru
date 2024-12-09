@@ -238,6 +238,10 @@ impl App {
         relevant.then_some(true)
     }
 
+    fn can_jump(&self) -> bool {
+        self.grids.iter().any(|(_grid_id, grid)| grid.can_jump())
+    }
+
     fn all_sources(&self) -> Vec<media::Source> {
         self.grids
             .iter()
@@ -840,20 +844,20 @@ impl App {
                                                     }),
                                                 )
                                                 .push(
+                                                    button::icon(Icon::TimerRefresh)
+                                                        .on_press(Message::AllPlayers {
+                                                            event: player::Event::SeekRandom,
+                                                        })
+                                                        .enabled(!self.all_idle() && self.can_jump())
+                                                        .obscured(obscured)
+                                                        .tooltip_below(lang::action::jump_position()),
+                                                )
+                                                .push(
                                                     button::icon(Icon::Refresh)
                                                         .on_press(Message::Refresh)
                                                         .enabled(!self.all_idle())
                                                         .obscured(obscured)
                                                         .tooltip_below(lang::action::shuffle_media()),
-                                                )
-                                                .push(
-                                                    button::icon(Icon::TimerRefresh)
-                                                        .on_press(Message::AllPlayers {
-                                                            event: player::Event::SeekRandom,
-                                                        })
-                                                        .enabled(!self.all_idle())
-                                                        .obscured(obscured)
-                                                        .tooltip_below(lang::action::jump_position()),
                                                 ),
                                         )
                                         .class(style::Container::Player),

@@ -20,7 +20,6 @@ action-add-player = Add player
 action-cancel = Cancel
 action-check-for-updates = Check for application updates automatically
 action-close = Close
-action-configure-media-sources = Configure media sources
 action-confirm = Confirm
 action-crop = Crop
 action-exit-app = Exit application
