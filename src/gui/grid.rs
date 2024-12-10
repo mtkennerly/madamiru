@@ -135,6 +135,7 @@ impl Grid {
         }
     }
 
+    #[cfg(feature = "audio")]
     pub fn reload_audio(&mut self, playback: &Playback) {
         for player in &mut self.players {
             player.reload_audio(playback);

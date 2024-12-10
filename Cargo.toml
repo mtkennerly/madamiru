@@ -8,6 +8,11 @@ repository = "https://github.com/mtkennerly/madamiru"
 readme = "README.md"
 license = "MIT"
 
+[features]
+default = ["audio", "video"]
+audio = ["dep:rodio"]
+video = ["dep:gstreamer", "dep:gstreamer-app", "dep:iced_video_player"]
+
 [dependencies]
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.17", features = ["derive", "wrap_help"] }
@@ -17,11 +22,11 @@ flexi_logger = { version = "0.29.3", features = ["async"] }
 fluent = "0.16.1"
 globetter = "0.2.0"
 globset = "0.4.15"
-gstreamer = "0.23"
-gstreamer-app = "0.23"
+gstreamer = { version = "0.23", optional = true }
+gstreamer-app = { version = "0.23", optional = true }
 iced = { version = "0.13.1", features = ["advanced", "image", "lazy", "svg", "tiny-skia", "tokio", "wgpu"], default-features = false }
 iced_gif = "0.13.0"
-iced_video_player = { version = ">=0.5.0", git = "https://github.com/jazzfool/iced_video_player.git", rev = "d5e28bf017b4606068717b39d20ceb7accf20519" }
+iced_video_player = { version = ">=0.5.0", git = "https://github.com/jazzfool/iced_video_player.git", rev = "d5e28bf017b4606068717b39d20ceb7accf20519", optional = true }
 image = { version = "0.25.2", features = ["ico"], default-features = false }
 infer = "0.16.0"
 intl-memoizer = "0.5.2"
@@ -33,7 +38,7 @@ realia = "0.2.0"
 regex = "1.10.6"
 reqwest = { version = "0.12.7", features = ["blocking", "gzip", "rustls-tls"], default-features = false }
 rfd = { version = "0.15.0", features = ["gtk3"], default-features = false }
-rodio = { version = "0.20.1", features = ["symphonia-aac", "symphonia-aiff", "symphonia-alac", "symphonia-flac", "symphonia-isomp4", "symphonia-mp3", "symphonia-vorbis", "symphonia-wav"], default-features = false }
+rodio = { version = "0.20.1", features = ["symphonia-aac", "symphonia-aiff", "symphonia-alac", "symphonia-flac", "symphonia-isomp4", "symphonia-mp3", "symphonia-vorbis", "symphonia-wav"], default-features = false, optional = true }
 schemars = { version = "0.8.21", features = ["chrono"] }
 semver = { version = "1.0.23", features = ["serde"] }
 serde = { version = "1.0.210", features = ["derive"] }

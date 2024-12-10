@@ -93,6 +93,7 @@ jobs:
       - uses: blinemedical/setup-gstreamer@v1
         with:
           version: '1.22.12'
+      - run: cargo build --no-default-features
       - run: cargo test
 
   lint:

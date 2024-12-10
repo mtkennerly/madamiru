@@ -419,6 +419,7 @@ pub mod tell {
         translate("tell-no-media-found")
     }
 
+    #[allow(unused)]
     pub fn unable_to_determine_media_duration() -> String {
         translate("tell-unable-to-determine-media-duration")
     }

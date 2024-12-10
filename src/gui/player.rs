@@ -6,7 +6,6 @@ use iced::{
     Alignment, Length,
 };
 use iced_gif::gif;
-use iced_video_player::{Video, VideoPlayer};
 
 use crate::{
     gui::{
@@ -41,8 +40,9 @@ fn timestamps<'a>(current: f64, total: Duration) -> Element<'a> {
         .into()
 }
 
+#[cfg(feature = "video")]
 #[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
-fn build_video(uri: &url::Url) -> Result<Video, iced_video_player::Error> {
+fn build_video(uri: &url::Url) -> Result<iced_video_player::Video, iced_video_player::Error> {
     // Based on `iced_video_player::Video::new`,
     // but without a text sink so that the built-in subtitle functionality triggers.
 
@@ -67,17 +67,24 @@ fn build_video(uri: &url::Url) -> Result<Video, iced_video_player::Error> {
     let video_sink = bin.by_name("iced_video").unwrap();
     let video_sink = video_sink.downcast::<gst_app::AppSink>().unwrap();
 
-    Video::from_gst_pipeline(pipeline, video_sink, None)
+    iced_video_player::Video::from_gst_pipeline(pipeline, video_sink, None)
 }
 
+#[cfg(feature = "video")]
 #[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn build_video(uri: &url::Url) -> Result<Video, iced_video_player::Error> {
-    Video::new(uri)
+fn build_video(uri: &url::Url) -> Result<iced_video_player::Video, iced_video_player::Error> {
+    iced_video_player::Video::new(uri)
 }
 
+#[cfg(feature = "video")]
 #[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
-fn build_video_player(video: &Video, grid_id: grid::Id, player_id: Id, content_fit: ContentFit) -> Element {
-    VideoPlayer::new(video)
+fn build_video_player(
+    video: &iced_video_player::Video,
+    grid_id: grid::Id,
+    player_id: Id,
+    content_fit: ContentFit,
+) -> Element {
+    iced_video_player::VideoPlayer::new(video)
         .width(Length::Fill)
         .height(Length::Fill)
         .content_fit(content_fit.into())
@@ -94,9 +101,15 @@ fn build_video_player(video: &Video, grid_id: grid::Id, player_id: Id, content_f
         .into()
 }
 
+#[cfg(feature = "video")]
 #[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn build_video_player(video: &Video, grid_id: grid::Id, player_id: Id, _content_fit: ContentFit) -> Element {
-    VideoPlayer::new(video)
+fn build_video_player(
+    video: &iced_video_player::Video,
+    grid_id: grid::Id,
+    player_id: Id,
+    _content_fit: ContentFit,
+) -> Element {
+    iced_video_player::VideoPlayer::new(video)
         .on_end_of_stream(Message::Player {
             grid_id,
             player_id,
@@ -110,23 +123,27 @@ fn build_video_player(video: &Video, grid_id: grid::Id, player_id: Id, _content_
         .into()
 }
 
+#[cfg(feature = "video")]
 #[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
-fn mute_video(video: &mut Video, muted: bool) {
+fn mute_video(video: &mut iced_video_player::Video, muted: bool) {
     video.set_muted(muted);
 }
 
+#[cfg(feature = "video")]
 #[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn mute_video(_video: &mut Video, _muted: bool) {
+fn mute_video(_video: &mut iced_video_player::Video, _muted: bool) {
     // Panic: `property 'mute' of type 'GstPipeline' not found`
 }
 
+#[cfg(feature = "video")]
 #[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
-fn seek_video(video: &mut Video, position: f64) {
+fn seek_video(video: &mut iced_video_player::Video, position: f64) {
     let _ = video.seek(Duration::from_secs_f64(position), false);
 }
 
+#[cfg(feature = "video")]
 #[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn seek_video(video: &mut Video, position: f64) {
+fn seek_video(video: &mut iced_video_player::Video, position: f64) {
     let _ = video.seek(Duration::from_secs_f64(position));
 }
 
@@ -135,22 +152,28 @@ pub struct Id(pub usize);
 
 #[derive(Debug)]
 pub enum Error {
+    #[cfg(feature = "audio")]
     Audio(String),
     Image(String),
     Io(std::io::Error),
     Path(crate::path::StrictPathError),
+    #[cfg(feature = "video")]
     Url,
+    #[cfg(feature = "video")]
     Video(iced_video_player::Error),
 }
 
 impl Error {
     pub fn message(&self) -> String {
         match self {
+            #[cfg(feature = "audio")]
             Self::Audio(error) => error.to_string(),
             Self::Image(error) => error.to_string(),
             Self::Io(error) => error.to_string(),
             Self::Path(error) => format!("{error:?}"),
+            #[cfg(feature = "video")]
             Self::Url => "URL".to_string(),
+            #[cfg(feature = "video")]
             Self::Video(error) => error.to_string(),
         }
     }
@@ -168,6 +191,7 @@ impl From<crate::path::StrictPathError> for Error {
     }
 }
 
+#[cfg(feature = "video")]
 impl From<iced_video_player::Error> for Error {
     fn from(value: iced_video_player::Error) -> Self {
         Self::Video(value)
@@ -204,6 +228,7 @@ pub enum Event {
 #[derive(Debug, Clone)]
 pub enum Update {
     PauseChanged,
+    #[cfg_attr(not(any(feature = "audio", feature = "video")), allow(unused))]
     MuteChanged,
     EndOfStream,
     Refresh,
@@ -262,6 +287,7 @@ pub enum Player {
         hovered: bool,
         need_play_on_focus: bool,
     },
+    #[cfg(feature = "audio")]
     Audio {
         media: Media,
         // We must hold the stream for as long as the sink.
@@ -274,9 +300,10 @@ pub enum Player {
         hovered: bool,
         need_play_on_focus: bool,
     },
+    #[cfg(feature = "video")]
     Video {
         media: Media,
-        video: Video,
+        video: iced_video_player::Video,
         position: f64,
         dragging: bool,
         hovered: bool,
@@ -343,6 +370,7 @@ impl Player {
                     hovered: false,
                 }),
             },
+            #[cfg(feature = "audio")]
             Media::Audio { path } => match Self::load_audio(path, playback, Duration::from_millis(0)) {
                 Ok((stream, sink, duration)) => Ok(Self::Audio {
                     media: media.clone(),
@@ -360,6 +388,7 @@ impl Player {
                     hovered: false,
                 }),
             },
+            #[cfg(feature = "video")]
             Media::Video { path } => match Self::load_video(path) {
                 Ok(mut video) => {
                     video.set_paused(playback.paused);
@@ -383,7 +412,8 @@ impl Player {
         }
     }
 
-    fn load_video(source: &StrictPath) -> Result<Video, Error> {
+    #[cfg(feature = "video")]
+    fn load_video(source: &StrictPath) -> Result<iced_video_player::Video, Error> {
         Ok(build_video(
             &url::Url::from_file_path(source.as_std_path_buf()?).map_err(|_| Error::Url)?,
         )?)
@@ -404,6 +434,7 @@ impl Player {
         Ok((frames, handle_path))
     }
 
+    #[cfg(feature = "audio")]
     fn load_audio(
         source: &StrictPath,
         playback: &Playback,
@@ -477,9 +508,11 @@ impl Player {
             Self::Gif { position, .. } => {
                 *position = 0.0;
             }
+            #[cfg(feature = "audio")]
             Self::Audio { sink, .. } => {
                 let _ = sink.try_seek(Duration::from_millis(0));
             }
+            #[cfg(feature = "video")]
             Self::Video { video, position, .. } => {
                 *position = 0.0;
                 seek_video(video, *position);
@@ -495,7 +528,9 @@ impl Player {
             Self::Image { media, .. } => Some(media),
             Self::Svg { media, .. } => Some(media),
             Self::Gif { media, .. } => Some(media),
+            #[cfg(feature = "audio")]
             Self::Audio { media, .. } => Some(media),
+            #[cfg(feature = "video")]
             Self::Video { media, .. } => Some(media),
         }
     }
@@ -507,7 +542,9 @@ impl Player {
             Self::Image { .. } => false,
             Self::Svg { .. } => false,
             Self::Gif { .. } => false,
+            #[cfg(feature = "audio")]
             Self::Audio { .. } => false,
+            #[cfg(feature = "video")]
             Self::Video { .. } => false,
         }
     }
@@ -519,7 +556,9 @@ impl Player {
             Self::Image { paused, .. } => Some(*paused),
             Self::Svg { paused, .. } => Some(*paused),
             Self::Gif { paused, .. } => Some(*paused),
+            #[cfg(feature = "audio")]
             Self::Audio { sink, .. } => Some(sink.is_paused()),
+            #[cfg(feature = "video")]
             Self::Video { video, .. } => Some(video.paused()),
         }
     }
@@ -531,7 +570,9 @@ impl Player {
             Self::Image { .. } => None,
             Self::Svg { .. } => None,
             Self::Gif { .. } => None,
+            #[cfg(feature = "audio")]
             Self::Audio { sink, .. } => Some(sink.volume() == 0.0),
+            #[cfg(feature = "video")]
             Self::Video { video, .. } => Some(video.muted()),
         }
     }
@@ -543,7 +584,9 @@ impl Player {
             Self::Image { .. } => false,
             Self::Svg { .. } => false,
             Self::Gif { .. } => false,
+            #[cfg(feature = "audio")]
             Self::Audio { .. } => true,
+            #[cfg(feature = "video")]
             Self::Video { .. } => true,
         }
     }
@@ -555,7 +598,9 @@ impl Player {
             Self::Image { hovered, .. } => Some(*hovered),
             Self::Svg { hovered, .. } => Some(*hovered),
             Self::Gif { hovered, .. } => Some(*hovered),
+            #[cfg(feature = "audio")]
             Self::Audio { hovered, .. } => Some(*hovered),
+            #[cfg(feature = "video")]
             Self::Video { hovered, .. } => Some(*hovered),
         }
     }
@@ -575,9 +620,11 @@ impl Player {
             Self::Gif { hovered, .. } => {
                 *hovered = flag;
             }
+            #[cfg(feature = "audio")]
             Self::Audio { hovered, .. } => {
                 *hovered = flag;
             }
+            #[cfg(feature = "video")]
             Self::Video { hovered, .. } => {
                 *hovered = flag;
             }
@@ -657,6 +704,7 @@ impl Player {
                     None
                 }
             }
+            #[cfg(feature = "audio")]
             Self::Audio {
                 sink,
                 duration,
@@ -673,10 +721,12 @@ impl Player {
                 }
                 None
             }
+            #[cfg(feature = "video")]
             Self::Video { .. } => None,
         }
     }
 
+    #[cfg(feature = "audio")]
     pub fn reload_audio(&mut self, playback: &Playback) {
         match self {
             Self::Idle => {}
@@ -731,15 +781,29 @@ impl Player {
                 bottom_controls: false,
                 timestamps: false,
             },
-            Self::Image { .. } | Self::Svg { .. } | Self::Gif { .. } | Self::Audio { .. } | Self::Video { .. } => {
-                Overlay {
-                    show,
-                    center_controls: show && viewport.height > 100.0 && viewport.width > 150.0,
-                    top_controls: show && viewport.width > 100.0,
-                    bottom_controls: show && viewport.height > 40.0,
-                    timestamps: show && viewport.height > 60.0 && viewport.width > 150.0,
-                }
-            }
+            Self::Image { .. } | Self::Svg { .. } | Self::Gif { .. } => Overlay {
+                show,
+                center_controls: show && viewport.height > 100.0 && viewport.width > 150.0,
+                top_controls: show && viewport.width > 100.0,
+                bottom_controls: show && viewport.height > 40.0,
+                timestamps: show && viewport.height > 60.0 && viewport.width > 150.0,
+            },
+            #[cfg(feature = "audio")]
+            Self::Audio { .. } => Overlay {
+                show,
+                center_controls: show && viewport.height > 100.0 && viewport.width > 150.0,
+                top_controls: show && viewport.width > 100.0,
+                bottom_controls: show && viewport.height > 40.0,
+                timestamps: show && viewport.height > 60.0 && viewport.width > 150.0,
+            },
+            #[cfg(feature = "video")]
+            Self::Video { .. } => Overlay {
+                show,
+                center_controls: show && viewport.height > 100.0 && viewport.width > 150.0,
+                top_controls: show && viewport.width > 100.0,
+                bottom_controls: show && viewport.height > 40.0,
+                timestamps: show && viewport.height > 60.0 && viewport.width > 150.0,
+            },
         }
     }
 
@@ -937,6 +1001,7 @@ impl Player {
                     None
                 }
             },
+            #[cfg(feature = "audio")]
             Self::Audio {
                 sink,
                 duration,
@@ -1008,6 +1073,7 @@ impl Player {
                     None
                 }
             },
+            #[cfg(feature = "video")]
             Self::Video {
                 video,
                 position,
@@ -1613,6 +1679,7 @@ impl Player {
                     )
                     .into()
             }
+            #[cfg(feature = "audio")]
             Self::Audio {
                 media,
                 sink,
@@ -1765,6 +1832,7 @@ impl Player {
                     )
                     .into()
             }
+            #[cfg(feature = "video")]
             Self::Video {
                 media,
                 video,

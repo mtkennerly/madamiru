@@ -18,7 +18,9 @@ pub enum Icon {
     LogOut,
     Loop,
     MoreVert,
+    #[cfg(feature = "video")]
     Movie,
+    #[cfg(feature = "audio")]
     Music,
     Mute,
     OpenInBrowser,
@@ -53,7 +55,9 @@ impl Icon {
             Self::LogOut => '\u{e9ba}',
             Self::Loop => '\u{e040}',
             Self::MoreVert => '\u{E5D4}',
+            #[cfg(feature = "video")]
             Self::Movie => '\u{e02c}',
+            #[cfg(feature = "audio")]
             Self::Music => '\u{e405}',
             Self::Mute => '\u{e04f}',
             Self::OpenInBrowser => '\u{e89d}',

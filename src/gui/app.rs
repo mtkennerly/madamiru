@@ -52,6 +52,7 @@ pub struct App {
     viewing_pane_controls: Option<grid::Id>,
     playlist_path: Option<StrictPath>,
     playlist_dirty: bool,
+    #[cfg_attr(not(feature = "audio"), allow(unused))]
     default_audio_output_device: Option<String>,
 }
 
@@ -205,7 +206,10 @@ impl App {
                 viewing_pane_controls: None,
                 playlist_path,
                 playlist_dirty,
+                #[cfg(feature = "audio")]
                 default_audio_output_device: Self::get_audio_device(),
+                #[cfg(not(feature = "audio"))]
+                default_audio_output_device: None,
             },
             Task::batch(commands),
         )
@@ -396,6 +400,7 @@ impl App {
         }
     }
 
+    #[cfg(feature = "audio")]
     fn get_audio_device() -> Option<String> {
         use rodio::cpal::traits::{DeviceTrait, HostTrait};
         let host = rodio::cpal::default_host();
@@ -408,6 +413,7 @@ impl App {
     /// * https://github.com/RustAudio/cpal/issues/740
     /// * https://github.com/RustAudio/rodio/issues/327
     /// * https://github.com/RustAudio/rodio/issues/544
+    #[cfg(feature = "audio")]
     fn did_audio_device_change(&mut self) -> bool {
         let device = Self::get_audio_device();
 
@@ -448,6 +454,7 @@ impl App {
                 }
                 Task::none()
             }
+            #[cfg(feature = "audio")]
             Message::CheckAudio => {
                 if self.did_audio_device_change() {
                     for (_id, grid) in self.grids.iter_mut() {
@@ -1066,9 +1073,11 @@ impl App {
                 _ => None,
             }),
             iced::time::every(Duration::from_millis(100)).map(Message::Tick),
-            iced::time::every(Duration::from_millis(1000)).map(|_| Message::CheckAudio),
             iced::time::every(Duration::from_secs(60 * 10)).map(|_| Message::FindMedia),
         ];
+
+        #[cfg(feature = "audio")]
+        subscriptions.push(iced::time::every(Duration::from_millis(1000)).map(|_| Message::CheckAudio));
 
         if !self.pending_save.is_empty() {
             subscriptions.push(iced::time::every(Duration::from_millis(200)).map(|_| Message::Save));

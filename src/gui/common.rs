@@ -38,6 +38,7 @@ pub enum Message {
         force: bool,
     },
     Tick(Instant),
+    #[cfg(feature = "audio")]
     CheckAudio,
     Save,
     CloseModal,

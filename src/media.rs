@@ -112,11 +112,23 @@ impl ToString for SourceKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Media {
-    Image { path: StrictPath },
-    Svg { path: StrictPath },
-    Gif { path: StrictPath },
-    Audio { path: StrictPath },
-    Video { path: StrictPath },
+    Image {
+        path: StrictPath,
+    },
+    Svg {
+        path: StrictPath,
+    },
+    Gif {
+        path: StrictPath,
+    },
+    #[cfg(feature = "audio")]
+    Audio {
+        path: StrictPath,
+    },
+    #[cfg(feature = "video")]
+    Video {
+        path: StrictPath,
+    },
 }
 
 impl Media {
@@ -125,7 +137,9 @@ impl Media {
             Self::Image { path } => path,
             Self::Svg { path } => path,
             Self::Gif { path } => path,
+            #[cfg(feature = "audio")]
             Self::Audio { path } => path,
+            #[cfg(feature = "video")]
             Self::Video { path } => path,
         }
     }
@@ -146,8 +160,10 @@ impl Media {
                 let extension = path.file_extension().map(|x| x.to_lowercase());
 
                 match info.mime_type() {
+                    #[cfg(feature = "video")]
                     "video/mp4" | "video/quicktime" | "video/webm" | "video/x-m4v" | "video/x-matroska"
                     | "video/x-msvideo" => Some(Self::Video { path: path.clone() }),
+                    #[cfg(feature = "audio")]
                     "audio/mpeg" | "audio/m4a" | "audio/x-flac" | "audio/x-wav" => {
                         Some(Self::Audio { path: path.clone() })
                     }
