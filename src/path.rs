@@ -524,6 +524,10 @@ impl StrictPath {
         std::fs::File::open(self.as_std_path_buf()?)
     }
 
+    pub fn open_buffered(&self) -> Result<std::io::BufReader<std::fs::File>, std::io::Error> {
+        Ok(std::io::BufReader::new(self.open()?))
+    }
+
     pub fn write_with_content(&self, content: &str) -> std::io::Result<()> {
         std::fs::write(self.as_std_path_buf()?, content.as_bytes())
     }

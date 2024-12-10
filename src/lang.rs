@@ -419,6 +419,10 @@ pub mod tell {
         translate("tell-no-media-found")
     }
 
+    pub fn unable_to_determine_media_duration() -> String {
+        translate("tell-unable-to-determine-media-duration")
+    }
+
     pub fn unable_to_open_directory() -> String {
         translate("tell-unable-to-open-directory")
     }

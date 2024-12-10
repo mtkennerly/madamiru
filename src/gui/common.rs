@@ -38,6 +38,7 @@ pub enum Message {
         force: bool,
     },
     Tick(Instant),
+    CheckAudio,
     Save,
     CloseModal,
     Config {

@@ -135,6 +135,12 @@ impl Grid {
         }
     }
 
+    pub fn reload_audio(&mut self, playback: &Playback) {
+        for player in &mut self.players {
+            player.reload_audio(playback);
+        }
+    }
+
     pub fn remove(&mut self, id: player::Id) {
         self.players.remove(id.0);
     }

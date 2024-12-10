@@ -115,6 +115,7 @@ pub enum Media {
     Image { path: StrictPath },
     Svg { path: StrictPath },
     Gif { path: StrictPath },
+    Audio { path: StrictPath },
     Video { path: StrictPath },
 }
 
@@ -124,6 +125,7 @@ impl Media {
             Self::Image { path } => path,
             Self::Svg { path } => path,
             Self::Gif { path } => path,
+            Self::Audio { path } => path,
             Self::Video { path } => path,
         }
     }
@@ -146,6 +148,9 @@ impl Media {
                 match info.mime_type() {
                     "video/mp4" | "video/quicktime" | "video/webm" | "video/x-m4v" | "video/x-matroska"
                     | "video/x-msvideo" => Some(Self::Video { path: path.clone() }),
+                    "audio/mpeg" | "audio/m4a" | "audio/x-flac" | "audio/x-wav" => {
+                        Some(Self::Audio { path: path.clone() })
+                    }
                     "image/bmp"
                     | "image/jpeg"
                     | "image/png"

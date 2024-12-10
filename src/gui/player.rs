@@ -135,6 +135,7 @@ pub struct Id(pub usize);
 
 #[derive(Debug)]
 pub enum Error {
+    Audio(String),
     Image(String),
     Io(std::io::Error),
     Path(crate::path::StrictPathError),
@@ -145,6 +146,7 @@ pub enum Error {
 impl Error {
     pub fn message(&self) -> String {
         match self {
+            Self::Audio(error) => error.to_string(),
             Self::Image(error) => error.to_string(),
             Self::Io(error) => error.to_string(),
             Self::Path(error) => format!("{error:?}"),
@@ -260,6 +262,18 @@ pub enum Player {
         hovered: bool,
         need_play_on_focus: bool,
     },
+    Audio {
+        media: Media,
+        // We must hold the stream for as long as the sink.
+        #[allow(unused)]
+        stream: rodio::OutputStream,
+        sink: rodio::Sink,
+        duration: Duration,
+        looping: bool,
+        dragging: bool,
+        hovered: bool,
+        need_play_on_focus: bool,
+    },
     Video {
         media: Media,
         video: Video,
@@ -329,6 +343,23 @@ impl Player {
                     hovered: false,
                 }),
             },
+            Media::Audio { path } => match Self::load_audio(path, playback, Duration::from_millis(0)) {
+                Ok((stream, sink, duration)) => Ok(Self::Audio {
+                    media: media.clone(),
+                    stream,
+                    sink,
+                    duration,
+                    looping: false,
+                    dragging: false,
+                    hovered: false,
+                    need_play_on_focus: false,
+                }),
+                Err(e) => Err(Self::Error {
+                    media: media.clone(),
+                    message: e.message(),
+                    hovered: false,
+                }),
+            },
             Media::Video { path } => match Self::load_video(path) {
                 Ok(mut video) => {
                     video.set_paused(playback.paused);
@@ -373,6 +404,42 @@ impl Player {
         Ok((frames, handle_path))
     }
 
+    fn load_audio(
+        source: &StrictPath,
+        playback: &Playback,
+        position: Duration,
+    ) -> Result<(rodio::OutputStream, rodio::Sink, Duration), Error> {
+        use rodio::Source;
+
+        let (stream, stream_handle) = rodio::OutputStream::try_default().map_err(|e| Error::Audio(e.to_string()))?;
+        let sink = rodio::Sink::try_new(&stream_handle).map_err(|e| Error::Audio(e.to_string()))?;
+
+        if playback.paused {
+            sink.pause();
+        } else {
+            sink.play();
+        }
+
+        if playback.muted {
+            sink.set_volume(0.0);
+        } else {
+            sink.set_volume(1.0);
+        }
+
+        let _ = sink.try_seek(position);
+
+        let file = source.open_buffered()?;
+        let source = rodio::Decoder::new(file)
+            .map_err(|e| Error::Audio(e.to_string()))?
+            .track_position();
+        let Some(duration) = source.total_duration() else {
+            return Err(Error::Audio(lang::tell::unable_to_determine_media_duration()));
+        };
+        sink.append(source);
+
+        Ok((stream, sink, duration))
+    }
+
     pub fn swap_media(&mut self, media: &Media, playback: &Playback) -> Result<(), ()> {
         let playback = playback.with_muted_maybe(self.is_muted());
         let hovered = self.is_hovered();
@@ -410,6 +477,9 @@ impl Player {
             Self::Gif { position, .. } => {
                 *position = 0.0;
             }
+            Self::Audio { sink, .. } => {
+                let _ = sink.try_seek(Duration::from_millis(0));
+            }
             Self::Video { video, position, .. } => {
                 *position = 0.0;
                 seek_video(video, *position);
@@ -425,6 +495,7 @@ impl Player {
             Self::Image { media, .. } => Some(media),
             Self::Svg { media, .. } => Some(media),
             Self::Gif { media, .. } => Some(media),
+            Self::Audio { media, .. } => Some(media),
             Self::Video { media, .. } => Some(media),
         }
     }
@@ -436,6 +507,7 @@ impl Player {
             Self::Image { .. } => false,
             Self::Svg { .. } => false,
             Self::Gif { .. } => false,
+            Self::Audio { .. } => false,
             Self::Video { .. } => false,
         }
     }
@@ -447,6 +519,7 @@ impl Player {
             Self::Image { paused, .. } => Some(*paused),
             Self::Svg { paused, .. } => Some(*paused),
             Self::Gif { paused, .. } => Some(*paused),
+            Self::Audio { sink, .. } => Some(sink.is_paused()),
             Self::Video { video, .. } => Some(video.paused()),
         }
     }
@@ -458,6 +531,7 @@ impl Player {
             Self::Image { .. } => None,
             Self::Svg { .. } => None,
             Self::Gif { .. } => None,
+            Self::Audio { sink, .. } => Some(sink.volume() == 0.0),
             Self::Video { video, .. } => Some(video.muted()),
         }
     }
@@ -469,6 +543,7 @@ impl Player {
             Self::Image { .. } => false,
             Self::Svg { .. } => false,
             Self::Gif { .. } => false,
+            Self::Audio { .. } => true,
             Self::Video { .. } => true,
         }
     }
@@ -480,6 +555,7 @@ impl Player {
             Self::Image { hovered, .. } => Some(*hovered),
             Self::Svg { hovered, .. } => Some(*hovered),
             Self::Gif { hovered, .. } => Some(*hovered),
+            Self::Audio { hovered, .. } => Some(*hovered),
             Self::Video { hovered, .. } => Some(*hovered),
         }
     }
@@ -497,6 +573,9 @@ impl Player {
                 *hovered = flag;
             }
             Self::Gif { hovered, .. } => {
+                *hovered = flag;
+            }
+            Self::Audio { hovered, .. } => {
                 *hovered = flag;
             }
             Self::Video { hovered, .. } => {
@@ -578,7 +657,65 @@ impl Player {
                     None
                 }
             }
+            Self::Audio {
+                sink,
+                duration,
+                looping,
+                ..
+            } => {
+                if sink.get_pos() >= *duration {
+                    if *looping {
+                        let _ = sink.try_seek(Duration::from_millis(0));
+                        sink.play();
+                    } else {
+                        return Some(Update::EndOfStream);
+                    }
+                }
+                None
+            }
             Self::Video { .. } => None,
+        }
+    }
+
+    pub fn reload_audio(&mut self, playback: &Playback) {
+        match self {
+            Self::Idle => {}
+            Self::Error { .. } => {}
+            Self::Image { .. } => {}
+            Self::Svg { .. } => {}
+            Self::Gif { .. } => {}
+            Self::Audio {
+                media,
+                stream: _,
+                sink,
+                duration: _,
+                looping,
+                dragging,
+                hovered,
+                need_play_on_focus,
+            } => {
+                let playback = playback.with_paused(sink.is_paused()).with_muted(sink.volume() == 0.0);
+                let position = sink.get_pos();
+
+                *self = match Self::load_audio(media.path(), &playback, position) {
+                    Ok((stream, sink, duration)) => Self::Audio {
+                        media: media.clone(),
+                        stream,
+                        sink,
+                        duration,
+                        looping: *looping,
+                        dragging: *dragging,
+                        hovered: *hovered,
+                        need_play_on_focus: *need_play_on_focus,
+                    },
+                    Err(e) => Self::Error {
+                        media: media.clone(),
+                        message: e.message(),
+                        hovered: false,
+                    },
+                };
+            }
+            Self::Video { .. } => {}
         }
     }
 
@@ -594,13 +731,15 @@ impl Player {
                 bottom_controls: false,
                 timestamps: false,
             },
-            Self::Image { .. } | Self::Svg { .. } | Self::Gif { .. } | Self::Video { .. } => Overlay {
-                show,
-                center_controls: show && viewport.height > 100.0 && viewport.width > 150.0,
-                top_controls: show && viewport.width > 100.0,
-                bottom_controls: show && viewport.height > 40.0,
-                timestamps: show && viewport.height > 60.0 && viewport.width > 150.0,
-            },
+            Self::Image { .. } | Self::Svg { .. } | Self::Gif { .. } | Self::Audio { .. } | Self::Video { .. } => {
+                Overlay {
+                    show,
+                    center_controls: show && viewport.height > 100.0 && viewport.width > 150.0,
+                    top_controls: show && viewport.width > 100.0,
+                    bottom_controls: show && viewport.height > 40.0,
+                    timestamps: show && viewport.height > 60.0 && viewport.width > 150.0,
+                }
+            }
         }
     }
 
@@ -793,6 +932,77 @@ impl Player {
                 Event::WindowUnfocused => {
                     if playback.pause_on_unfocus {
                         *paused = true;
+                        *need_play_on_focus = true;
+                    }
+                    None
+                }
+            },
+            Self::Audio {
+                sink,
+                duration,
+                looping,
+                dragging,
+                hovered,
+                need_play_on_focus,
+                ..
+            } => match event {
+                Event::SetPause(flag) => {
+                    if flag {
+                        sink.pause();
+                    } else {
+                        sink.play();
+                    }
+                    Some(Update::PauseChanged)
+                }
+                Event::SetLoop(flag) => {
+                    *looping = flag;
+                    None
+                }
+                Event::SetMute(flag) => {
+                    if flag {
+                        sink.set_volume(0.0);
+                    } else {
+                        sink.set_volume(1.0);
+                    }
+                    Some(Update::MuteChanged)
+                }
+                Event::Seek(offset) => {
+                    *dragging = true;
+                    let _ = sink.try_seek(Duration::from_secs_f64(offset));
+                    None
+                }
+                Event::SeekStop => {
+                    *dragging = false;
+                    None
+                }
+                Event::SeekRandom => {
+                    use rand::Rng;
+                    let position = rand::thread_rng().gen_range(0.0..duration.as_secs_f64());
+                    let _ = sink.try_seek(Duration::from_secs_f64(position));
+                    None
+                }
+                Event::EndOfStream => (!*looping).then_some(Update::EndOfStream),
+                Event::NewFrame => None,
+                Event::MouseEnter => {
+                    *hovered = true;
+                    None
+                }
+                Event::MouseExit => {
+                    *hovered = false;
+                    None
+                }
+                Event::Refresh => Some(Update::Refresh),
+                Event::Close => Some(Update::Close),
+                Event::WindowFocused => {
+                    if *need_play_on_focus {
+                        sink.play();
+                        *need_play_on_focus = false;
+                    }
+                    None
+                }
+                Event::WindowUnfocused => {
+                    if playback.pause_on_unfocus {
+                        sink.pause();
                         *need_play_on_focus = true;
                     }
                     None
@@ -1389,6 +1599,158 @@ impl Player {
                                                 event: Event::Seek(x),
                                             }
                                         })
+                                        .step(0.1)
+                                        .on_release(Message::Player {
+                                            grid_id,
+                                            player_id,
+                                            event: Event::SeekStop,
+                                        }),
+                                    )),
+                            )
+                            .align_bottom(Length::Fill)
+                            .center_x(Length::Fill),
+                        ),
+                    )
+                    .into()
+            }
+            Self::Audio {
+                media,
+                sink,
+                duration,
+                looping,
+                dragging,
+                hovered,
+                ..
+            } => {
+                let overlay = self.overlay(viewport, obscured, *hovered || *dragging);
+
+                Stack::new()
+                    .push_maybe(
+                        (!overlay.show).then_some(
+                            Container::new(Icon::Music.max_control())
+                                .align_x(Alignment::Center)
+                                .align_y(Alignment::Center)
+                                .width(Length::Fill)
+                                .height(Length::Fill),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.show.then_some(
+                            Container::new("")
+                                .center(Length::Fill)
+                                .class(style::Container::ModalBackground),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.top_controls.then_some(
+                            Container::new(
+                                Row::new()
+                                    .push(
+                                        button::icon(Icon::Music)
+                                            .on_press(Message::OpenFile {
+                                                path: media.path().clone(),
+                                            })
+                                            .tooltip(media.path().render()),
+                                    )
+                                    .push(horizontal_space())
+                                    .push(
+                                        button::icon(Icon::Refresh)
+                                            .on_press(Message::Player {
+                                                grid_id,
+                                                player_id,
+                                                event: Event::Refresh,
+                                            })
+                                            .tooltip(lang::action::shuffle_media()),
+                                    )
+                                    .push(
+                                        button::icon(Icon::Close)
+                                            .on_press(Message::Player {
+                                                grid_id,
+                                                player_id,
+                                                event: Event::Close,
+                                            })
+                                            .tooltip(lang::action::close()),
+                                    ),
+                            )
+                            .align_top(Length::Fill)
+                            .width(Length::Fill),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.center_controls.then_some(
+                            Container::new(
+                                Row::new()
+                                    .spacing(5)
+                                    .align_y(alignment::Vertical::Center)
+                                    .padding(padding::all(10.0))
+                                    .push({
+                                        let muted = sink.volume() == 0.0;
+
+                                        button::icon(if muted { Icon::Mute } else { Icon::VolumeHigh })
+                                            .on_press(Message::Player {
+                                                grid_id,
+                                                player_id,
+                                                event: Event::SetMute(!muted),
+                                            })
+                                            .tooltip(if muted {
+                                                lang::action::unmute()
+                                            } else {
+                                                lang::action::mute()
+                                            })
+                                    })
+                                    .push({
+                                        let paused = sink.is_paused();
+
+                                        button::big_icon(if paused { Icon::Play } else { Icon::Pause })
+                                            .on_press(Message::Player {
+                                                grid_id,
+                                                player_id,
+                                                event: Event::SetPause(!paused),
+                                            })
+                                            .tooltip(if paused {
+                                                lang::action::play()
+                                            } else {
+                                                lang::action::pause()
+                                            })
+                                    })
+                                    .push(
+                                        button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
+                                            .on_press(Message::Player {
+                                                grid_id,
+                                                player_id,
+                                                event: Event::SetLoop(!*looping),
+                                            })
+                                            .tooltip(if *looping {
+                                                lang::tell::player_will_loop()
+                                            } else {
+                                                lang::tell::player_will_shuffle()
+                                            }),
+                                    ),
+                            )
+                            .center(Length::Fill),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.bottom_controls.then_some(
+                            Container::new(
+                                Column::new()
+                                    .padding(padding::left(10).right(10).bottom(5))
+                                    .push(vertical_space())
+                                    .push_maybe(
+                                        overlay
+                                            .timestamps
+                                            .then_some(timestamps(sink.get_pos().as_secs_f64(), *duration)),
+                                    )
+                                    .push(Container::new(
+                                        iced::widget::slider(
+                                            0.0..=duration.as_secs_f64(),
+                                            sink.get_pos().as_secs_f64(),
+                                            move |x| Message::Player {
+                                                grid_id,
+                                                player_id,
+                                                event: Event::Seek(x),
+                                            },
+                                        )
                                         .step(0.1)
                                         .on_release(Message::Player {
                                             grid_id,

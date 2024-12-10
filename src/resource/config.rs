@@ -95,6 +95,14 @@ pub struct Playback {
 }
 
 impl Playback {
+    pub fn with_paused(&self, paused: bool) -> Self {
+        Self { paused, ..self.clone() }
+    }
+
+    pub fn with_muted(&self, muted: bool) -> Self {
+        Self { muted, ..self.clone() }
+    }
+
     pub fn with_muted_maybe(&self, muted: Option<bool>) -> Self {
         Self {
             muted: muted.unwrap_or(self.muted),

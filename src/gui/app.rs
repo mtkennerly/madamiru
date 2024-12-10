@@ -52,6 +52,7 @@ pub struct App {
     viewing_pane_controls: Option<grid::Id>,
     playlist_path: Option<StrictPath>,
     playlist_dirty: bool,
+    default_audio_output_device: Option<String>,
 }
 
 impl App {
@@ -204,6 +205,7 @@ impl App {
                 viewing_pane_controls: None,
                 playlist_path,
                 playlist_dirty,
+                default_audio_output_device: Self::get_audio_device(),
             },
             Task::batch(commands),
         )
@@ -394,6 +396,34 @@ impl App {
         }
     }
 
+    fn get_audio_device() -> Option<String> {
+        use rodio::cpal::traits::{DeviceTrait, HostTrait};
+        let host = rodio::cpal::default_host();
+        host.default_output_device().and_then(|d| d.name().ok())
+    }
+
+    /// Rodio/CPAL don't automatically follow changes to the default output device,
+    /// so we need to reload the streams if that happens.
+    /// More info:
+    /// * https://github.com/RustAudio/cpal/issues/740
+    /// * https://github.com/RustAudio/rodio/issues/327
+    /// * https://github.com/RustAudio/rodio/issues/544
+    fn did_audio_device_change(&mut self) -> bool {
+        let device = Self::get_audio_device();
+
+        if self.default_audio_output_device != device {
+            log::info!(
+                "Default audio device changed: {:?} -> {:?}",
+                self.default_audio_output_device.as_ref(),
+                device.as_ref()
+            );
+            self.default_audio_output_device = device;
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Ignore => Task::none(),
@@ -412,8 +442,17 @@ impl App {
             Message::Tick(instant) => {
                 let elapsed = instant - self.last_tick;
                 self.last_tick = instant;
+
                 for (_id, grid) in self.grids.iter_mut() {
                     grid.tick(elapsed, &mut self.media, &self.config.playback);
+                }
+                Task::none()
+            }
+            Message::CheckAudio => {
+                if self.did_audio_device_change() {
+                    for (_id, grid) in self.grids.iter_mut() {
+                        grid.reload_audio(&self.config.playback);
+                    }
                 }
                 Task::none()
             }
@@ -1027,6 +1066,7 @@ impl App {
                 _ => None,
             }),
             iced::time::every(Duration::from_millis(100)).map(Message::Tick),
+            iced::time::every(Duration::from_millis(1000)).map(|_| Message::CheckAudio),
             iced::time::every(Duration::from_secs(60 * 10)).map(|_| Message::FindMedia),
         ];
 

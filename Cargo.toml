@@ -33,6 +33,7 @@ realia = "0.2.0"
 regex = "1.10.6"
 reqwest = { version = "0.12.7", features = ["blocking", "gzip", "rustls-tls"], default-features = false }
 rfd = { version = "0.15.0", features = ["gtk3"], default-features = false }
+rodio = { version = "0.20.1", features = ["symphonia-aac", "symphonia-aiff", "symphonia-alac", "symphonia-flac", "symphonia-isomp4", "symphonia-mp3", "symphonia-vorbis", "symphonia-wav"], default-features = false }
 schemars = { version = "0.8.21", features = ["chrono"] }
 semver = { version = "1.0.23", features = ["serde"] }
 serde = { version = "1.0.210", features = ["derive"] }

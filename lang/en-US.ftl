@@ -57,6 +57,7 @@ tell-playlist-has-unsaved-changes = Your playlist has unsaved changes.
 tell-playlist-is-invalid = The playlist file is invalid.
 tell-new-version-available = An application update is available: {$version}.
 tell-no-media-found = No more media matching your filter.
+tell-unable-to-determine-media-duration = Unable to determine media duration.
 tell-unable-to-open-directory = Unable to open directory.
 tell-unable-to-open-url = Unable to open URL.
 tell-unable-to-save-playlist = Unable to save playlist.
