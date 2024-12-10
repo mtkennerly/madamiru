@@ -552,7 +552,7 @@ impl Grid {
                         event: PaneEvent::Refresh { grid_id },
                     })
                     .obscured(obscured)
-                    .tooltip(lang::action::shuffle_media())
+                    .tooltip(lang::action::shuffle())
             }))
             .push_maybe(show_player_controls.then(|| {
                 Container::new(vertical_rule(2))

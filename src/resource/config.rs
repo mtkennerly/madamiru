@@ -75,7 +75,10 @@ impl Theme {
 
 impl ToString for Theme {
     fn to_string(&self) -> String {
-        lang::theme_name(self)
+        match self {
+            Self::Light => lang::state::light(),
+            Self::Dark => lang::state::dark(),
+        }
     }
 }
 

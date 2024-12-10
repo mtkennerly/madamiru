@@ -6,7 +6,7 @@ use regex::Regex;
 use std::sync::LazyLock;
 use unic_langid::LanguageIdentifier;
 
-use crate::{prelude::Error, resource::config::Theme};
+use crate::prelude::Error;
 
 const VERSION: &str = "version";
 
@@ -165,13 +165,6 @@ pub fn handle_error(error: &Error) -> String {
     };
 
     format!("{} {}", field(&thing::error()), error)
-}
-
-pub fn theme_name(theme: &Theme) -> String {
-    translate(match theme {
-        Theme::Light => "thing-theme-light",
-        Theme::Dark => "thing-theme-dark",
-    })
 }
 
 macro_rules! join {
@@ -345,8 +338,8 @@ pub mod action {
         translate("action-select-file")
     }
 
-    pub fn shuffle_media() -> String {
-        translate("action-shuffle-media")
+    pub fn shuffle() -> String {
+        translate("action-shuffle")
     }
 
     pub fn split_horizontally() -> String {
@@ -377,8 +370,16 @@ pub mod action {
 pub mod state {
     use super::*;
 
+    pub fn dark() -> String {
+        translate("state-dark")
+    }
+
     pub fn horizontal() -> String {
         translate("state-horizontal")
+    }
+
+    pub fn light() -> String {
+        translate("state-light")
     }
 
     pub fn vertical() -> String {

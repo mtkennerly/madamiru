@@ -1250,7 +1250,7 @@ impl Player {
                                                 player_id,
                                                 event: Event::Refresh,
                                             })
-                                            .tooltip(lang::action::shuffle_media()),
+                                            .tooltip(lang::action::shuffle()),
                                     ),
                             )
                             .center(Length::Fill),
@@ -1310,7 +1310,7 @@ impl Player {
                                                 player_id,
                                                 event: Event::Refresh,
                                             })
-                                            .tooltip(lang::action::shuffle_media()),
+                                            .tooltip(lang::action::shuffle()),
                                     )
                                     .push(
                                         button::icon(Icon::Close)
@@ -1444,7 +1444,7 @@ impl Player {
                                                 player_id,
                                                 event: Event::Refresh,
                                             })
-                                            .tooltip(lang::action::shuffle_media()),
+                                            .tooltip(lang::action::shuffle()),
                                     )
                                     .push(
                                         button::icon(Icon::Close)
@@ -1590,7 +1590,7 @@ impl Player {
                                                 player_id,
                                                 event: Event::Refresh,
                                             })
-                                            .tooltip(lang::action::shuffle_media()),
+                                            .tooltip(lang::action::shuffle()),
                                     )
                                     .push(
                                         button::icon(Icon::Close)
@@ -1720,7 +1720,7 @@ impl Player {
                                                 player_id,
                                                 event: Event::Refresh,
                                             })
-                                            .tooltip(lang::action::shuffle_media()),
+                                            .tooltip(lang::action::shuffle()),
                                     )
                                     .push(
                                         button::icon(Icon::Close)
@@ -1870,7 +1870,7 @@ impl Player {
                                                 player_id,
                                                 event: Event::Refresh,
                                             })
-                                            .tooltip(lang::action::shuffle_media()),
+                                            .tooltip(lang::action::shuffle()),
                                     )
                                     .push(
                                         button::icon(Icon::Close)

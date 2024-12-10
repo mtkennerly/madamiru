@@ -1,6 +1,7 @@
 thing-application = Application
 thing-content-fit = Content fit
 thing-error = Error
+# https://en.wikipedia.org/wiki/Glob_(programming)
 thing-glob = Glob
 thing-image = Image
 thing-items-per-line = Items per line
@@ -14,8 +15,6 @@ thing-playlist = Playlist
 thing-settings = Settings
 thing-sources = Sources
 thing-theme = Theme
-thing-theme-dark = Dark
-thing-theme-light = Light
 
 action-add-player = Add player
 action-cancel = Cancel
@@ -24,7 +23,7 @@ action-close = Close
 action-confirm = Confirm
 action-crop = Crop
 action-exit-app = Exit application
-action-jump-position = Jump to a random position
+action-jump-position = Jump to random position
 action-mute = Mute
 action-open-folder = Open folder
 action-open-folder-of-file = Open folder of file
@@ -39,7 +38,7 @@ action-scale = Scale
 action-scale-down = Scale down
 action-select-folder = Select folder
 action-select-file = Select file
-action-shuffle-media = Shuffle media
+action-shuffle = Shuffle
 action-split-horizontally = Split horizontally
 action-split-vertically = Split vertically
 action-start-new-playlist = Start new playlist
@@ -47,7 +46,11 @@ action-stretch = Stretch
 action-unmute = Unmute
 action-view-releases = View releases
 
+# This refers to the dark-colored theme.
+state-dark = Dark
 state-horizontal = Horizontal
+# This refers to the light-colored theme.
+state-light = Light
 state-vertical = Vertical
 
 tell-config-is-invalid = The config file is invalid.

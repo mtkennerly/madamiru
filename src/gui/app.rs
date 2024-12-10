@@ -1196,7 +1196,7 @@ impl App {
                                                         .on_press(Message::Refresh)
                                                         .enabled(!self.all_idle())
                                                         .obscured(obscured)
-                                                        .tooltip_below(lang::action::shuffle_media()),
+                                                        .tooltip_below(lang::action::shuffle()),
                                                 ),
                                         )
                                         .class(style::Container::Player),
