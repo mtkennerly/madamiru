@@ -146,7 +146,7 @@ pub enum Orientation {
 }
 
 impl Orientation {
-    pub const ALL: &[Self] = &[Self::Horizontal, Self::Vertical];
+    pub const ALL: &'static [Self] = &[Self::Horizontal, Self::Vertical];
 }
 
 impl ToString for Orientation {
@@ -166,7 +166,11 @@ pub enum OrientationLimit {
 }
 
 impl OrientationLimit {
-    pub const DEFAULT_FIXED: NonZeroUsize = NonZeroUsize::new(4).unwrap();
+    pub const DEFAULT_FIXED: usize = 4;
+
+    pub fn default_fixed() -> NonZeroUsize {
+        NonZeroUsize::new(Self::DEFAULT_FIXED).unwrap()
+    }
 
     pub fn is_fixed(&self) -> bool {
         match self {

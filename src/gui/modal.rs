@@ -534,7 +534,7 @@ impl Modal {
                             .orientation_limit
                             .current()
                             .parse::<NonZeroUsize>()
-                            .unwrap_or(playlist::OrientationLimit::DEFAULT_FIXED);
+                            .unwrap_or(playlist::OrientationLimit::default_fixed());
                         settings.orientation_limit = playlist::OrientationLimit::Fixed(limit);
                     } else {
                         settings.orientation_limit = playlist::OrientationLimit::Automatic;

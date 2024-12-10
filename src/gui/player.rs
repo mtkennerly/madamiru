@@ -728,44 +728,37 @@ impl Player {
 
     #[cfg(feature = "audio")]
     pub fn reload_audio(&mut self, playback: &Playback) {
-        match self {
-            Self::Idle => {}
-            Self::Error { .. } => {}
-            Self::Image { .. } => {}
-            Self::Svg { .. } => {}
-            Self::Gif { .. } => {}
-            Self::Audio {
-                media,
-                stream: _,
-                sink,
-                duration: _,
-                looping,
-                dragging,
-                hovered,
-                need_play_on_focus,
-            } => {
-                let playback = playback.with_paused(sink.is_paused()).with_muted(sink.volume() == 0.0);
-                let position = sink.get_pos();
+        if let Self::Audio {
+            media,
+            stream: _,
+            sink,
+            duration: _,
+            looping,
+            dragging,
+            hovered,
+            need_play_on_focus,
+        } = self
+        {
+            let playback = playback.with_paused(sink.is_paused()).with_muted(sink.volume() == 0.0);
+            let position = sink.get_pos();
 
-                *self = match Self::load_audio(media.path(), &playback, position) {
-                    Ok((stream, sink, duration)) => Self::Audio {
-                        media: media.clone(),
-                        stream,
-                        sink,
-                        duration,
-                        looping: *looping,
-                        dragging: *dragging,
-                        hovered: *hovered,
-                        need_play_on_focus: *need_play_on_focus,
-                    },
-                    Err(e) => Self::Error {
-                        media: media.clone(),
-                        message: e.message(),
-                        hovered: false,
-                    },
-                };
-            }
-            Self::Video { .. } => {}
+            *self = match Self::load_audio(media.path(), &playback, position) {
+                Ok((stream, sink, duration)) => Self::Audio {
+                    media: media.clone(),
+                    stream,
+                    sink,
+                    duration,
+                    looping: *looping,
+                    dragging: *dragging,
+                    hovered: *hovered,
+                    need_play_on_focus: *need_play_on_focus,
+                },
+                Err(e) => Self::Error {
+                    media: media.clone(),
+                    message: e.message(),
+                    hovered: false,
+                },
+            };
         }
     }
 
