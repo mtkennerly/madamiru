@@ -266,7 +266,7 @@ pub enum Player {
     },
     Image {
         media: Media,
-        handle_path: std::path::PathBuf,
+        handle: iced::widget::image::Handle,
         position: f64,
         duration: Duration,
         paused: bool,
@@ -277,7 +277,7 @@ pub enum Player {
     },
     Svg {
         media: Media,
-        handle_path: std::path::PathBuf,
+        handle: iced::widget::svg::Handle,
         position: f64,
         duration: Duration,
         paused: bool,
@@ -289,7 +289,7 @@ pub enum Player {
     Gif {
         media: Media,
         frames: gif::Frames,
-        handle_path: std::path::PathBuf,
+        handle: iced::widget::image::Handle,
         position: f64,
         duration: Duration,
         paused: bool,
@@ -327,9 +327,9 @@ impl Player {
     pub fn new(media: &Media, playback: &Playback) -> Result<Self, Self> {
         match media {
             Media::Image { path } => match Self::load_image(path) {
-                Ok(handle_path) => Ok(Self::Image {
+                Ok(handle) => Ok(Self::Image {
                     media: media.clone(),
-                    handle_path,
+                    handle,
                     position: 0.0,
                     duration: Duration::from_secs(playback.image_duration.get() as u64),
                     paused: playback.paused,
@@ -345,9 +345,9 @@ impl Player {
                 }),
             },
             Media::Svg { path } => match Self::load_svg(path) {
-                Ok(handle_path) => Ok(Self::Svg {
+                Ok(handle) => Ok(Self::Svg {
                     media: media.clone(),
-                    handle_path,
+                    handle,
                     position: 0.0,
                     duration: Duration::from_secs(playback.image_duration.get() as u64),
                     paused: playback.paused,
@@ -363,10 +363,10 @@ impl Player {
                 }),
             },
             Media::Gif { path } => match Self::load_gif(path) {
-                Ok((frames, handle_path)) => Ok(Self::Gif {
+                Ok((frames, handle)) => Ok(Self::Gif {
                     media: media.clone(),
                     frames,
-                    handle_path,
+                    handle,
                     position: 0.0,
                     duration: Duration::from_secs(playback.image_duration.get() as u64),
                     paused: playback.paused,
@@ -431,19 +431,21 @@ impl Player {
         Ok(video)
     }
 
-    fn load_image(source: &StrictPath) -> Result<std::path::PathBuf, Error> {
-        Ok(source.as_std_path_buf()?)
-    }
-
-    fn load_svg(source: &StrictPath) -> Result<std::path::PathBuf, Error> {
-        Ok(source.as_std_path_buf()?)
-    }
-
-    fn load_gif(source: &StrictPath) -> Result<(gif::Frames, std::path::PathBuf), Error> {
+    fn load_image(source: &StrictPath) -> Result<iced::widget::image::Handle, Error> {
         let bytes = source.try_read_bytes()?;
-        let frames = gif::Frames::from_bytes(bytes)?;
-        let handle_path = source.as_std_path_buf()?;
-        Ok((frames, handle_path))
+        Ok(iced::widget::image::Handle::from_bytes(bytes))
+    }
+
+    fn load_svg(source: &StrictPath) -> Result<iced::widget::svg::Handle, Error> {
+        let bytes = source.try_read_bytes()?;
+        Ok(iced::widget::svg::Handle::from_memory(bytes))
+    }
+
+    fn load_gif(source: &StrictPath) -> Result<(gif::Frames, iced::widget::image::Handle), Error> {
+        let bytes = source.try_read_bytes()?;
+        let frames = gif::Frames::from_bytes(bytes.clone())?;
+        let handle = iced::widget::image::Handle::from_bytes(bytes);
+        Ok((frames, handle))
     }
 
     #[cfg(feature = "audio")]
@@ -1291,7 +1293,7 @@ impl Player {
             }
             Self::Image {
                 media,
-                handle_path,
+                handle,
                 position,
                 duration,
                 paused,
@@ -1305,7 +1307,7 @@ impl Player {
                 Stack::new()
                     .push(
                         Container::new(
-                            Image::new(handle_path)
+                            Image::new(handle)
                                 .width(Length::Fill)
                                 .height(Length::Fill)
                                 .content_fit(content_fit.into()),
@@ -1425,7 +1427,7 @@ impl Player {
             }
             Self::Svg {
                 media,
-                handle_path,
+                handle,
                 position,
                 duration,
                 paused,
@@ -1439,7 +1441,7 @@ impl Player {
                 Stack::new()
                     .push(
                         Container::new(
-                            Svg::new(handle_path)
+                            Svg::new(handle.clone())
                                 .width(Length::Fill)
                                 .height(Length::Fill)
                                 .content_fit(content_fit.into()),
@@ -1560,7 +1562,7 @@ impl Player {
             Self::Gif {
                 media,
                 frames,
-                handle_path,
+                handle,
                 position,
                 duration,
                 paused,
@@ -1575,7 +1577,7 @@ impl Player {
                     .push({
                         let media = if *paused {
                             Container::new(
-                                Image::new(handle_path)
+                                Image::new(handle)
                                     .width(Length::Fill)
                                     .height(Length::Fill)
                                     .content_fit(content_fit.into()),
