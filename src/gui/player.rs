@@ -270,6 +270,7 @@ pub enum Player {
         position: f64,
         duration: Duration,
         paused: bool,
+        muted: bool,
         looping: bool,
         dragging: bool,
         hovered: bool,
@@ -281,6 +282,7 @@ pub enum Player {
         position: f64,
         duration: Duration,
         paused: bool,
+        muted: bool,
         looping: bool,
         dragging: bool,
         hovered: bool,
@@ -293,6 +295,7 @@ pub enum Player {
         position: f64,
         duration: Duration,
         paused: bool,
+        muted: bool,
         looping: bool,
         dragging: bool,
         hovered: bool,
@@ -333,6 +336,7 @@ impl Player {
                     position: 0.0,
                     duration: Duration::from_secs(playback.image_duration.get() as u64),
                     paused: playback.paused,
+                    muted: playback.muted,
                     looping: false,
                     dragging: false,
                     hovered: false,
@@ -351,6 +355,7 @@ impl Player {
                     position: 0.0,
                     duration: Duration::from_secs(playback.image_duration.get() as u64),
                     paused: playback.paused,
+                    muted: playback.muted,
                     looping: false,
                     dragging: false,
                     hovered: false,
@@ -370,6 +375,7 @@ impl Player {
                     position: 0.0,
                     duration: Duration::from_secs(playback.image_duration.get() as u64),
                     paused: playback.paused,
+                    muted: playback.muted,
                     looping: false,
                     dragging: false,
                     hovered: false,
@@ -581,9 +587,9 @@ impl Player {
         match self {
             Self::Idle => None,
             Self::Error { .. } => None,
-            Self::Image { .. } => None,
-            Self::Svg { .. } => None,
-            Self::Gif { .. } => None,
+            Self::Image { muted, .. } => Some(*muted),
+            Self::Svg { muted, .. } => Some(*muted),
+            Self::Gif { muted, .. } => Some(*muted),
             #[cfg(feature = "audio")]
             Self::Audio { sink, .. } => Some(sink.volume() == 0.0),
             #[cfg(feature = "video")]
@@ -845,6 +851,7 @@ impl Player {
                 position,
                 duration,
                 paused,
+                muted,
                 looping,
                 dragging,
                 hovered,
@@ -859,7 +866,10 @@ impl Player {
                     *looping = flag;
                     None
                 }
-                Event::SetMute(_) => None,
+                Event::SetMute(flag) => {
+                    *muted = flag;
+                    Some(Update::MuteChanged)
+                }
                 Event::SetVolume(_) => None,
                 Event::Seek(offset) => {
                     *dragging = true;
@@ -902,6 +912,7 @@ impl Player {
                 position,
                 duration,
                 paused,
+                muted,
                 looping,
                 dragging,
                 hovered,
@@ -916,7 +927,10 @@ impl Player {
                     *looping = flag;
                     None
                 }
-                Event::SetMute(_) => None,
+                Event::SetMute(flag) => {
+                    *muted = flag;
+                    Some(Update::MuteChanged)
+                }
                 Event::SetVolume(_) => None,
                 Event::Seek(offset) => {
                     *dragging = true;
@@ -959,6 +973,7 @@ impl Player {
                 position,
                 duration,
                 paused,
+                muted,
                 looping,
                 dragging,
                 hovered,
@@ -973,7 +988,10 @@ impl Player {
                     *looping = flag;
                     None
                 }
-                Event::SetMute(_) => None,
+                Event::SetMute(flag) => {
+                    *muted = flag;
+                    Some(Update::MuteChanged)
+                }
                 Event::SetVolume(_) => None,
                 Event::Seek(offset) => {
                     *dragging = true;
@@ -1297,6 +1315,7 @@ impl Player {
                 position,
                 duration,
                 paused,
+                muted,
                 looping,
                 dragging,
                 hovered,
@@ -1367,6 +1386,19 @@ impl Player {
                                     .align_y(alignment::Vertical::Center)
                                     .padding(padding::all(10.0))
                                     .push(
+                                        button::icon(if *muted { Icon::Mute } else { Icon::VolumeHigh })
+                                            .on_press(Message::Player {
+                                                grid_id,
+                                                player_id,
+                                                event: Event::SetMute(!*muted),
+                                            })
+                                            .tooltip(if *muted {
+                                                lang::action::unmute()
+                                            } else {
+                                                lang::action::mute()
+                                            }),
+                                    )
+                                    .push(
                                         button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
                                             .on_press(Message::Player {
                                                 grid_id,
@@ -1431,6 +1463,7 @@ impl Player {
                 position,
                 duration,
                 paused,
+                muted,
                 looping,
                 dragging,
                 hovered,
@@ -1501,6 +1534,19 @@ impl Player {
                                     .align_y(alignment::Vertical::Center)
                                     .padding(padding::all(10.0))
                                     .push(
+                                        button::icon(if *muted { Icon::Mute } else { Icon::VolumeHigh })
+                                            .on_press(Message::Player {
+                                                grid_id,
+                                                player_id,
+                                                event: Event::SetMute(!*muted),
+                                            })
+                                            .tooltip(if *muted {
+                                                lang::action::unmute()
+                                            } else {
+                                                lang::action::mute()
+                                            }),
+                                    )
+                                    .push(
                                         button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
                                             .on_press(Message::Player {
                                                 grid_id,
@@ -1566,6 +1612,7 @@ impl Player {
                 position,
                 duration,
                 paused,
+                muted,
                 looping,
                 dragging,
                 hovered,
@@ -1646,6 +1693,19 @@ impl Player {
                                     .spacing(5)
                                     .align_y(alignment::Vertical::Center)
                                     .padding(padding::all(10.0))
+                                    .push(
+                                        button::icon(if *muted { Icon::Mute } else { Icon::VolumeHigh })
+                                            .on_press(Message::Player {
+                                                grid_id,
+                                                player_id,
+                                                event: Event::SetMute(!*muted),
+                                            })
+                                            .tooltip(if *muted {
+                                                lang::action::unmute()
+                                            } else {
+                                                lang::action::mute()
+                                            }),
+                                    )
                                     .push(
                                         button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
                                             .on_press(Message::Player {
