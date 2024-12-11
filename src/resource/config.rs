@@ -13,6 +13,7 @@ pub enum Event {
     CheckRelease(bool),
     ImageDurationRaw(String),
     PauseWhenWindowLosesFocus(bool),
+    ConfirmWhenDiscardingUnsavedPlaylist(bool),
 }
 
 /// Settings for `config.yaml`
@@ -20,8 +21,7 @@ pub enum Event {
 #[serde(default)]
 pub struct Config {
     pub release: Release,
-    pub language: Language,
-    pub theme: Theme,
+    pub view: View,
     pub playback: Playback,
 }
 
@@ -57,6 +57,24 @@ pub struct Release {
 impl Default for Release {
     fn default() -> Self {
         Self { check: true }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+#[serde(default)]
+pub struct View {
+    pub language: Language,
+    pub theme: Theme,
+    pub confirm_discard_playlist: bool,
+}
+
+impl Default for View {
+    fn default() -> Self {
+        Self {
+            language: Default::default(),
+            theme: Default::default(),
+            confirm_discard_playlist: true,
+        }
     }
 }
 
@@ -144,7 +162,9 @@ mod tests {
             r#"
                 release:
                   check: false
-                theme: Light
+                view:
+                  theme: Light
+                  confirm_discard_playlist: false
                 playback:
                   muted: true
                   volume: 0.5
@@ -157,8 +177,11 @@ mod tests {
         assert_eq!(
             Config {
                 release: Release { check: false },
-                language: Language::English,
-                theme: Theme::Light,
+                view: View {
+                    language: Language::English,
+                    theme: Theme::Light,
+                    confirm_discard_playlist: false
+                },
                 playback: Playback {
                     paused: false,
                     muted: true,
@@ -178,8 +201,10 @@ mod tests {
 ---
 release:
   check: true
-language: en-US
-theme: Dark
+view:
+  language: en-US
+  theme: Dark
+  confirm_discard_playlist: true
 playback:
   muted: false
   volume: 1.0

@@ -53,6 +53,11 @@ impl CustomButton<'_> {
         self.obscured = obscured;
         self
     }
+
+    pub fn padding(mut self, padding: impl Into<Padding>) -> Self {
+        self.padding = Some(padding.into());
+        self
+    }
 }
 
 impl<'a> From<CustomButton<'a>> for Element<'a> {

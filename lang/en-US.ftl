@@ -21,6 +21,7 @@ action-cancel = Cancel
 action-check-for-updates = Check for application updates automatically
 action-close = Close
 action-confirm = Confirm
+action-confirm-when-discarding-unsaved-playlist = Confirm when discarding unsaved playlist
 action-crop = Crop
 action-exit-app = Exit application
 action-jump-position = Jump to random position

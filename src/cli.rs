@@ -46,7 +46,7 @@ pub fn parse() -> Cli {
 pub fn run(sub: Subcommand) -> Result<(), Error> {
     let mut config = Config::load()?;
     Cache::load().unwrap_or_default().migrate_config(&mut config);
-    lang::set(config.language);
+    lang::set(config.view.language);
 
     log::debug!("Config on startup: {config:?}");
     log::debug!("Invocation: {sub:?}");

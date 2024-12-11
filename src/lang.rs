@@ -270,6 +270,10 @@ pub mod action {
         translate("action-confirm")
     }
 
+    pub fn confirm_when_discarding_unsaved_playlist() -> String {
+        translate("action-confirm-when-discarding-unsaved-playlist")
+    }
+
     pub fn crop() -> String {
         translate("action-crop")
     }

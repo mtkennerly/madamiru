@@ -124,7 +124,7 @@ impl App {
             }
         };
         let cache = Cache::load().unwrap_or_default().migrate_config(&mut config);
-        lang::set(config.language);
+        lang::set(config.view.language);
 
         let sources = flags.sources.clone();
 
@@ -222,7 +222,7 @@ impl App {
     }
 
     pub fn theme(&self) -> crate::gui::style::Theme {
-        crate::gui::style::Theme::from(self.config.theme)
+        crate::gui::style::Theme::from(self.config.view.theme)
     }
 
     fn refresh(&mut self) -> Task<Message> {
@@ -440,7 +440,7 @@ impl App {
         match message {
             Message::Ignore => Task::none(),
             Message::Exit { force } => {
-                if self.playlist_dirty && !force {
+                if self.playlist_dirty && !force && self.config.view.confirm_discard_playlist {
                     self.show_modal(Modal::ConfirmDiscardPlaylist { exit: true });
                     return Task::none();
                 }
@@ -493,11 +493,11 @@ impl App {
             Message::Config { event } => {
                 match event {
                     config::Event::Theme(value) => {
-                        self.config.theme = value;
+                        self.config.view.theme = value;
                     }
                     config::Event::Language(value) => {
                         lang::set(value);
-                        self.config.language = value;
+                        self.config.view.language = value;
                     }
                     config::Event::CheckRelease(value) => {
                         self.config.release.check = value;
@@ -510,6 +510,9 @@ impl App {
                     }
                     config::Event::PauseWhenWindowLosesFocus(value) => {
                         self.config.playback.pause_on_unfocus = value;
+                    }
+                    config::Event::ConfirmWhenDiscardingUnsavedPlaylist(value) => {
+                        self.config.view.confirm_discard_playlist = value;
                     }
                 }
                 self.save_config();
@@ -774,7 +777,7 @@ impl App {
                     match self.modals.last() {
                         Some(_) => Task::none(),
                         None => {
-                            if self.playlist_dirty {
+                            if self.playlist_dirty && self.config.view.confirm_discard_playlist {
                                 self.show_modal(Modal::ConfirmLoadPlaylist { path: Some(path) });
                                 Task::none()
                             } else {
@@ -947,7 +950,7 @@ impl App {
                 Task::none()
             }
             Message::PlaylistReset { force } => {
-                if self.playlist_dirty && !force {
+                if self.playlist_dirty && !force && self.config.view.confirm_discard_playlist {
                     self.show_modal(Modal::ConfirmDiscardPlaylist { exit: false });
                     return Task::none();
                 }
@@ -961,7 +964,7 @@ impl App {
                 Task::none()
             }
             Message::PlaylistSelect { force } => {
-                if self.playlist_dirty && !force {
+                if self.playlist_dirty && !force && self.config.view.confirm_discard_playlist {
                     self.show_modal(Modal::ConfirmLoadPlaylist { path: None });
                     return Task::none();
                 }

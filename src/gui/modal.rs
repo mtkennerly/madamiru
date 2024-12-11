@@ -186,7 +186,7 @@ impl Modal {
                                         .align_y(Alignment::Center)
                                         .spacing(20)
                                         .push(text(lang::field(&lang::thing::language())))
-                                        .push(pick_list(Language::ALL, Some(config.language), |value| {
+                                        .push(pick_list(Language::ALL, Some(config.view.language), |value| {
                                             Message::Config {
                                                 event: config::Event::Language(value),
                                             }
@@ -197,8 +197,10 @@ impl Modal {
                                         .align_y(Alignment::Center)
                                         .spacing(20)
                                         .push(text(lang::field(&lang::thing::theme())))
-                                        .push(pick_list(Theme::ALL, Some(config.theme), |value| Message::Config {
-                                            event: config::Event::Theme(value),
+                                        .push(pick_list(Theme::ALL, Some(config.view.theme), |value| {
+                                            Message::Config {
+                                                event: config::Event::Theme(value),
+                                            }
                                         })),
                                 )
                                 .push(
@@ -215,7 +217,8 @@ impl Modal {
                                         .push(
                                             button::icon(Icon::OpenInBrowser)
                                                 .on_press(Message::OpenUrl(RELEASE_URL.to_string()))
-                                                .tooltip(lang::action::view_releases()),
+                                                .tooltip(lang::action::view_releases())
+                                                .padding([0, 10]),
                                         ),
                                 )
                                 .push(checkbox(
@@ -223,6 +226,13 @@ impl Modal {
                                     config.playback.pause_on_unfocus,
                                     |value| Message::Config {
                                         event: config::Event::PauseWhenWindowLosesFocus(value),
+                                    },
+                                ))
+                                .push(checkbox(
+                                    lang::action::confirm_when_discarding_unsaved_playlist(),
+                                    config.view.confirm_discard_playlist,
+                                    |value| Message::Config {
+                                        event: config::Event::ConfirmWhenDiscardingUnsavedPlaylist(value),
                                     },
                                 )),
                         )
