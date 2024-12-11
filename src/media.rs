@@ -164,20 +164,28 @@ impl Media {
                 match info.mime_type() {
                     #[cfg(feature = "video")]
                     "video/mp4" | "video/quicktime" | "video/webm" | "video/x-m4v" | "video/x-matroska"
-                    | "video/x-msvideo" => Some(Self::Video { path: path.clone() }),
+                    | "video/x-msvideo" => Some(Self::Video {
+                        path: path.normalized(),
+                    }),
                     #[cfg(feature = "audio")]
-                    "audio/mpeg" | "audio/m4a" | "audio/x-flac" | "audio/x-wav" => {
-                        Some(Self::Audio { path: path.clone() })
-                    }
+                    "audio/mpeg" | "audio/m4a" | "audio/x-flac" | "audio/x-wav" => Some(Self::Audio {
+                        path: path.normalized(),
+                    }),
                     "image/bmp"
                     | "image/jpeg"
                     | "image/png"
                     | "image/tiff"
                     | "image/vnd.microsoft.icon"
-                    | "image/webp" => Some(Self::Image { path: path.clone() }),
-                    "image/gif" => Some(Self::Gif { path: path.clone() }),
+                    | "image/webp" => Some(Self::Image {
+                        path: path.normalized(),
+                    }),
+                    "image/gif" => Some(Self::Gif {
+                        path: path.normalized(),
+                    }),
                     _ => match extension.as_deref() {
-                        Some("svg") => Some(Self::Svg { path: path.clone() }),
+                        Some("svg") => Some(Self::Svg {
+                            path: path.normalized(),
+                        }),
                         _ => None,
                     },
                 }
@@ -243,6 +251,11 @@ impl Collection {
                         .filter(|x| x.is_file())
                         .filter_map(|path| Media::identify(&path))
                         .collect()
+                } else if path.is_symlink() {
+                    match path.interpreted() {
+                        Ok(path) => Self::find_in_source(&Source::new_path(path)),
+                        Err(_) => HashSet::new(),
+                    }
                 } else {
                     HashSet::new()
                 }

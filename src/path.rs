@@ -417,12 +417,23 @@ impl StrictPath {
         self.access()
     }
 
+    pub fn normalized(&self) -> Self {
+        match self.interpreted() {
+            Ok(p) => p,
+            Err(_) => self.rendered(),
+        }
+    }
+
     pub fn is_file(&self) -> bool {
         self.as_std_path_buf().map(|x| x.is_file()).unwrap_or_default()
     }
 
     pub fn is_dir(&self) -> bool {
         self.as_std_path_buf().map(|x| x.is_dir()).unwrap_or_default()
+    }
+
+    pub fn is_symlink(&self) -> bool {
+        self.as_std_path_buf().map(|x| x.is_symlink()).unwrap_or_default()
     }
 
     pub fn exists(&self) -> bool {
