@@ -157,7 +157,7 @@ pub fn field(text: &str) -> String {
 pub fn handle_error(error: &Error) -> String {
     let error = match error {
         Error::ConfigInvalid { why } => format!("{}\n\n{why}", tell::config_is_invalid()),
-        Error::NoMediaFound => tell::no_media_found(),
+        Error::NoMediaFound => tell::no_media_found_in_sources(),
         Error::PlaylistInvalid { why } => format!("{}\n\n{why}", tell::playlist_is_invalid()),
         Error::UnableToOpenDir(path) => format!("{}\n\n{}", tell::unable_to_open_directory(), path.render()),
         Error::UnableToOpenUrl(url) => format!("{}\n\n{}", tell::unable_to_open_url(), url),
@@ -420,8 +420,8 @@ pub mod tell {
         translate_args("tell-new-version-available", &args)
     }
 
-    pub fn no_media_found() -> String {
-        translate("tell-no-media-found")
+    pub fn no_media_found_in_sources() -> String {
+        translate("tell-no-media-found-in-sources")
     }
 
     #[allow(unused)]
