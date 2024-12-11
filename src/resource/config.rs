@@ -119,6 +119,13 @@ impl Playback {
         Self { paused, ..self.clone() }
     }
 
+    pub fn with_paused_maybe(&self, paused: Option<bool>) -> Self {
+        Self {
+            paused: paused.unwrap_or(self.paused),
+            ..self.clone()
+        }
+    }
+
     pub fn with_muted(&self, muted: bool) -> Self {
         Self { muted, ..self.clone() }
     }

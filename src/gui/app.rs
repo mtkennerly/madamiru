@@ -436,6 +436,19 @@ impl App {
         }
     }
 
+    fn update_playback(&mut self) {
+        if let Some(paused) = self.all_paused() {
+            self.config.playback.paused = paused;
+        }
+
+        if let Some(muted) = self.all_muted() {
+            if self.config.playback.muted != muted {
+                self.config.playback.muted = muted;
+                self.save_config();
+            }
+        }
+    }
+
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Ignore => Task::none(),
@@ -706,28 +719,22 @@ impl App {
                     &mut self.media,
                     &self.config.playback,
                 ) {
-                    let Some(grid) = self.grids.get(grid_id) else {
-                        return Task::none();
-                    };
-
                     match update {
                         grid::Update::PauseChanged { .. } => {
-                            if let Some(paused) = self.all_paused() {
-                                self.config.playback.paused = paused;
-                                self.save_config();
-                            }
+                            self.update_playback();
                         }
                         grid::Update::MuteChanged { .. } => {
-                            if let Some(muted) = self.all_muted() {
-                                self.config.playback.muted = muted;
-                                self.save_config();
-                            }
+                            self.update_playback();
                         }
                         grid::Update::PlayerClosed => {
                             self.playlist_dirty = true;
-                            if grid.is_idle() {
-                                self.show_modal(Modal::new_grid_settings(grid_id, grid.settings()));
-                            }
+                            self.update_playback();
+
+                            if let Some(grid) = self.grids.get(grid_id) {
+                                if grid.is_idle() {
+                                    self.show_modal(Modal::new_grid_settings(grid_id, grid.settings()));
+                                }
+                            };
                         }
                     }
                 }
@@ -875,6 +882,7 @@ impl App {
                     PaneEvent::Close { grid_id } => {
                         self.playlist_dirty = true;
                         self.grids.close(grid_id);
+                        self.update_playback();
                     }
                     PaneEvent::AddPlayer { grid_id } => {
                         self.playlist_dirty = true;
@@ -916,10 +924,7 @@ impl App {
                                 &self.config.playback,
                             );
 
-                            if let Some(muted) = self.all_muted() {
-                                self.config.playback.muted = muted;
-                                self.save_config();
-                            }
+                            self.update_playback();
                         }
                     }
                     PaneEvent::SetPause { grid_id, paused } => {
@@ -930,10 +935,7 @@ impl App {
                                 &self.config.playback,
                             );
 
-                            if let Some(paused) = self.all_paused() {
-                                self.config.playback.paused = paused;
-                                self.save_config();
-                            }
+                            self.update_playback();
                         }
                     }
                     PaneEvent::SeekRandom { grid_id } => {

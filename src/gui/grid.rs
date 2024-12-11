@@ -95,11 +95,19 @@ impl Grid {
         }
     }
 
+    fn playback(&self, playback: &Playback) -> Playback {
+        playback
+            .with_paused_maybe(self.all_paused())
+            .with_muted_maybe(self.all_muted())
+    }
+
     pub fn is_idle(&self) -> bool {
         self.players.is_empty()
     }
 
     pub fn tick(&mut self, elapsed: Duration, collection: &mut media::Collection, playback: &Playback) {
+        let playback = self.playback(playback);
+
         let updates: Vec<_> = self
             .players
             .iter_mut()
@@ -119,7 +127,7 @@ impl Grid {
 
                         match media {
                             Some(media) => {
-                                if player.swap_media(&media, playback).is_err() {
+                                if player.swap_media(&media, &playback).is_err() {
                                     collection.mark_error(&media);
                                 }
                             }
@@ -137,8 +145,10 @@ impl Grid {
 
     #[cfg(feature = "audio")]
     pub fn reload_audio(&mut self, playback: &Playback) {
+        let playback = self.playback(playback);
+
         for player in &mut self.players {
-            player.reload_audio(playback);
+            player.reload_audio(&playback);
         }
     }
 
@@ -220,6 +230,8 @@ impl Grid {
     }
 
     pub fn refresh(&mut self, collection: &mut media::Collection, playback: &Playback) {
+        let playback = self.playback(playback);
+
         let total = if self.is_idle() {
             media::MAX_INITIAL
         } else {
@@ -230,7 +242,7 @@ impl Grid {
             self.players.clear();
 
             for item in media {
-                match Player::new(&item, playback) {
+                match Player::new(&item, &playback) {
                     Ok(player) => {
                         self.players.push(player);
                     }
@@ -246,6 +258,8 @@ impl Grid {
     }
 
     fn refresh_outdated(&mut self, collection: &mut media::Collection, playback: &Playback) {
+        let playback = self.playback(playback);
+
         let mut remove = vec![];
         let mut active: HashSet<_> = self.active_media().into_iter().cloned().collect();
 
@@ -266,7 +280,7 @@ impl Grid {
 
                 match collection.one_new(&self.sources, active.iter().collect()) {
                     Some(new_media) => {
-                        if player.swap_media(&new_media, playback).is_err() {
+                        if player.swap_media(&new_media, &playback).is_err() {
                             collection.mark_error(&new_media);
                         }
                         active.insert(new_media);
@@ -289,27 +303,31 @@ impl Grid {
         collection: &mut media::Collection,
         playback: &Playback,
     ) {
+        let playback = self.playback(playback);
+
         match context {
             media::RefreshContext::Launch => {
-                self.refresh(collection, playback);
+                self.refresh(collection, &playback);
             }
             media::RefreshContext::Edit => {
                 if self.is_idle() {
-                    self.refresh(collection, playback);
+                    self.refresh(collection, &playback);
                 } else {
-                    self.refresh_outdated(collection, playback);
+                    self.refresh_outdated(collection, &playback);
                 }
             }
             media::RefreshContext::Playlist => {
-                self.refresh(collection, playback);
+                self.refresh(collection, &playback);
             }
             media::RefreshContext::Automatic => {
-                self.refresh_outdated(collection, playback);
+                self.refresh_outdated(collection, &playback);
             }
         }
     }
 
     pub fn add_player(&mut self, collection: &mut media::Collection, playback: &Playback) -> Result<(), Error> {
+        let playback = self.playback(playback);
+
         let Some(media) = collection.one_new(&self.sources, self.active_media()) else {
             return Err(Error::NoMediaAvailable);
         };
@@ -318,7 +336,7 @@ impl Grid {
             self.players.clear();
         }
 
-        match Player::new(&media, playback) {
+        match Player::new(&media, &playback) {
             Ok(player) => {
                 self.players.push(player);
             }
@@ -345,12 +363,14 @@ impl Grid {
 
     #[must_use]
     pub fn update(&mut self, event: Event, collection: &mut media::Collection, playback: &Playback) -> Option<Update> {
+        let playback = self.playback(playback);
+
         match event {
             Event::Player { player_id, event } => {
                 let active_media: HashSet<_> = self.active_media().into_iter().cloned().collect();
                 let player = self.players.get_mut(player_id.0)?;
 
-                match player.update(event, playback) {
+                match player.update(event, &playback) {
                     Some(update) => match update {
                         player::Update::MuteChanged { .. } => Some(Update::MuteChanged),
                         player::Update::PauseChanged { .. } => Some(Update::PauseChanged),
@@ -359,7 +379,7 @@ impl Grid {
 
                             match media {
                                 Some(media) => {
-                                    if player.swap_media(&media, playback).is_err() {
+                                    if player.swap_media(&media, &playback).is_err() {
                                         collection.mark_error(&media);
                                     }
                                 }
@@ -377,7 +397,7 @@ impl Grid {
 
                             match media {
                                 Some(media) => {
-                                    if player.swap_media(&media, playback).is_err() {
+                                    if player.swap_media(&media, &playback).is_err() {
                                         collection.mark_error(&media);
                                     }
                                 }
@@ -410,6 +430,8 @@ impl Grid {
         collection: &mut media::Collection,
         playback: &Playback,
     ) {
+        let playback = self.playback(playback);
+
         let player_ids: Vec<_> = self
             .players
             .iter()
@@ -424,7 +446,7 @@ impl Grid {
                     event: event.clone(),
                 },
                 collection,
-                playback,
+                &playback,
             );
         }
     }
