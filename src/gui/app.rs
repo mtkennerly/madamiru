@@ -136,7 +136,7 @@ impl App {
             iced::font::load(std::borrow::Cow::Borrowed(crate::gui::font::TEXT_DATA)).map(|_| Message::Ignore),
             iced::font::load(std::borrow::Cow::Borrowed(crate::gui::font::ICONS_DATA)).map(|_| Message::Ignore),
             iced::window::get_oldest().and_then(iced::window::gain_focus),
-            iced::window::get_oldest().and_then(|id| iced::window::resize(id, iced::Size::new(960.0, 600.0))),
+            iced::window::get_oldest().and_then(|id| iced::window::resize(id, iced::Size::new(930.0, 600.0))),
         ];
 
         if config.release.check && cache.should_check_app_update() {
