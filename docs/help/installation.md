@@ -35,14 +35,15 @@ You can install Madamiru one of these ways:
 
   * To install or update: `cargo install --locked madamiru`
 
-  However, note that some features are not yet available in this version.
+  However, note that some features are not fully functional in this version.
   The prebuilt release uses a pre-release version of some dependencies,
-  which is not possible when installing via Cargo.
+  which enables some additional functionality,
+  but this is not possible when installing via Cargo.
 
   On Linux, this requires the following system packages, or their equivalents
   for your distribution:
 
-  * Ubuntu: `sudo apt-get install -y gcc cmake libx11-dev libxcb-composite0-dev libfreetype6-dev libexpat1-dev libfontconfig1-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav`
+  * Ubuntu: `sudo apt-get install -y gcc cmake libx11-dev libxcb-composite0-dev libfreetype6-dev libexpat1-dev libfontconfig1-dev libgtk-3-dev libasound2-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav`
 
 ## Notes
 If you are on Windows:

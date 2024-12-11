@@ -13,6 +13,7 @@
         <p>Madamiru is a cross-platform media player written in Rust that can automatically play and shuffle multiple videos, images, and songs at once in a grid layout.</p>
         <p>Features:</p>
         <ul>
+            <li>Customizable layout with multiple groups of dynamic media</li>
             <li>Video formats: AVI, M4V, MKV, MOV, MP4, WebM</li>
             <li>Image formats: BMP, GIF, ICO, JPEG, PNG, TIFF, SVG, WebP</li>
             <li>Audio formats: FLAC, M4A, MP3, WAV</li>
