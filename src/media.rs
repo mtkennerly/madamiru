@@ -4,6 +4,8 @@ use itertools::Itertools;
 
 use crate::{lang, path::StrictPath};
 
+pub const MAX_INITIAL: usize = 1;
+
 #[derive(Debug, Clone, Copy)]
 pub enum RefreshContext {
     Launch,

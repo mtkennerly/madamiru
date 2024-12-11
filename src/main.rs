@@ -134,10 +134,7 @@ fn main() {
 
             log::debug!("Version: {}", *VERSION);
 
-            let flags = Flags {
-                sources,
-                max_initial_media: args.max_initial_media,
-            };
+            let flags = Flags { sources };
             gui::run(flags);
         }
         Some(sub) => {

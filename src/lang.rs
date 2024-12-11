@@ -214,10 +214,6 @@ pub mod thing {
         translate("thing-layout")
     }
 
-    pub fn max_initial_media() -> String {
-        translate("thing-max-initial-media")
-    }
-
     pub fn orientation() -> String {
         translate("thing-orientation")
     }

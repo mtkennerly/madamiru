@@ -127,9 +127,6 @@ impl App {
         lang::set(config.language);
 
         let sources = flags.sources.clone();
-        if let Some(max) = flags.max_initial_media {
-            config.playback.max_initial_media = max;
-        }
 
         let text_histories = TextHistories::new(&config);
 
@@ -481,18 +478,6 @@ impl App {
 
                 if self
                     .text_histories
-                    .max_initial_media
-                    .current()
-                    .parse::<NonZeroUsize>()
-                    .is_err()
-                {
-                    self.text_histories
-                        .max_initial_media
-                        .push(&self.config.playback.max_initial_media.to_string());
-                }
-
-                if self
-                    .text_histories
                     .image_duration
                     .current()
                     .parse::<NonZeroUsize>()
@@ -516,12 +501,6 @@ impl App {
                     }
                     config::Event::CheckRelease(value) => {
                         self.config.release.check = value;
-                    }
-                    config::Event::MaxInitialMediaRaw(value) => {
-                        self.text_histories.max_initial_media.push(&value.to_string());
-                        if let Ok(value) = value.parse::<usize>() {
-                            self.config.playback.max_initial_media = value;
-                        }
                     }
                     config::Event::ImageDurationRaw(value) => {
                         self.text_histories.image_duration.push(&value.to_string());
@@ -674,11 +653,6 @@ impl App {
 
                 if !captured {
                     match subject {
-                        UndoSubject::MaxInitialMedia => {
-                            if let Ok(value) = self.text_histories.max_initial_media.apply(shortcut).parse::<usize>() {
-                                self.config.playback.max_initial_media = value;
-                            }
-                        }
                         UndoSubject::ImageDuration => {
                             if let Ok(value) = self
                                 .text_histories

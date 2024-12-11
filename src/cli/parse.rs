@@ -85,10 +85,6 @@ pub struct Cli {
     #[clap(long)]
     pub glob: Vec<String>,
 
-    /// How many items to load at most.
-    #[clap(long)]
-    pub max_initial_media: Option<usize>,
-
     #[clap(subcommand)]
     pub sub: Option<Subcommand>,
 }
@@ -111,7 +107,6 @@ mod tests {
                 config: None,
                 sources: vec![],
                 glob: vec![],
-                max_initial_media: None,
                 sub: None,
             },
         );

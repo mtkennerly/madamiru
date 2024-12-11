@@ -28,7 +28,6 @@ const ERROR_ICON: text_input::Icon<iced::Font> = text_input::Icon {
 #[derive(Clone, Debug, Default)]
 pub struct Flags {
     pub sources: Vec<media::Source>,
-    pub max_initial_media: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -196,7 +195,6 @@ pub enum BrowseFileSubject {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UndoSubject {
-    MaxInitialMedia,
     ImageDuration,
     Source { index: usize },
     OrientationLimit,
@@ -205,7 +203,6 @@ pub enum UndoSubject {
 impl UndoSubject {
     pub fn view_with<'a>(self, histories: &TextHistories) -> Element<'a> {
         match self {
-            Self::MaxInitialMedia => self.view(&histories.max_initial_media.current()),
             Self::ImageDuration => self.view(&histories.image_duration.current()),
             Self::Source { .. } => self.view(""),
             Self::OrientationLimit { .. } => self.view(""),
@@ -214,9 +211,6 @@ impl UndoSubject {
 
     pub fn view<'a>(self, current: &str) -> Element<'a> {
         let event: Box<dyn Fn(String) -> Message> = match self {
-            UndoSubject::MaxInitialMedia => Box::new(move |value| Message::Config {
-                event: config::Event::MaxInitialMediaRaw(value),
-            }),
             UndoSubject::ImageDuration => Box::new(move |value| Message::Config {
                 event: config::Event::ImageDurationRaw(value),
             }),
@@ -233,14 +227,12 @@ impl UndoSubject {
         let placeholder = "";
 
         let icon = match self {
-            UndoSubject::MaxInitialMedia => (current.parse::<usize>().is_err()).then_some(ERROR_ICON),
             UndoSubject::ImageDuration => (current.parse::<NonZeroUsize>().is_err()).then_some(ERROR_ICON),
             UndoSubject::Source { .. } => (!path_appears_valid(current)).then_some(ERROR_ICON),
             UndoSubject::OrientationLimit => (current.parse::<NonZeroUsize>().is_err()).then_some(ERROR_ICON),
         };
 
         let width = match self {
-            UndoSubject::MaxInitialMedia => Length::Fixed(80.0),
             UndoSubject::ImageDuration => Length::Fixed(80.0),
             UndoSubject::Source { .. } => Length::Fill,
             UndoSubject::OrientationLimit => Length::Fixed(80.0),

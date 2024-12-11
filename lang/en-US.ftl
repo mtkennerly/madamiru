@@ -9,7 +9,6 @@ thing-items-per-line = Items per line
 thing-key-shift = Shift
 thing-language = Language
 thing-layout = Layout
-thing-max-initial-media = Max initial media
 thing-orientation = Orientation
 thing-path = Path
 thing-playlist = Playlist

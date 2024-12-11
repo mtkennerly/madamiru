@@ -224,14 +224,7 @@ impl Modal {
                                     |value| Message::Config {
                                         event: config::Event::PauseWhenWindowLosesFocus(value),
                                     },
-                                ))
-                                .push(
-                                    Row::new()
-                                        .align_y(Alignment::Center)
-                                        .spacing(20)
-                                        .push(text(lang::field(&lang::thing::max_initial_media())))
-                                        .push(UndoSubject::MaxInitialMedia.view_with(histories)),
-                                ),
+                                )),
                         )
                         .class(style::Container::Player),
                     )
@@ -493,7 +486,6 @@ impl Modal {
             Self::GridSettings {
                 settings, histories, ..
             } => match subject {
-                UndoSubject::MaxInitialMedia => false,
                 UndoSubject::ImageDuration => false,
                 UndoSubject::Source { index } => {
                     settings.sources[index].reset(histories.sources[index].apply(shortcut));

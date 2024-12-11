@@ -221,7 +221,7 @@ impl Grid {
 
     pub fn refresh(&mut self, collection: &mut media::Collection, playback: &Playback) {
         let total = if self.is_idle() {
-            playback.max_initial_media
+            media::MAX_INITIAL
         } else {
             self.players.len()
         };
@@ -301,7 +301,7 @@ impl Grid {
                 }
             }
             media::RefreshContext::Playlist => {
-                self.refresh(collection, &playback.with_max_initial_media(self.players.len()));
+                self.refresh(collection, playback);
             }
             media::RefreshContext::Automatic => {
                 self.refresh_outdated(collection, playback);

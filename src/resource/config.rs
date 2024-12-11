@@ -11,7 +11,6 @@ pub enum Event {
     Theme(Theme),
     Language(Language),
     CheckRelease(bool),
-    MaxInitialMediaRaw(String),
     ImageDurationRaw(String),
     PauseWhenWindowLosesFocus(bool),
 }
@@ -91,8 +90,6 @@ pub struct Playback {
     pub muted: bool,
     /// Volume level when not muted. 1.0 is 100%, 0.01 is 1%.
     pub volume: f32,
-    /// How many players to show at most by default.
-    pub max_initial_media: usize,
     /// How long to show images, in seconds.
     pub image_duration: NonZeroUsize,
     /// Whether to pause when window loses focus.
@@ -114,13 +111,6 @@ impl Playback {
             ..self.clone()
         }
     }
-
-    pub fn with_max_initial_media(&self, max: usize) -> Self {
-        Self {
-            max_initial_media: max,
-            ..self.clone()
-        }
-    }
 }
 
 impl Default for Playback {
@@ -129,7 +119,6 @@ impl Default for Playback {
             paused: false,
             muted: false,
             volume: 1.0,
-            max_initial_media: 4,
             image_duration: NonZeroUsize::new(10).unwrap(),
             pause_on_unfocus: false,
         }
@@ -159,7 +148,6 @@ mod tests {
                 playback:
                   muted: true
                   volume: 0.5
-                  max_initial_media: 1
                   image_duration: 2
                   pause_on_unfocus: true
             "#,
@@ -175,7 +163,6 @@ mod tests {
                     paused: false,
                     muted: true,
                     volume: 0.5,
-                    max_initial_media: 1,
                     image_duration: NonZeroUsize::new(2).unwrap(),
                     pause_on_unfocus: true,
                 },
@@ -196,7 +183,6 @@ theme: Dark
 playback:
   muted: false
   volume: 1.0
-  max_initial_media: 4
   image_duration: 10
   pause_on_unfocus: false
 "#

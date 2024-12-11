@@ -93,14 +93,12 @@ impl TextHistory {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct TextHistories {
-    pub max_initial_media: TextHistory,
     pub image_duration: TextHistory,
 }
 
 impl TextHistories {
     pub fn new(config: &Config) -> Self {
         Self {
-            max_initial_media: TextHistory::raw(&config.playback.max_initial_media.to_string()),
             image_duration: TextHistory::raw(&config.playback.image_duration.to_string()),
         }
     }
