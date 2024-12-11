@@ -291,6 +291,15 @@ impl App {
         }
     }
 
+    fn set_volume(&mut self, volume: f32) {
+        self.config.playback.volume = volume;
+        self.save_config();
+
+        for (_grid_id, grid) in self.grids.iter_mut() {
+            grid.update_all_players(player::Event::SetVolume(volume), &mut self.media, &self.config.playback);
+        }
+    }
+
     fn can_jump(&self) -> bool {
         self.grids.iter().any(|(_grid_id, grid)| grid.can_jump())
     }
@@ -700,6 +709,10 @@ impl App {
             }
             Message::SetMute(flag) => {
                 self.set_muted(flag);
+                Task::none()
+            }
+            Message::SetVolume { volume } => {
+                self.set_volume(volume);
                 Task::none()
             }
             Message::Player {

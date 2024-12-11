@@ -17,7 +17,7 @@ pub enum Event {
 }
 
 /// Settings for `config.yaml`
-#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
 #[serde(default)]
 pub struct Config {
     pub release: Release,
@@ -82,13 +82,15 @@ impl ToString for Theme {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
 #[serde(default)]
 pub struct Playback {
     #[serde(skip)]
     pub paused: bool,
     /// Whether all players are muted.
     pub muted: bool,
+    /// Volume level when not muted. 1.0 is 100%, 0.01 is 1%.
+    pub volume: f32,
     /// How many players to show at most by default.
     pub max_initial_media: usize,
     /// How long to show images, in seconds.
@@ -126,6 +128,7 @@ impl Default for Playback {
         Self {
             paused: false,
             muted: false,
+            volume: 1.0,
             max_initial_media: 4,
             image_duration: NonZeroUsize::new(10).unwrap(),
             pause_on_unfocus: false,
@@ -155,6 +158,7 @@ mod tests {
                 theme: Light
                 playback:
                   muted: true
+                  volume: 0.5
                   max_initial_media: 1
                   image_duration: 2
                   pause_on_unfocus: true
@@ -170,6 +174,7 @@ mod tests {
                 playback: Playback {
                     paused: false,
                     muted: true,
+                    volume: 0.5,
                     max_initial_media: 1,
                     image_duration: NonZeroUsize::new(2).unwrap(),
                     pause_on_unfocus: true,
@@ -190,6 +195,7 @@ language: en-US
 theme: Dark
 playback:
   muted: false
+  volume: 1.0
   max_initial_media: 4
   image_duration: 10
   pause_on_unfocus: false

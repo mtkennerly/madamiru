@@ -182,6 +182,10 @@ pub mod thing {
         translate("thing-application")
     }
 
+    pub fn audio() -> String {
+        translate("thing-audio")
+    }
+
     pub fn content_fit() -> String {
         translate("thing-content-fit")
     }

@@ -137,6 +137,16 @@ fn mute_video(_video: &mut iced_video_player::Video, _muted: bool) {
 
 #[cfg(feature = "video")]
 #[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
+fn set_video_volume(video: &mut iced_video_player::Video, volume: f32) {
+    video.set_volume(volume as f64);
+}
+
+#[cfg(feature = "video")]
+#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
+fn set_video_volume(video: &mut iced_video_player::Video, volume: f32) {}
+
+#[cfg(feature = "video")]
+#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
 fn seek_video(video: &mut iced_video_player::Video, position: f64) {
     let _ = video.seek(Duration::from_secs_f64(position), false);
 }
@@ -212,6 +222,7 @@ pub enum Event {
     SetPause(bool),
     SetLoop(bool),
     SetMute(bool),
+    SetVolume(f32),
     Seek(f64),
     SeekStop,
     SeekRandom,
@@ -389,20 +400,15 @@ impl Player {
                 }),
             },
             #[cfg(feature = "video")]
-            Media::Video { path } => match Self::load_video(path) {
-                Ok(mut video) => {
-                    video.set_paused(playback.paused);
-                    mute_video(&mut video, playback.muted);
-
-                    Ok(Self::Video {
-                        media: media.clone(),
-                        video,
-                        position: 0.0,
-                        dragging: false,
-                        hovered: false,
-                        need_play_on_focus: false,
-                    })
-                }
+            Media::Video { path } => match Self::load_video(path, playback) {
+                Ok(video) => Ok(Self::Video {
+                    media: media.clone(),
+                    video,
+                    position: 0.0,
+                    dragging: false,
+                    hovered: false,
+                    need_play_on_focus: false,
+                }),
                 Err(e) => Err(Self::Error {
                     media: media.clone(),
                     message: e.message(),
@@ -413,10 +419,16 @@ impl Player {
     }
 
     #[cfg(feature = "video")]
-    fn load_video(source: &StrictPath) -> Result<iced_video_player::Video, Error> {
-        Ok(build_video(
-            &url::Url::from_file_path(source.as_std_path_buf()?).map_err(|_| Error::Url)?,
-        )?)
+    fn load_video(source: &StrictPath, playback: &Playback) -> Result<iced_video_player::Video, Error> {
+        let mut video = build_video(&url::Url::from_file_path(source.as_std_path_buf()?).map_err(|_| Error::Url)?)?;
+
+        video.set_paused(playback.paused);
+        mute_video(&mut video, playback.muted);
+        if !playback.muted {
+            set_video_volume(&mut video, playback.volume);
+        }
+
+        Ok(video)
     }
 
     fn load_image(source: &StrictPath) -> Result<std::path::PathBuf, Error> {
@@ -454,7 +466,7 @@ impl Player {
         if playback.muted {
             sink.set_volume(0.0);
         } else {
-            sink.set_volume(1.0);
+            sink.set_volume(playback.volume);
         }
 
         let _ = sink.try_seek(position);
@@ -808,6 +820,7 @@ impl Player {
                 Event::SetPause(_) => None,
                 Event::SetLoop(_) => None,
                 Event::SetMute(_) => None,
+                Event::SetVolume(_) => None,
                 Event::Seek(_) => None,
                 Event::SeekStop => None,
                 Event::SeekRandom => None,
@@ -845,6 +858,7 @@ impl Player {
                     None
                 }
                 Event::SetMute(_) => None,
+                Event::SetVolume(_) => None,
                 Event::Seek(offset) => {
                     *dragging = true;
                     *position = offset.min(duration.as_secs_f64());
@@ -901,6 +915,7 @@ impl Player {
                     None
                 }
                 Event::SetMute(_) => None,
+                Event::SetVolume(_) => None,
                 Event::Seek(offset) => {
                     *dragging = true;
                     *position = offset.min(duration.as_secs_f64());
@@ -957,6 +972,7 @@ impl Player {
                     None
                 }
                 Event::SetMute(_) => None,
+                Event::SetVolume(_) => None,
                 Event::Seek(offset) => {
                     *dragging = true;
                     *position = offset.min(duration.as_secs_f64());
@@ -1020,9 +1036,15 @@ impl Player {
                     if flag {
                         sink.set_volume(0.0);
                     } else {
-                        sink.set_volume(1.0);
+                        sink.set_volume(playback.volume);
                     }
                     Some(Update::MuteChanged)
+                }
+                Event::SetVolume(volume) => {
+                    if !playback.muted {
+                        sink.set_volume(volume);
+                    }
+                    None
                 }
                 Event::Seek(offset) => {
                     *dragging = true;
@@ -1085,7 +1107,16 @@ impl Player {
                 }
                 Event::SetMute(flag) => {
                     mute_video(video, flag);
+                    if !flag {
+                        set_video_volume(video, playback.volume);
+                    }
                     Some(Update::MuteChanged)
+                }
+                Event::SetVolume(volume) => {
+                    if !playback.muted {
+                        set_video_volume(video, volume);
+                    }
+                    None
                 }
                 Event::Seek(offset) => {
                     *dragging = true;

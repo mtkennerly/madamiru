@@ -1,4 +1,5 @@
 thing-application = Application
+thing-audio = Audio
 thing-content-fit = Content fit
 thing-error = Error
 # https://en.wikipedia.org/wiki/Glob_(programming)

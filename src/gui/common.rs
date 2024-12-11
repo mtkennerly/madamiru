@@ -68,6 +68,9 @@ pub enum Message {
     Refresh,
     SetPause(bool),
     SetMute(bool),
+    SetVolume {
+        volume: f32,
+    },
     Player {
         grid_id: grid::Id,
         player_id: player::Id,

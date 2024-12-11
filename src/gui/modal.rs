@@ -235,6 +235,42 @@ impl Modal {
                         )
                         .class(style::Container::Player),
                     )
+                    .push(text(lang::field(&lang::thing::audio())))
+                    .push(
+                        Container::new(
+                            Column::new().spacing(10).padding(10).push(
+                                Row::new()
+                                    .spacing(10)
+                                    .align_y(alignment::Vertical::Center)
+                                    .push(
+                                        button::icon(if config.playback.muted {
+                                            Icon::Mute
+                                        } else {
+                                            Icon::VolumeHigh
+                                        })
+                                        .on_press(Message::SetMute(!config.playback.muted))
+                                        .tooltip(if config.playback.muted {
+                                            lang::action::unmute()
+                                        } else {
+                                            lang::action::mute()
+                                        }),
+                                    )
+                                    .push(
+                                        iced::widget::slider(0.01..=1.0, config.playback.volume, |volume| {
+                                            Message::SetVolume { volume }
+                                        })
+                                        .step(0.01)
+                                        .width(150),
+                                    )
+                                    .push(
+                                        text(format!("{:.0}%", config.playback.volume * 100.0))
+                                            .width(50)
+                                            .align_x(alignment::Horizontal::Center),
+                                    ),
+                            ),
+                        )
+                        .class(style::Container::Player),
+                    )
                     .push(text(lang::field(&lang::thing::image())))
                     .push(
                         Container::new(
