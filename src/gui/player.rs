@@ -309,6 +309,7 @@ pub enum Player {
         stream: rodio::OutputStream,
         sink: rodio::Sink,
         duration: Duration,
+        paused: bool,
         looping: bool,
         dragging: bool,
         hovered: bool,
@@ -319,6 +320,7 @@ pub enum Player {
         media: Media,
         video: iced_video_player::Video,
         position: f64,
+        paused: bool,
         dragging: bool,
         hovered: bool,
         need_play_on_focus: bool,
@@ -394,6 +396,7 @@ impl Player {
                     stream,
                     sink,
                     duration,
+                    paused: playback.paused,
                     looping: false,
                     dragging: false,
                     hovered: false,
@@ -411,6 +414,7 @@ impl Player {
                     media: media.clone(),
                     video,
                     position: 0.0,
+                    paused: playback.paused,
                     dragging: false,
                     hovered: false,
                     need_play_on_focus: false,
@@ -529,13 +533,21 @@ impl Player {
                 *position = 0.0;
             }
             #[cfg(feature = "audio")]
-            Self::Audio { sink, .. } => {
+            Self::Audio { sink, paused, .. } => {
                 let _ = sink.try_seek(Duration::from_millis(0));
+                *paused = false;
+                sink.play();
             }
             #[cfg(feature = "video")]
-            Self::Video { video, position, .. } => {
+            Self::Video {
+                video,
+                position,
+                paused,
+                ..
+            } => {
                 *position = 0.0;
                 seek_video(video, *position);
+                *paused = false;
                 video.set_paused(false);
             }
         }
@@ -577,9 +589,9 @@ impl Player {
             Self::Svg { paused, .. } => Some(*paused),
             Self::Gif { paused, .. } => Some(*paused),
             #[cfg(feature = "audio")]
-            Self::Audio { sink, .. } => Some(sink.is_paused()),
+            Self::Audio { paused, .. } => Some(*paused),
             #[cfg(feature = "video")]
-            Self::Video { video, .. } => Some(video.paused()),
+            Self::Video { paused, .. } => Some(*paused),
         }
     }
 
@@ -753,13 +765,14 @@ impl Player {
             stream: _,
             sink,
             duration: _,
+            paused,
             looping,
             dragging,
             hovered,
             need_play_on_focus,
         } = self
         {
-            let playback = playback.with_paused(sink.is_paused()).with_muted(sink.volume() == 0.0);
+            let playback = playback.with_paused(*paused).with_muted(sink.volume() == 0.0);
             let position = sink.get_pos();
 
             *self = match Self::load_audio(media.path(), &playback, position) {
@@ -768,6 +781,7 @@ impl Player {
                     stream,
                     sink,
                     duration,
+                    paused: *paused,
                     looping: *looping,
                     dragging: *dragging,
                     hovered: *hovered,
@@ -1034,6 +1048,7 @@ impl Player {
             Self::Audio {
                 sink,
                 duration,
+                paused,
                 looping,
                 dragging,
                 hovered,
@@ -1041,6 +1056,7 @@ impl Player {
                 ..
             } => match event {
                 Event::SetPause(flag) => {
+                    *paused = flag;
                     if flag {
                         sink.pause();
                     } else {
@@ -1095,6 +1111,7 @@ impl Player {
                 Event::Close => Some(Update::Close),
                 Event::WindowFocused => {
                     if *need_play_on_focus {
+                        *paused = false;
                         sink.play();
                         *need_play_on_focus = false;
                     }
@@ -1102,6 +1119,7 @@ impl Player {
                 }
                 Event::WindowUnfocused => {
                     if playback.pause_on_unfocus {
+                        *paused = true;
                         sink.pause();
                         *need_play_on_focus = true;
                     }
@@ -1112,12 +1130,14 @@ impl Player {
             Self::Video {
                 video,
                 position,
+                paused,
                 dragging,
                 hovered,
                 need_play_on_focus,
                 ..
             } => match event {
                 Event::SetPause(flag) => {
+                    *paused = flag;
                     video.set_paused(flag);
                     Some(Update::PauseChanged)
                 }
@@ -1171,6 +1191,7 @@ impl Player {
                 Event::Close => Some(Update::Close),
                 Event::WindowFocused => {
                     if *need_play_on_focus {
+                        *paused = false;
                         video.set_paused(false);
                         *need_play_on_focus = false;
                     }
@@ -1178,6 +1199,7 @@ impl Player {
                 }
                 Event::WindowUnfocused => {
                     if playback.pause_on_unfocus {
+                        *paused = true;
                         video.set_paused(true);
                         *need_play_on_focus = true;
                     }
@@ -1770,6 +1792,7 @@ impl Player {
                 media,
                 sink,
                 duration,
+                paused,
                 looping,
                 dragging,
                 hovered,
@@ -1852,15 +1875,13 @@ impl Player {
                                             })
                                     })
                                     .push({
-                                        let paused = sink.is_paused();
-
-                                        button::big_icon(if paused { Icon::Play } else { Icon::Pause })
+                                        button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
                                             .on_press(Message::Player {
                                                 grid_id,
                                                 player_id,
-                                                event: Event::SetPause(!paused),
+                                                event: Event::SetPause(!*paused),
                                             })
-                                            .tooltip(if paused {
+                                            .tooltip(if *paused {
                                                 lang::action::play()
                                             } else {
                                                 lang::action::pause()
@@ -1923,6 +1944,7 @@ impl Player {
                 media,
                 video,
                 position,
+                paused,
                 dragging,
                 hovered,
                 ..
@@ -2000,13 +2022,13 @@ impl Player {
                                             }),
                                     )
                                     .push(
-                                        button::big_icon(if video.paused() { Icon::Play } else { Icon::Pause })
+                                        button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
                                             .on_press(Message::Player {
                                                 grid_id,
                                                 player_id,
-                                                event: Event::SetPause(!video.paused()),
+                                                event: Event::SetPause(!*paused),
                                             })
-                                            .tooltip(if video.paused() {
+                                            .tooltip(if *paused {
                                                 lang::action::play()
                                             } else {
                                                 lang::action::pause()
