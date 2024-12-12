@@ -7,11 +7,6 @@
   * **Flatpak:** The `DISPLAY` environment variable may not be getting passed through to the container.
     This has been observed on GNOME systems.
     Try running `flatpak run --nosocket=fallback-x11 --socket=x11 com.mtkennerly.madamiru`.
-* On Windows 11, when I open the GUI, a console window also stays open.
-  * This is a limitation of the new Windows Terminal app (https://github.com/microsoft/terminal/issues/14416).
-    It should be fixed once Windows Terminal v1.17 is released.
-    In the meantime, you can work around it by opening Windows Terminal from the Start Menu,
-    opening its settings, and changing the "default terminal application" to "Windows Console Host".
 * The GUI won't launch.
   * There may be an issue with your graphics drivers/support.
     Try using the software renderer instead by setting the `ICED_BACKEND` environment variable to `tiny-skia`.
@@ -20,9 +15,23 @@
   * **Flatpak:** You can try forcing X11 instead of Wayland:
     `flatpak run --nosocket=wayland --socket=x11 com.mtkennerly.madamiru`
 * On Windows, I can't load really long folder/file paths.
-  * Madamiru supports long paths,
+  * The application supports long paths,
     but you also need to enable that feature in Windows itself:
     https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry#registry-setting-to-enable-long-paths
+* When I try to play a video, it says `Element failed to change its state`.
+  * This probably means that GStreamer is installed,
+    but doesn't have the codec necessary for the video.
+    You can confirm this by setting two environment variables when you run the application:
+    `GST_DEBUG=3` and `GST_DEBUG_FILE=gst.log`,
+    and then checking the `gst.log` file for more information.
+
+    If it is indeed a missing codec,
+    then you can try installing GStreamer with additional codecs enabled:
+    * Windows: You can do this by enabling more features in the GStreamer installer.
+    * Ubuntu: `sudo apt-get install -y gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly`
+* When I try to play an audio file, it says `Unable to determine media duration` or `end of stream`.
+  * This means that the audio backend was unable to handle the file.
+    Please check back over time as support for more files may be added/improved
 
 ## Environment variables on Windows
 Some of the instructions above mention setting environment variables.
