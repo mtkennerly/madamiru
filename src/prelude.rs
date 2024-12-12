@@ -79,6 +79,12 @@ pub fn timestamp_hhmmss(mut seconds: u64) -> String {
     format!("{hours:02}:{minutes:02}:{seconds:02}")
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Change {
+    Same,
+    Different,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -21,7 +21,7 @@ use crate::{
     },
     lang, media,
     path::StrictPath,
-    prelude::{Error, STEAM_DECK},
+    prelude::{Change, Error, STEAM_DECK},
     resource::{
         cache::Cache,
         config::{self, Config},
@@ -767,8 +767,12 @@ impl App {
                                 self.modals.pop();
                                 let sources = settings.sources.clone();
                                 if let Some(grid) = self.grids.get_mut(grid_id) {
-                                    self.playlist_dirty = true;
-                                    grid.set_settings(settings);
+                                    match grid.set_settings(settings) {
+                                        Change::Same => {}
+                                        Change::Different => {
+                                            self.playlist_dirty = true;
+                                        }
+                                    }
                                 }
                                 return Self::find_media(
                                     sources,

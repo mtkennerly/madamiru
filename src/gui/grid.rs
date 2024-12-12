@@ -17,6 +17,7 @@ use crate::{
     },
     lang,
     media::{self, Media},
+    prelude::Change,
     resource::{
         config::Playback,
         playlist::{ContentFit, Orientation, OrientationLimit},
@@ -203,7 +204,12 @@ impl Grid {
         }
     }
 
-    pub fn set_settings(&mut self, settings: Settings) {
+    #[must_use]
+    pub fn set_settings(&mut self, settings: Settings) -> Change {
+        if self.settings() == settings {
+            return Change::Same;
+        }
+
         let Settings {
             sources,
             content_fit,
@@ -215,6 +221,8 @@ impl Grid {
         self.content_fit = content_fit;
         self.orientation = orientation;
         self.orientation_limit = orientation_limit;
+
+        Change::Different
     }
 
     pub fn sources(&self) -> &[media::Source] {
