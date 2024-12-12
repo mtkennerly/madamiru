@@ -1,0 +1,159 @@
+---
+$schema: "http://json-schema.org/draft-07/schema#"
+title: Playlist
+description: Settings for a playlist
+type: object
+properties:
+  layout:
+    default:
+      group:
+        content_fit: scale
+        max_media: 1
+        orientation: horizontal
+        orientation_limit: automatic
+        sources: []
+    allOf:
+      - $ref: "#/definitions/Layout"
+definitions:
+  ContentFit:
+    oneOf:
+      - description: "Scale the media up or down to fill as much of the available space as possible while maintaining the media's aspect ratio."
+        type: string
+        enum:
+          - scale
+      - description: "Scale the media down to fill as much of the available space as possible while maintaining the media's aspect ratio. Don't scale up if it's smaller than the available space."
+        type: string
+        enum:
+          - scale_down
+      - description: "Crop the media to fill all of the available space. Maintain the aspect ratio, cutting off parts of the media as needed to fit."
+        type: string
+        enum:
+          - crop
+      - description: "Stretch the media to fill all of the available space. Preserve the whole media, disregarding the aspect ratio."
+        type: string
+        enum:
+          - stretch
+  FilePath:
+    type: string
+  Group:
+    type: object
+    properties:
+      content_fit:
+        default: scale
+        allOf:
+          - $ref: "#/definitions/ContentFit"
+      max_media:
+        default: 1
+        type: integer
+        format: uint
+        minimum: 0.0
+      orientation:
+        default: horizontal
+        allOf:
+          - $ref: "#/definitions/Orientation"
+      orientation_limit:
+        default: automatic
+        allOf:
+          - $ref: "#/definitions/OrientationLimit"
+      sources:
+        default: []
+        type: array
+        items:
+          $ref: "#/definitions/Source"
+  Layout:
+    oneOf:
+      - type: object
+        required:
+          - split
+        properties:
+          split:
+            $ref: "#/definitions/Split"
+        additionalProperties: false
+      - type: object
+        required:
+          - group
+        properties:
+          group:
+            $ref: "#/definitions/Group"
+        additionalProperties: false
+  Orientation:
+    type: string
+    enum:
+      - horizontal
+      - vertical
+  OrientationLimit:
+    oneOf:
+      - type: string
+        enum:
+          - automatic
+      - type: object
+        required:
+          - fixed
+        properties:
+          fixed:
+            type: integer
+            format: uint
+            minimum: 1.0
+        additionalProperties: false
+  Source:
+    oneOf:
+      - type: object
+        required:
+          - path
+        properties:
+          path:
+            type: object
+            required:
+              - path
+            properties:
+              path:
+                $ref: "#/definitions/FilePath"
+        additionalProperties: false
+      - type: object
+        required:
+          - glob
+        properties:
+          glob:
+            type: object
+            required:
+              - pattern
+            properties:
+              pattern:
+                type: string
+        additionalProperties: false
+  Split:
+    type: object
+    properties:
+      axis:
+        default: horizontal
+        allOf:
+          - $ref: "#/definitions/SplitAxis"
+      first:
+        default:
+          group:
+            content_fit: scale
+            max_media: 1
+            orientation: horizontal
+            orientation_limit: automatic
+            sources: []
+        allOf:
+          - $ref: "#/definitions/Layout"
+      ratio:
+        default: 0.5
+        type: number
+        format: float
+      second:
+        default:
+          group:
+            content_fit: scale
+            max_media: 1
+            orientation: horizontal
+            orientation_limit: automatic
+            sources: []
+        allOf:
+          - $ref: "#/definitions/Layout"
+  SplitAxis:
+    type: string
+    enum:
+      - horizontal
+      - vertical

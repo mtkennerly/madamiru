@@ -16,13 +16,13 @@ Commands:
 
 Arguments:
   [SOURCES]...
-          Sources to load. Alternatively supports stdin (one value per line)
+          Files and folders to load. Alternatively supports stdin (one value per line)
 
 Options:
       --config <DIRECTORY>
           Use configuration found in DIRECTORY
-      --max <MAX>
-          How many items to load at most
+      --glob <GLOB>
+          Glob patterns to load
   -h, --help
           Print help
   -V, --version
@@ -63,6 +63,8 @@ Usage: madamiru.exe schema [OPTIONS] <COMMAND>
 Commands:
   config
           Schema for config.yaml
+  playlist
+          Schema for playlist.madamiru
   help
           Print this message or the help of the given subcommand(s)
 

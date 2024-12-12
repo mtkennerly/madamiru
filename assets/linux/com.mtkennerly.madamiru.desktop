@@ -2,7 +2,7 @@
 Type=Application
 Encoding=UTF-8
 Name=Madamiru
-Comment=Multi-video player
+Comment=Dynamic multi-multimedia player
 Exec=madamiru
 Icon=com.mtkennerly.madamiru
 Terminal=false

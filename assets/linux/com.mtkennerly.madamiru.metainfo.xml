@@ -5,7 +5,7 @@
     <project_license>MIT</project_license>
     <name>madamiru</name>
     <developer_name>mtkennerly</developer_name>
-    <summary>Multi-video player</summary>
+    <summary>Dynamic multi-multimedia player</summary>
     <url type="homepage">https://github.com/mtkennerly/madamiru/</url>
     <url type="bugtracker">https://github.com/mtkennerly/madamiru/issues</url>
     <url type="translate">https://crowdin.com/project/madamiru</url>
@@ -53,6 +53,6 @@
     <content_rating type="oars-1.1" />
     <launchable type="desktop-id">com.mtkennerly.madamiru.desktop</launchable>
     <releases>
-        <release version="0.1.0" date="2024-11-26"/>
+        <release version="0.1.0" date="2024-12-12"/>
     </releases>
 </component>

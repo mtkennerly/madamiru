@@ -4,14 +4,12 @@ title: Config
 description: "Settings for `config.yaml`"
 type: object
 properties:
-  language:
-    default: en-US
-    allOf:
-      - $ref: "#/definitions/Language"
   playback:
     default:
-      max: 4
+      image_duration: 10
       muted: false
+      pause_on_unfocus: false
+      volume: 1.0
     allOf:
       - $ref: "#/definitions/Playback"
   release:
@@ -19,10 +17,13 @@ properties:
       check: true
     allOf:
       - $ref: "#/definitions/Release"
-  theme:
-    default: Dark
+  view:
+    default:
+      confirm_discard_playlist: true
+      language: en-US
+      theme: dark
     allOf:
-      - $ref: "#/definitions/Theme"
+      - $ref: "#/definitions/View"
 definitions:
   Language:
     description: Display language.
@@ -34,14 +35,25 @@ definitions:
   Playback:
     type: object
     properties:
-      max:
-        default: 4
+      image_duration:
+        description: "How long to show images, in seconds."
+        default: 10
         type: integer
         format: uint
-        minimum: 0.0
+        minimum: 1.0
       muted:
+        description: Whether all players are muted.
         default: false
         type: boolean
+      pause_on_unfocus:
+        description: Whether to pause when window loses focus.
+        default: false
+        type: boolean
+      volume:
+        description: "Volume level when not muted. 1.0 is 100%, 0.01 is 1%."
+        default: 1.0
+        type: number
+        format: float
   Release:
     type: object
     properties:
@@ -53,5 +65,19 @@ definitions:
     description: Visual theme.
     type: string
     enum:
-      - Light
-      - Dark
+      - light
+      - dark
+  View:
+    type: object
+    properties:
+      confirm_discard_playlist:
+        default: true
+        type: boolean
+      language:
+        default: en-US
+        allOf:
+          - $ref: "#/definitions/Language"
+      theme:
+        default: dark
+        allOf:
+          - $ref: "#/definitions/Theme"

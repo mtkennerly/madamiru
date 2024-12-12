@@ -117,6 +117,7 @@ def docs_schema(ctx):
 
     commands = [
         "config",
+        "playlist",
     ]
 
     for command in commands:

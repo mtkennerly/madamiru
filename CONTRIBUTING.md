@@ -67,9 +67,9 @@ Also install the Crowdin CLI tool manually.
     For Linux and Mac, extract the `.tar.gz` files from the `.zip` files.
 * Run `cargo publish`
 * Run `invoke release-flatpak`
-  * This will automatically push a branch to https://github.com/flathub/com.github.mtkennerly.madamiru .
+  * This will automatically push a branch to https://github.com/flathub/com.mtkennerly.madamiru .
   * Manually open a PR for that branch.
-  * After the PR is merged, publish via https://buildbot.flathub.org/#/apps/com.github.mtkennerly.madamiru .
+  * After the PR is merged, publish via https://buildbot.flathub.org/#/apps/com.mtkennerly.madamiru .
 * Run `invoke release-winget`
   * When the script opens VSCode and pauses,
     manually edit `manifests/m/mtkennerly/madamiru/${VERSION}/mtkennerly.madamiru.locale.en-US.yaml`

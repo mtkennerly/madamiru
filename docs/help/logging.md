@@ -7,3 +7,6 @@ By default, only warnings and errors are logged,
 but you can customize this by setting the `RUST_LOG` environment variable
 (e.g., `RUST_LOG=madamiru=debug`).
 The most recent 5 log files are kept, rotating on app launch or when a log reaches 10 MiB.
+
+You can also enable logging for GStreamer by setting these environment variables:
+`GST_DEBUG=3` and `GST_DEBUG_FILE=gst.log`.
