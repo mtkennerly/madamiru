@@ -63,6 +63,7 @@ impl Playlist {
 }
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum Layout {
     Split(Split),
     Group(Group),
@@ -110,6 +111,7 @@ impl Default for Split {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum SplitAxis {
     #[default]
     Horizontal,
@@ -139,6 +141,7 @@ impl Default for Group {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum Orientation {
     #[default]
     Horizontal,
@@ -159,6 +162,7 @@ impl ToString for Orientation {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum OrientationLimit {
     #[default]
     Automatic,
@@ -181,6 +185,7 @@ impl OrientationLimit {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum ContentFit {
     /// Scale the media up or down to fill as much of the available space as possible
     /// while maintaining the media's aspect ratio.
@@ -245,15 +250,15 @@ mod tests {
         let playlist = Playlist::load_from_string(
             r#"
                 layout:
-                  Group:
+                  group:
                     sources:
-                      - Path:
+                      - path:
                           path: tmp
                     max_media: 4
-                    content_fit: Crop
-                    orientation: Vertical
+                    content_fit: crop
+                    orientation: vertical
                     orientation_limit:
-                      Fixed: 2
+                      fixed: 2
             "#,
         )
         .unwrap();
@@ -279,12 +284,12 @@ mod tests {
 ---
 # madamiru-playlist
 layout:
-  Group:
+  group:
     sources: []
     max_media: 1
-    content_fit: Scale
-    orientation: Horizontal
-    orientation_limit: Automatic
+    content_fit: scale
+    orientation: horizontal
+    orientation_limit: automatic
 "#
             .trim(),
             Playlist::default().serialize().trim(),

@@ -80,6 +80,7 @@ impl Default for View {
 
 /// Visual theme.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum Theme {
     Light,
     #[default]
@@ -170,7 +171,7 @@ mod tests {
                 release:
                   check: false
                 view:
-                  theme: Light
+                  theme: light
                   confirm_discard_playlist: false
                 playback:
                   muted: true
@@ -210,7 +211,7 @@ release:
   check: true
 view:
   language: en-US
-  theme: Dark
+  theme: dark
   confirm_discard_playlist: true
 playback:
   muted: false

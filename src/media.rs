@@ -17,6 +17,7 @@ pub enum RefreshContext {
 #[derive(
     Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
+#[serde(rename_all = "snake_case")]
 pub enum Source {
     Path { path: StrictPath },
     Glob { pattern: String },
