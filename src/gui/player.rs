@@ -1267,7 +1267,7 @@ impl Player {
                                 Row::new()
                                     .push(
                                         button::icon(Icon::OpenInNew)
-                                            .on_press(Message::OpenFile {
+                                            .on_press(Message::OpenDir {
                                                 path: media.path().clone(),
                                             })
                                             .tooltip(media.path().render()),
@@ -1349,7 +1349,7 @@ impl Player {
                                 Row::new()
                                     .push(
                                         button::icon(Icon::Image)
-                                            .on_press(Message::OpenFile {
+                                            .on_press(Message::OpenDir {
                                                 path: media.path().clone(),
                                             })
                                             .tooltip(media.path().render()),
@@ -1497,7 +1497,7 @@ impl Player {
                                 Row::new()
                                     .push(
                                         button::icon(Icon::Image)
-                                            .on_press(Message::OpenFile {
+                                            .on_press(Message::OpenDir {
                                                 path: media.path().clone(),
                                             })
                                             .tooltip(media.path().render()),
@@ -1657,7 +1657,7 @@ impl Player {
                                 Row::new()
                                     .push(
                                         button::icon(Icon::Image)
-                                            .on_press(Message::OpenFile {
+                                            .on_press(Message::OpenDir {
                                                 path: media.path().clone(),
                                             })
                                             .tooltip(media.path().render()),
@@ -1800,7 +1800,7 @@ impl Player {
                                 Row::new()
                                     .push(
                                         button::icon(Icon::Music)
-                                            .on_press(Message::OpenFile {
+                                            .on_press(Message::OpenDir {
                                                 path: media.path().clone(),
                                             })
                                             .tooltip(media.path().render()),
@@ -1950,7 +1950,7 @@ impl Player {
                                 Row::new()
                                     .push(
                                         button::icon(Icon::Movie)
-                                            .on_press(Message::OpenFile {
+                                            .on_press(Message::OpenDir {
                                                 path: media.path().clone(),
                                             })
                                             .tooltip(media.path().render()),

@@ -4,11 +4,9 @@ use crate::prelude::StrictPath;
 
 use clap::ValueEnum;
 
-fn parse_existing_strict_path(path: &str) -> Result<StrictPath, std::io::Error> {
+fn parse_strict_path(path: &str) -> Result<StrictPath, std::io::Error> {
     let cwd = StrictPath::cwd();
-    let sp = StrictPath::relative(path.to_owned(), Some(cwd.raw()));
-    sp.metadata()?;
-    Ok(sp)
+    Ok(StrictPath::relative(path.to_owned(), Some(cwd.raw())))
 }
 
 fn styles() -> clap::builder::styling::Styles {
@@ -78,7 +76,7 @@ pub struct Cli {
 
     /// Files and folders to load.
     /// Alternatively supports stdin (one value per line).
-    #[clap(value_parser = parse_existing_strict_path)]
+    #[clap(value_parser = parse_strict_path)]
     pub sources: Vec<StrictPath>,
 
     /// Glob patterns to load.

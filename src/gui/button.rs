@@ -205,7 +205,7 @@ pub fn choose_file<'a>(
         "{}\n{} {}",
         lang::action::select_file(),
         lang::field(&lang::thing::key::shift()),
-        lang::action::open_folder_of_file()
+        lang::action::open_file()
     ))
 }
 

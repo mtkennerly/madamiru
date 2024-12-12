@@ -168,7 +168,13 @@ impl Modal {
         }
     }
 
-    pub fn body(&self, config: &Config, histories: &TextHistories, modifiers: &Modifiers) -> Option<Column> {
+    pub fn body(
+        &self,
+        config: &Config,
+        histories: &TextHistories,
+        modifiers: &Modifiers,
+        playlist: Option<&StrictPath>,
+    ) -> Option<Column> {
         let mut col = Column::new().spacing(15).padding(padding::right(10));
 
         match self {
@@ -329,12 +335,12 @@ impl Modal {
                                     .align_y(alignment::Vertical::Center)
                                     .push(button::choose_folder(
                                         BrowseSubject::Source { index },
-                                        path.clone(),
+                                        media::fill_placeholders_in_path(path, playlist),
                                         modifiers,
                                     ))
                                     .push(button::choose_file(
                                         BrowseFileSubject::Source { index },
-                                        path.clone(),
+                                        media::fill_placeholders_in_path(path, playlist),
                                         modifiers,
                                     ))
                                     .push(
@@ -468,6 +474,7 @@ impl Modal {
         config: &Config,
         histories: &TextHistories,
         modifiers: &Modifiers,
+        playlist: Option<&StrictPath>,
     ) -> Container {
         Container::new(
             Column::new()
@@ -475,7 +482,7 @@ impl Modal {
                 .padding(padding::top(30).bottom(30))
                 .align_x(Alignment::Center)
                 .push_maybe(self.title(config))
-                .push_maybe(self.body(config, histories, modifiers).map(|body| {
+                .push_maybe(self.body(config, histories, modifiers, playlist).map(|body| {
                     Container::new(Scrollable::new(body.padding([0, 30])).id((*SCROLLABLE).clone()))
                         .padding(padding::right(5))
                         .max_height(viewport.height - 300.0)
@@ -610,6 +617,7 @@ impl Modal {
         config: &Config,
         histories: &TextHistories,
         modifiers: &Modifiers,
+        playlist: Option<&StrictPath>,
     ) -> Element {
         Stack::new()
             .push({
@@ -626,7 +634,7 @@ impl Modal {
                 area
             })
             .push(
-                Container::new(opaque(self.content(viewport, config, histories, modifiers)))
+                Container::new(opaque(self.content(viewport, config, histories, modifiers, playlist)))
                     .center(Length::Fill)
                     .padding([0.0, (100.0 + viewport.width - 640.0).clamp(0.0, 100.0)]),
             )

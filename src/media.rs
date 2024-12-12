@@ -10,6 +10,13 @@ mod placeholder {
     pub const PLAYLIST: &str = "<playlist>";
 }
 
+pub fn fill_placeholders_in_path(path: &StrictPath, playlist: Option<&StrictPath>) -> StrictPath {
+    let playlist = playlist
+        .and_then(|x| x.parent_if_file().ok())
+        .unwrap_or_else(StrictPath::cwd);
+    path.replace_raw_prefix(placeholder::PLAYLIST, playlist.raw_ref())
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum RefreshContext {
     Launch,
@@ -91,7 +98,7 @@ impl Source {
     pub fn fill_placeholders(&self, playlist: &StrictPath) -> Self {
         match self {
             Self::Path { path } => Self::Path {
-                path: path.replace(&StrictPath::new(placeholder::PLAYLIST), playlist),
+                path: fill_placeholders_in_path(path, Some(playlist)),
             },
             Self::Glob { pattern } => Self::Glob {
                 pattern: match pattern.strip_prefix(placeholder::PLAYLIST) {
@@ -255,7 +262,9 @@ impl Collection {
 
     pub fn find(sources: &[Source], playlist: Option<StrictPath>) -> SourceMap {
         let mut media = SourceMap::new();
-        let playlist = playlist.and_then(|x| x.parent()).unwrap_or_else(StrictPath::cwd);
+        let playlist = playlist
+            .and_then(|x| x.parent_if_file().ok())
+            .unwrap_or_else(StrictPath::cwd);
 
         for source in sources {
             media.insert(source.clone(), Self::find_in_source(source, Some(&playlist)));

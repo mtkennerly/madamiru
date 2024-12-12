@@ -54,7 +54,7 @@ pub enum Message {
     OpenFile {
         path: StrictPath,
     },
-    OpenDirFailure {
+    OpenPathFailure {
         path: StrictPath,
     },
     OpenUrlFailure {

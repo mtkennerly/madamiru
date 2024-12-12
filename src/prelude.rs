@@ -40,7 +40,7 @@ pub enum Error {
     ConfigInvalid { why: String },
     NoMediaFound,
     PlaylistInvalid { why: String },
-    UnableToOpenDir(StrictPath),
+    UnableToOpenPath(StrictPath),
     UnableToOpenUrl(String),
     UnableToSavePlaylist { why: String },
 }

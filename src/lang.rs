@@ -159,7 +159,7 @@ pub fn handle_error(error: &Error) -> String {
         Error::ConfigInvalid { why } => format!("{}\n\n{why}", tell::config_is_invalid()),
         Error::NoMediaFound => tell::no_media_found_in_sources(),
         Error::PlaylistInvalid { why } => format!("{}\n\n{why}", tell::playlist_is_invalid()),
-        Error::UnableToOpenDir(path) => format!("{}\n\n{}", tell::unable_to_open_directory(), path.render()),
+        Error::UnableToOpenPath(path) => format!("{}\n\n{}", tell::unable_to_open_path(), path.render()),
         Error::UnableToOpenUrl(url) => format!("{}\n\n{}", tell::unable_to_open_url(), url),
         Error::UnableToSavePlaylist { why } => format!("{}\n\n{why}", tell::unable_to_save_playlist()),
     };
@@ -294,8 +294,8 @@ pub mod action {
         translate("action-open-folder")
     }
 
-    pub fn open_folder_of_file() -> String {
-        translate("action-open-folder-of-file")
+    pub fn open_file() -> String {
+        translate("action-open-file")
     }
 
     pub fn open_playlist() -> String {
@@ -429,8 +429,8 @@ pub mod tell {
         translate("tell-unable-to-determine-media-duration")
     }
 
-    pub fn unable_to_open_directory() -> String {
-        translate("tell-unable-to-open-directory")
+    pub fn unable_to_open_path() -> String {
+        translate("tell-unable-to-open-path")
     }
 
     pub fn unable_to_open_url() -> String {

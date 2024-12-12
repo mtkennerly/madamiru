@@ -527,6 +527,13 @@ impl StrictPath {
         new.into()
     }
 
+    pub fn replace_raw_prefix(&self, find: &str, new: &str) -> Self {
+        match self.raw.strip_prefix(find) {
+            Some(suffix) => Self::relative(format!("{new}{suffix}"), self.basis.clone()),
+            None => self.clone(),
+        }
+    }
+
     pub fn create(&self) -> std::io::Result<std::fs::File> {
         std::fs::File::create(self.as_std_path_buf()?)
     }
@@ -581,20 +588,14 @@ impl StrictPath {
             .map(|x| x.to_string_lossy().to_string())
     }
 
-    // TODO: Refactor to use `popped()`?
     pub fn parent(&self) -> Option<Self> {
-        self.as_std_path_buf().ok()?.parent().map(Self::from)
+        let popped = self.popped();
+        (self != &popped).then_some(popped)
     }
 
-    // TODO: Refactor to use `popped()`?
     pub fn parent_if_file(&self) -> Result<Self, StrictPathError> {
-        let resolved = self.try_resolve()?;
-        let pathbuf = std::path::PathBuf::from(&resolved);
-        if pathbuf.is_file() {
-            match pathbuf.parent() {
-                Some(parent) => Ok(Self::from(parent)),
-                None => Ok(self.clone()),
-            }
+        if self.is_file() {
+            Ok(self.popped())
         } else {
             Ok(self.clone())
         }

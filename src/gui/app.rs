@@ -589,24 +589,10 @@ impl App {
                 Message::browsed_file(subject, choice.map(|x| x.path().to_path_buf()))
             }),
             Message::OpenDir { path } => {
-                let path2 = path.clone();
-                Task::future(async move {
-                    let result = async { opener::open(path.resolve()) }.await;
-
-                    match result {
-                        Ok(_) => Message::Ignore,
-                        Err(e) => {
-                            log::error!("Unable to open directory: `{}` - {:?}", path2.resolve(), e);
-                            Message::OpenDirFailure { path: path2 }
-                        }
-                    }
-                })
-            }
-            Message::OpenFile { path } => {
                 let path = match path.parent_if_file() {
                     Ok(path) => path,
                     Err(_) => {
-                        self.show_error(Error::UnableToOpenDir(path));
+                        self.show_error(Error::UnableToOpenPath(path));
                         return Task::none();
                     }
                 };
@@ -619,14 +605,28 @@ impl App {
                         Ok(_) => Message::Ignore,
                         Err(e) => {
                             log::error!("Unable to open directory: `{}` - {:?}", path2.resolve(), e);
-                            Message::OpenDirFailure { path: path2 }
+                            Message::OpenPathFailure { path: path2 }
                         }
                     }
                 })
             }
-            Message::OpenDirFailure { path } => {
+            Message::OpenFile { path } => {
+                let path2 = path.clone();
+                Task::future(async move {
+                    let result = async { opener::open(path.resolve()) }.await;
+
+                    match result {
+                        Ok(_) => Message::Ignore,
+                        Err(e) => {
+                            log::error!("Unable to open directory: `{}` - {:?}", path2.resolve(), e);
+                            Message::OpenPathFailure { path: path2 }
+                        }
+                    }
+                })
+            }
+            Message::OpenPathFailure { path } => {
                 self.show_modal(Modal::Error {
-                    variant: Error::UnableToOpenDir(path),
+                    variant: Error::UnableToOpenPath(path),
                 });
                 Task::none()
             }
@@ -1277,11 +1277,15 @@ impl App {
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .push(content.class(style::Container::Primary))
-                .push_maybe(
-                    self.modals
-                        .last()
-                        .map(|modal| modal.view(viewport, &self.config, &self.text_histories, &self.modifiers)),
-                );
+                .push_maybe(self.modals.last().map(|modal| {
+                    modal.view(
+                        viewport,
+                        &self.config,
+                        &self.text_histories,
+                        &self.modifiers,
+                        self.playlist_path.as_ref(),
+                    )
+                }));
 
             Container::new(stack)
                 .width(Length::Fill)
