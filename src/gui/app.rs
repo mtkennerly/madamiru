@@ -159,7 +159,11 @@ impl App {
         let grids = match playlist_path.as_ref() {
             Some(path) => match Playlist::load_from(path) {
                 Ok(playlist) => {
-                    commands.push(Self::find_media(playlist.sources(), media::RefreshContext::Launch));
+                    commands.push(Self::find_media(
+                        playlist.sources(),
+                        media::RefreshContext::Launch,
+                        playlist_path.clone(),
+                    ));
                     Self::load_playlist(playlist)
                 }
                 Err(e) => {
@@ -178,7 +182,11 @@ impl App {
                 } else {
                     playlist_dirty = true;
                 }
-                commands.push(Self::find_media(sources, media::RefreshContext::Launch));
+                commands.push(Self::find_media(
+                    sources,
+                    media::RefreshContext::Launch,
+                    playlist_path.clone(),
+                ));
                 grids
             }
         };
@@ -310,15 +318,20 @@ impl App {
             .collect()
     }
 
-    fn find_media(sources: Vec<media::Source>, context: media::RefreshContext) -> Task<Message> {
+    fn find_media(
+        sources: Vec<media::Source>,
+        context: media::RefreshContext,
+        playlist: Option<StrictPath>,
+    ) -> Task<Message> {
+        log::info!("Finding media ({context:?})");
         Task::future(async move {
-            match tokio::task::spawn_blocking(move || media::Collection::find(&sources)).await {
+            match tokio::task::spawn_blocking(move || media::Collection::find(&sources, playlist)).await {
                 Ok(media) => {
-                    log::debug!("Found media: {media:?}");
+                    log::info!("Found media ({context:?}): {media:?}");
                     Message::MediaFound { context, media }
                 }
                 Err(e) => {
-                    log::error!("Unable to find media: {e:?}");
+                    log::error!("Unable to find media ({context:?}): {e:?}");
                     Message::Ignore
                 }
             }
@@ -757,7 +770,11 @@ impl App {
                                     self.playlist_dirty = true;
                                     grid.set_settings(settings);
                                 }
-                                return Self::find_media(sources, media::RefreshContext::Edit);
+                                return Self::find_media(
+                                    sources,
+                                    media::RefreshContext::Edit,
+                                    self.playlist_path.clone(),
+                                );
                             }
                             modal::Update::Task(task) => {
                                 return task;
@@ -771,7 +788,11 @@ impl App {
                 self.show_modal(Modal::Settings);
                 Task::none()
             }
-            Message::FindMedia => Self::find_media(self.all_sources(), media::RefreshContext::Automatic),
+            Message::FindMedia => Self::find_media(
+                self.all_sources(),
+                media::RefreshContext::Automatic,
+                self.playlist_path.clone(),
+            ),
             Message::MediaFound { context, media } => {
                 self.media.update(media, context);
                 for (_grid_id, grid) in self.grids.iter_mut() {
@@ -962,6 +983,7 @@ impl App {
                 self.grids = grids;
                 self.playlist_dirty = false;
                 self.playlist_path = None;
+                self.media.clear();
 
                 Task::none()
             }
@@ -996,7 +1018,11 @@ impl App {
                 match Playlist::load_from(&path) {
                     Ok(playlist) => {
                         self.grids = Self::load_playlist(playlist);
-                        Self::find_media(self.all_sources(), media::RefreshContext::Playlist)
+                        Self::find_media(
+                            self.all_sources(),
+                            media::RefreshContext::Playlist,
+                            self.playlist_path.clone(),
+                        )
                     }
                     Err(e) => {
                         self.show_error(e);
@@ -1041,13 +1067,20 @@ impl App {
                 match playlist.save_to(&path) {
                     Ok(_) => {
                         self.playlist_dirty = false;
+                        Self::find_media(
+                            self.all_sources()
+                                .into_iter()
+                                .filter(|x| x.has_playlist_placeholder())
+                                .collect(),
+                            media::RefreshContext::Edit,
+                            self.playlist_path.clone(),
+                        )
                     }
                     Err(e) => {
                         self.show_error(e);
+                        Task::none()
                     }
                 }
-
-                Task::none()
             }
         }
     }

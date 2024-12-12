@@ -6,6 +6,10 @@ use crate::{lang, path::StrictPath};
 
 pub const MAX_INITIAL: usize = 1;
 
+mod placeholder {
+    pub const PLAYLIST: &str = "<playlist>";
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum RefreshContext {
     Launch,
@@ -83,6 +87,24 @@ impl Source {
             }
         }
     }
+
+    pub fn fill_placeholders(&self, playlist: &StrictPath) -> Self {
+        match self {
+            Self::Path { path } => Self::Path {
+                path: path.replace(&StrictPath::new(placeholder::PLAYLIST), playlist),
+            },
+            Self::Glob { pattern } => Self::Glob {
+                pattern: match pattern.strip_prefix(placeholder::PLAYLIST) {
+                    Some(suffix) => format!("{}{}", playlist.render(), suffix),
+                    None => pattern.clone(),
+                },
+            },
+        }
+    }
+
+    pub fn has_playlist_placeholder(&self) -> bool {
+        self.raw().contains(placeholder::PLAYLIST)
+    }
 }
 
 impl Default for Source {
@@ -158,7 +180,7 @@ impl Media {
 
         match infer::get_from_path(inferrable) {
             Ok(Some(info)) => {
-                log::info!("Inferred file type '{}': {path:?}", info.mime_type());
+                log::debug!("Inferred file type '{}': {path:?}", info.mime_type());
 
                 let extension = path.file_extension().map(|x| x.to_lowercase());
 
@@ -192,7 +214,7 @@ impl Media {
                 }
             }
             Ok(None) => {
-                log::info!("Did not infer any file type: {path:?}");
+                log::debug!("Did not infer any file type: {path:?}");
                 None
             }
             Err(e) => {
@@ -212,6 +234,10 @@ pub struct Collection {
 }
 
 impl Collection {
+    pub fn clear(&mut self) {
+        self.media.clear();
+    }
+
     pub fn mark_error(&mut self, media: &Media) {
         self.errored.insert(media.clone());
     }
@@ -227,25 +253,36 @@ impl Collection {
             .all(|known| !known.contains(media))
     }
 
-    pub fn find(sources: &[Source]) -> SourceMap {
+    pub fn find(sources: &[Source], playlist: Option<StrictPath>) -> SourceMap {
         let mut media = SourceMap::new();
+        let playlist = playlist.and_then(|x| x.parent()).unwrap_or_else(StrictPath::cwd);
 
         for source in sources {
-            media.insert(source.clone(), Self::find_in_source(source));
+            media.insert(source.clone(), Self::find_in_source(source, Some(&playlist)));
         }
 
         media
     }
 
-    fn find_in_source(source: &Source) -> HashSet<Media> {
-        match source {
+    fn find_in_source(source: &Source, playlist: Option<&StrictPath>) -> HashSet<Media> {
+        log::debug!("Finding media in source: {source:?}, playlist: {playlist:?}");
+
+        let source = match playlist {
+            Some(playlist) => source.fill_placeholders(playlist),
+            None => source.clone(),
+        };
+        log::debug!("Source with placeholders filled: {source:?}");
+
+        match &source {
             Source::Path { path } => {
                 if path.is_file() {
+                    log::debug!("Source is file");
                     match Media::identify(path) {
                         Some(source) => HashSet::from_iter([source]),
                         None => HashSet::new(),
                     }
                 } else if path.is_dir() {
+                    log::debug!("Source is directory");
                     path.joined("*")
                         .glob()
                         .into_iter()
@@ -253,18 +290,21 @@ impl Collection {
                         .filter_map(|path| Media::identify(&path))
                         .collect()
                 } else if path.is_symlink() {
+                    log::debug!("Source is symlink");
                     match path.interpreted() {
-                        Ok(path) => Self::find_in_source(&Source::new_path(path)),
+                        Ok(path) => Self::find_in_source(&Source::new_path(path), None),
                         Err(_) => HashSet::new(),
                     }
                 } else {
+                    log::debug!("Source is unknown path");
                     HashSet::new()
                 }
             }
             Source::Glob { pattern } => {
+                log::debug!("Source is glob");
                 let mut media = HashSet::new();
                 for path in StrictPath::new(pattern).glob() {
-                    media.extend(Self::find_in_source(&Source::new_path(path)));
+                    media.extend(Self::find_in_source(&Source::new_path(path), None));
                 }
                 media
             }
@@ -324,5 +364,41 @@ impl Collection {
             .into_iter()
             .find(|media| !self.errored.contains(media) && !old.contains(media))
             .cloned()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn can_fill_placeholders_in_path_with_match() {
+        let source = Source::new_path(StrictPath::new(format!("{}/foo", placeholder::PLAYLIST)));
+        let playlist = StrictPath::new("/tmp");
+        let filled = Source::new_path(StrictPath::new("/tmp/foo"));
+        assert_eq!(filled, source.fill_placeholders(&playlist))
+    }
+
+    #[test]
+    fn can_fill_placeholders_in_path_without_match() {
+        let source = Source::new_path(StrictPath::new(format!("/{}/foo", placeholder::PLAYLIST)));
+        let playlist = StrictPath::new("/tmp");
+        assert_eq!(source, source.fill_placeholders(&playlist))
+    }
+
+    #[test]
+    fn can_fill_placeholders_in_glob_with_match() {
+        let source = Source::new_glob(format!("{}/foo", placeholder::PLAYLIST));
+        let playlist = StrictPath::new("/tmp");
+        let filled = Source::new_glob("/tmp/foo".to_string());
+        assert_eq!(filled, source.fill_placeholders(&playlist))
+    }
+
+    #[test]
+    fn can_fill_placeholders_in_glob_without_match() {
+        let source = Source::new_glob(format!("/{}/foo", placeholder::PLAYLIST));
+        let playlist = StrictPath::new("/tmp");
+        assert_eq!(source, source.fill_placeholders(&playlist))
     }
 }

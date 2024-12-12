@@ -42,6 +42,9 @@ Note:
 ## Usage
 Detailed help documentation is available for several topics.
 
+### General
+* [Media sources](/docs/help/media-sources.md)
+
 ### Interfaces
 * [Application folder](/docs/help/application-folder.md)
 * [Command line](/docs/help/command-line.md)
