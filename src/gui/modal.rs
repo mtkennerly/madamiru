@@ -186,8 +186,7 @@ impl Modal {
                             Column::new()
                                 .spacing(10)
                                 .padding(10)
-                                // TODO: Enable language selector once we have translations.
-                                .push_maybe(false.then(|| {
+                                .push(
                                     Row::new()
                                         .align_y(Alignment::Center)
                                         .spacing(20)
@@ -196,8 +195,8 @@ impl Modal {
                                             Message::Config {
                                                 event: config::Event::Language(value),
                                             }
-                                        }))
-                                }))
+                                        })),
+                                )
                                 .push(
                                     Row::new()
                                         .align_y(Alignment::Center)

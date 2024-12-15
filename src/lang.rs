@@ -17,14 +17,24 @@ pub enum Language {
     #[default]
     #[serde(rename = "en-US")]
     English,
+
+    /// French
+    #[serde(rename = "fr-FR")]
+    French,
+
+    /// Polish
+    #[serde(rename = "pl-PL")]
+    Polish,
 }
 
 impl Language {
-    pub const ALL: &'static [Self] = &[Self::English];
+    pub const ALL: &'static [Self] = &[Self::English, Self::French, Self::Polish];
 
     pub fn id(&self) -> LanguageIdentifier {
         let id = match self {
             Self::English => "en-US",
+            Self::French => "fr-FR",
+            Self::Polish => "pl-PL",
         };
         id.parse().unwrap()
     }
@@ -32,21 +42,25 @@ impl Language {
     fn name(&self) -> &'static str {
         match self {
             Self::English => "English",
+            Self::French => "Français",
+            Self::Polish => "Polski",
         }
     }
 
-    // fn completion(&self) -> u8 {
-    //     match self {
-    //         Self::English => 100,
-    //     }
-    // }
+    fn completion(&self) -> u8 {
+        match self {
+            Self::English => 100,
+            Self::French => 2,
+            Self::Polish => 84,
+        }
+    }
 }
 
 impl ToString for Language {
     fn to_string(&self) -> String {
         match self {
             Self::English => self.name().to_string(),
-            // _ => format!("{} ({}%)", self.name(), self.completion()),
+            _ => format!("{} ({}%)", self.name(), self.completion()),
         }
     }
 }
@@ -72,6 +86,8 @@ fn set_language(language: Language) {
 
     let ftl = match language {
         Language::English => include_str!("../lang/en-US.ftl"),
+        Language::French => include_str!("../lang/fr-FR.ftl"),
+        Language::Polish => include_str!("../lang/pl-PL.ftl"),
     }
     .to_owned();
 
@@ -150,7 +166,8 @@ pub fn window_title() -> String {
 pub fn field(text: &str) -> String {
     let language = LANGUAGE.lock().unwrap();
     match *language {
-        Language::English => format!("{}:", text),
+        Language::French => format!("{} :", text),
+        _ => format!("{}:", text),
     }
 }
 
