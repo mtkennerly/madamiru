@@ -23,10 +23,8 @@ It's portable, so you can simply download it and put it anywhere on your system.
 You'll also need to install [GStreamer](https://gstreamer.freedesktop.org/download),
 which is a framework that provides various video codecs.
 
-<!--
 If you prefer, Madamiru is also available via
-[Winget, Scoop, Flatpak, and Cargo](docs/help/installation.md).
--->
+[Flatpak and Cargo](docs/help/installation.md).
 
 Note:
 

@@ -25,20 +25,21 @@ You can install Madamiru one of these ways:
 
   * To install: `scoop bucket add extras && scoop install madamiru`
   * To update: `scoop update && scoop update madamiru`
+-->
 
 * For Linux, Madamiru is available on [Flathub](https://flathub.org/apps/details/com.mtkennerly.madamiru).
-  Note that it has limited file system access by default (`~` and `/run/media`).
-  If you'd like to enable broader access, [see here](https://github.com/flathub/com.mtkennerly.madamiru/blob/master/README.md).
--->
+  Note that it has limited file system access by default (`~`, `/media`, `/run/media`).
+  If you'd like to enable broader access, you can do so using a tool like Flatseal.
 
 * If you have [Rust](https://www.rust-lang.org), you can use Cargo.
 
   * To install or update: `cargo install --locked madamiru`
 
-  However, note that some features are not fully functional in this version.
-  The prebuilt release uses a pre-release version of some dependencies,
-  which enables some additional functionality,
-  but this is not possible when installing via Cargo.
+  However, note that some features are not yet fully functional in this version.
+  The prebuilt binaries uses a pre-release version of some crates,
+  which enables more functionality than a regular Cargo install currently does.
+  Specifically, video volume/mute controls will not work,
+  and the content fit setting will be ignored for videos.
 
   On Linux, this requires the following system packages, or their equivalents
   for your distribution:
