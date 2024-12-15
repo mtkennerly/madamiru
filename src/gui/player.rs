@@ -143,7 +143,7 @@ fn set_video_volume(video: &mut iced_video_player::Video, volume: f32) {
 
 #[cfg(feature = "video")]
 #[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn set_video_volume(video: &mut iced_video_player::Video, volume: f32) {}
+fn set_video_volume(_video: &mut iced_video_player::Video, _volume: f32) {}
 
 #[cfg(feature = "video")]
 #[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
