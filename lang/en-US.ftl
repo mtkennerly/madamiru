@@ -1,5 +1,6 @@
 thing-application = Application
 thing-audio = Audio
+# How media will be fit into the available space (scale/crop/etc).
 thing-content-fit = Content fit
 thing-error = Error
 # https://en.wikipedia.org/wiki/Glob_(programming)
@@ -10,10 +11,13 @@ thing-key-shift = Shift
 thing-language = Language
 thing-layout = Layout
 thing-orientation = Orientation
+# Path to a file/folder on the system.
 thing-path = Path
 thing-playlist = Playlist
 thing-settings = Settings
+# Locations to find media.
 thing-sources = Sources
+# Visual theme for the application.
 thing-theme = Theme
 
 action-add-player = Add player
@@ -30,6 +34,7 @@ action-open-file = Open file
 action-open-folder = Open folder
 action-open-playlist = Open playlist
 action-pause = Pause
+# This happens if the user switches to another app or minimizes this app.
 action-pause-when-window-loses-focus = Pause when window loses focus
 action-play = Play
 action-play-for-this-many-seconds = Play for this many seconds
