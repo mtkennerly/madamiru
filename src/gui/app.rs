@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     num::NonZeroUsize,
     time::{Duration, Instant},
 };
@@ -48,7 +48,7 @@ pub struct App {
     last_tick: Instant,
     #[allow(unused)] // TODO: https://github.com/iced-rs/iced/pull/2691
     dragging_pane: bool,
-    dragged_file: Option<StrictPath>,
+    dragged_files: HashSet<StrictPath>,
     viewing_pane_controls: Option<grid::Id>,
     playlist_path: Option<StrictPath>,
     playlist_dirty: bool,
@@ -207,7 +207,7 @@ impl App {
                 media: Default::default(),
                 last_tick: Instant::now(),
                 dragging_pane: false,
-                dragged_file: None,
+                dragged_files: Default::default(),
                 viewing_pane_controls: None,
                 playlist_path,
                 playlist_dirty,
@@ -842,7 +842,7 @@ impl App {
                                     modal::scroll_down(),
                                 ])
                             } else {
-                                self.dragged_file = Some(path);
+                                self.dragged_files.insert(path);
                                 iced::window::get_oldest().and_then(iced::window::gain_focus)
                             }
                         }
@@ -854,11 +854,9 @@ impl App {
                     return Task::none();
                 };
 
-                let Some(path) = self.dragged_file.take() else {
-                    return Task::none();
-                };
-
-                let settings = grid.settings().with_source(media::Source::new_path(path));
+                let settings = grid
+                    .settings()
+                    .with_sources(self.dragged_files.drain().map(media::Source::new_path).collect());
 
                 self.show_modal(Modal::new_grid_settings(grid_id, settings));
                 modal::scroll_down()
@@ -1120,7 +1118,7 @@ impl App {
     }
 
     pub fn view(&self) -> Element {
-        let dragging_file = self.dragged_file.is_some();
+        let dragging_file = !self.dragged_files.is_empty();
         let obscured = !self.modals.is_empty();
 
         Responsive::new(move |viewport| {
