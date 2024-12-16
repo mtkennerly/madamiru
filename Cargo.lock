@@ -1528,6 +1528,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fixedbitset"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
+
+[[package]]
 name = "flate2"
 version = "1.0.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3167,6 +3173,7 @@ dependencies = [
  "intl-memoizer",
  "itertools 0.13.0",
  "log",
+ "mime_guess",
  "opener",
  "pretty_assertions",
  "rand",
@@ -3183,6 +3190,7 @@ dependencies = [
  "system-deps 7.0.3",
  "test-case",
  "tokio",
+ "tree_magic_mini",
  "typed-path",
  "unic-langid",
  "url",
@@ -3244,6 +3252,16 @@ name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
+
+[[package]]
+name = "mime_guess"
+version = "2.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7c44f8e672c00fe5308fa235f821cb4198414e1c77935c1ab6948d3fd78550e"
+dependencies = [
+ "mime",
+ "unicase",
+]
 
 [[package]]
 name = "minimal-lexical"
@@ -3920,6 +3938,16 @@ name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
+
+[[package]]
+name = "petgraph"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
+dependencies = [
+ "fixedbitset",
+ "indexmap 2.6.0",
+]
 
 [[package]]
 name = "phf"
@@ -5580,6 +5608,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "tree_magic_mini"
+version = "3.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aac5e8971f245c3389a5a76e648bfc80803ae066a1243a75db0064d7c1129d63"
+dependencies = [
+ "fnv",
+ "memchr",
+ "nom",
+ "once_cell",
+ "petgraph",
+]
+
+[[package]]
 name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5652,6 +5693,12 @@ checksum = "0a5422c1f65949306c99240b81de9f3f15929f5a8bfe05bb44b034cc8bf593e5"
 dependencies = [
  "tinystr",
 ]
+
+[[package]]
+name = "unicase"
+version = "2.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e51b68083f157f853b6379db119d1c1be0e6e4dec98101079dec41f6f5cf6df"
 
 [[package]]
 name = "unicode-bidi"

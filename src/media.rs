@@ -142,6 +142,31 @@ impl ToString for SourceKind {
     }
 }
 
+#[derive(Debug)]
+enum Mime {
+    /// From the `infer` crate.
+    /// Based on magic bytes without system dependencies, but not exhaustive.
+    Pure(&'static str),
+    /// From the `tree_magic_mini` crate.
+    /// Uses the system's shared database on Linux and Mac,
+    /// but not viable for Windows without bundling GPL data.
+    #[allow(unused)]
+    Database(&'static str),
+    /// From the `mime_guess` crate.
+    /// Guesses based on the file extension.
+    Extension(mime_guess::Mime),
+}
+
+impl Mime {
+    fn essence(&self) -> &str {
+        match self {
+            Self::Pure(raw) => raw,
+            Self::Database(raw) => raw,
+            Self::Extension(mime) => mime.essence_str(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Media {
     Image {
@@ -185,50 +210,72 @@ impl Media {
             }
         };
 
-        match infer::get_from_path(inferrable) {
-            Ok(Some(info)) => {
-                log::debug!("Inferred file type '{}': {path:?}", info.mime_type());
-
-                let extension = path.file_extension().map(|x| x.to_lowercase());
-
-                match info.mime_type() {
-                    #[cfg(feature = "video")]
-                    "video/mp4" | "video/quicktime" | "video/webm" | "video/x-m4v" | "video/x-matroska"
-                    | "video/x-msvideo" => Some(Self::Video {
-                        path: path.normalized(),
-                    }),
-                    #[cfg(feature = "audio")]
-                    "audio/mpeg" | "audio/m4a" | "audio/x-flac" | "audio/x-wav" => Some(Self::Audio {
-                        path: path.normalized(),
-                    }),
-                    "image/bmp"
-                    | "image/jpeg"
-                    | "image/png"
-                    | "image/tiff"
-                    | "image/vnd.microsoft.icon"
-                    | "image/webp" => Some(Self::Image {
-                        path: path.normalized(),
-                    }),
-                    "image/gif" => Some(Self::Gif {
-                        path: path.normalized(),
-                    }),
-                    _ => match extension.as_deref() {
-                        Some("svg") => Some(Self::Svg {
-                            path: path.normalized(),
-                        }),
-                        _ => None,
-                    },
-                }
-            }
-            Ok(None) => {
-                log::debug!("Did not infer any file type: {path:?}");
-                None
-            }
-            Err(e) => {
+        #[allow(clippy::unnecessary_lazy_evaluations)]
+        let mime = infer::get_from_path(&inferrable)
+            .map_err(|e| {
                 log::error!("Error inferring file type: {path:?} | {e:?}");
-                None
+                e
+            })
+            .ok()
+            .flatten()
+            .map(|x| Mime::Pure(x.mime_type()))
+            .or_else(|| {
+                #[cfg(target_os = "windows")]
+                {
+                    None
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    tree_magic_mini::from_filepath(&inferrable).map(Mime::Database)
+                }
+            })
+            .or_else(|| mime_guess::from_path(&inferrable).first().map(Mime::Extension));
+
+        log::debug!("Inferred file type '{:?}': {path:?}", mime);
+
+        mime.and_then(|mime| {
+            let mime = mime.essence();
+
+            #[cfg(feature = "video")]
+            if mime.starts_with("video/") {
+                // The exact formats supported will depend on the user's GStreamer plugins,
+                // so just go ahead and try it. Some that work by default on Windows:
+                // * video/mp4
+                // * video/mpeg
+                // * video/quicktime
+                // * video/webm
+                // * video/x-m4v
+                // * video/x-matroska
+                // * video/x-msvideo
+                return Some(Self::Video {
+                    path: path.normalized(),
+                });
             }
-        }
+
+            let extension = path.file_extension().map(|x| x.to_lowercase());
+
+            match mime {
+                #[cfg(feature = "audio")]
+                "audio/mpeg" | "audio/m4a" | "audio/x-flac" | "audio/x-wav" => Some(Self::Audio {
+                    path: path.normalized(),
+                }),
+                "image/bmp" | "image/jpeg" | "image/png" | "image/tiff" | "image/vnd.microsoft.icon" | "image/webp" => {
+                    Some(Self::Image {
+                        path: path.normalized(),
+                    })
+                }
+                "image/gif" => Some(Self::Gif {
+                    path: path.normalized(),
+                }),
+                "image/svg+xml" => Some(Self::Svg {
+                    path: path.normalized(),
+                }),
+                "text/xml" if extension.is_some_and(|ext| ext == "svg") => Some(Self::Svg {
+                    path: path.normalized(),
+                }),
+                _ => None,
+            }
+        })
     }
 }
 
