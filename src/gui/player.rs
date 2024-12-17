@@ -319,7 +319,9 @@ pub enum Player {
     Video {
         media: Media,
         video: iced_video_player::Video,
+        pipeline: gstreamer::Pipeline,
         position: f64,
+        duration: Duration,
         paused: bool,
         dragging: bool,
         hovered: bool,
@@ -412,6 +414,8 @@ impl Player {
             Media::Video { path } => match Self::load_video(path, playback) {
                 Ok(video) => Ok(Self::Video {
                     media: media.clone(),
+                    duration: video.duration(),
+                    pipeline: video.pipeline(),
                     video,
                     position: 0.0,
                     paused: playback.paused,
@@ -754,7 +758,17 @@ impl Player {
                 None
             }
             #[cfg(feature = "video")]
-            Self::Video { .. } => None,
+            Self::Video { pipeline, duration, .. } => {
+                use gstreamer::prelude::ElementExtManual;
+
+                // If the video is still being downloaded/written,
+                // then we want to get the latest total duration.
+                if let Some(clock_time) = pipeline.query_duration::<gstreamer::ClockTime>() {
+                    *duration = Duration::from_nanos(clock_time.nseconds());
+                }
+
+                None
+            }
         }
     }
 
@@ -1130,6 +1144,7 @@ impl Player {
             Self::Video {
                 video,
                 position,
+                duration,
                 paused,
                 dragging,
                 hovered,
@@ -1170,7 +1185,7 @@ impl Player {
                 }
                 Event::SeekRandom => {
                     use rand::Rng;
-                    *position = rand::thread_rng().gen_range(0.0..video.duration().as_secs_f64());
+                    *position = rand::thread_rng().gen_range(0.0..duration.as_secs_f64());
                     seek_video(video, *position);
                     None
                 }
@@ -1944,6 +1959,7 @@ impl Player {
                 media,
                 video,
                 position,
+                duration,
                 paused,
                 dragging,
                 hovered,
@@ -2057,17 +2073,15 @@ impl Player {
                                 Column::new()
                                     .padding(padding::left(10).right(10).bottom(5))
                                     .push(vertical_space())
-                                    .push_maybe(overlay.timestamps.then_some(timestamps(*position, video.duration())))
+                                    .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
                                     .push(Container::new(
-                                        iced::widget::slider(
-                                            0.0..=video.duration().as_secs_f64(),
-                                            *position,
-                                            move |x| Message::Player {
+                                        iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
+                                            Message::Player {
                                                 grid_id,
                                                 player_id,
                                                 event: Event::Seek(x),
-                                            },
-                                        )
+                                            }
+                                        })
                                         .step(0.1)
                                         .on_release(Message::Player {
                                             grid_id,

@@ -16,6 +16,8 @@
   * If you drag-and-dropped multiple files into the window
     while there was more than one grid open,
     only one of the files would be inserted into the grid that you selected.
+  * If a video is still being downloaded while you watch it,
+    the video duration will update as the download continues.
 
 ## v0.1.0 (2024-12-12)
 
