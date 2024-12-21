@@ -306,10 +306,6 @@ impl StrictPath {
                 drive: Some(Drive::Windows(id)),
                 parts,
             } => Ok(format!("{}\\{}", id, parts.join("\\"))),
-            // Analysis { drive: None, parts } => match &self.basis {
-            //     Some(basis) => Ok(format!("{}\\{}", basis, parts.join("\\"))),
-            //     None => Err(StrictPathError::Relative),
-            // },
             Analysis { drive: None, parts } => Ok(format!(
                 "{}\\{}",
                 self.basis.clone().unwrap_or_else(|| Self::cwd().raw()),
@@ -332,10 +328,6 @@ impl StrictPath {
                 drive: Some(Drive::Windows(_)),
                 ..
             } => Err(StrictPathError::Unsupported),
-            // Analysis { drive: None, parts } => match &self.basis {
-            //     Some(basis) => Ok(format!("{}/{}", basis, parts.join("/"))),
-            //     None => Err(StrictPathError::Relative),
-            // },
             Analysis { drive: None, parts } => Ok(format!(
                 "{}/{}",
                 self.basis.clone().unwrap_or_else(|| Self::cwd().raw()),
