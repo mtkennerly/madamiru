@@ -25,7 +25,7 @@ You'll also need to install [GStreamer](https://gstreamer.freedesktop.org/downlo
 which is a framework that provides various video codecs.
 
 If you prefer, Madamiru is also available via
-[Flatpak and Cargo](docs/help/installation.md).
+[Winget, Flatpak, and Cargo](docs/help/installation.md).
 
 Note:
 

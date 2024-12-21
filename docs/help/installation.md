@@ -15,12 +15,12 @@ You can install Madamiru one of these ways:
   It's portable, so you can simply download it and put it anywhere on your system.
   **If you're unsure, choose this option.**
 
-<!--
 * On Windows, you can use [Winget](https://github.com/microsoft/winget-cli).
 
   * To install: `winget install -e --id mtkennerly.madamiru`
   * To update: `winget upgrade -e --id mtkennerly.madamiru`
 
+<!--
 * On Windows, you can use [Scoop](https://scoop.sh).
 
   * To install: `scoop bucket add extras && scoop install madamiru`
