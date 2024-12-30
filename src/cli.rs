@@ -38,9 +38,9 @@ pub fn parse_sources(sources: Vec<StrictPath>) -> Vec<media::Source> {
     }
 }
 
-pub fn parse() -> Cli {
+pub fn parse() -> Result<Cli, clap::Error> {
     use clap::Parser;
-    Cli::parse()
+    Cli::try_parse()
 }
 
 pub fn run(sub: Subcommand) -> Result<(), Error> {
@@ -49,7 +49,6 @@ pub fn run(sub: Subcommand) -> Result<(), Error> {
     lang::set(config.view.language);
 
     log::debug!("Config on startup: {config:?}");
-    log::debug!("Invocation: {sub:?}");
 
     match sub {
         Subcommand::Complete { shell } => {

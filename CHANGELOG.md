@@ -10,6 +10,7 @@
   * The app previously used a known set of supported video formats and ignored other video files.
     However, since the exact set depends on which GStreamer plugins you've installed,
     the app will now simply try loading any video file.
+  * Application crash and CLI parse errors are now logged.
 * Fixed:
   * The `crop` content fit now works correctly for videos.
     Previously, it acted the same as `stretch`.
