@@ -34,7 +34,7 @@ action-open-folder = Otwórz folder
 action-open-playlist = Otwórz listę odtwarzania
 action-pause = Wstrzymaj
 # This happens if the user switches to another app or minimizes this app.
-action-pause-when-window-loses-focus = Pause when window loses focus
+action-pause-when-window-loses-focus = Wstrzymaj, gdy okno nie będzie w centrum
 action-play = Odtwórz
 action-play-for-this-many-seconds = Graj przez wiele sekund
 action-save-playlist = Zapisz listę odtwarzania

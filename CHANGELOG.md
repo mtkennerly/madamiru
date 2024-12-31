@@ -4,7 +4,7 @@
   * When the app can't detect a file's type,
     it will try checking the system's shared MIME database (if available on Linux/Mac),
     and then further fall back to guessing based on the file extension.
-  * Partial translations into Polish and French.
+  * Partial translations into Polish, French, and Brazilian Portuguese.
     (Thanks to contributors on the [Crowdin project](https://crowdin.com/project/madamiru))
 * Changed:
   * The app previously used a known set of supported video formats and ignored other video files.
