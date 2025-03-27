@@ -7,6 +7,14 @@ use iced::{
 };
 use iced_gif::gif;
 
+#[cfg(feature = "video")]
+#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
+type VideoPipeline = gstreamer::Pipeline;
+
+#[cfg(feature = "video")]
+#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
+type VideoPipeline = ();
+
 use crate::{
     gui::{
         button,
@@ -57,7 +65,7 @@ fn build_video(uri: &url::Url) -> Result<iced_video_player::Video, iced_video_pl
         uri.as_str()
     );
     let pipeline = gst::parse::launch(pipeline.as_ref())?
-        .downcast::<gst::Pipeline>()
+        .downcast::<VideoPipeline>()
         .map_err(|_| iced_video_player::Error::Cast)?;
 
     let video_sink: gst::Element = pipeline.property("video-sink");
@@ -74,6 +82,32 @@ fn build_video(uri: &url::Url) -> Result<iced_video_player::Video, iced_video_pl
 #[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
 fn build_video(uri: &url::Url) -> Result<iced_video_player::Video, iced_video_player::Error> {
     iced_video_player::Video::new(uri)
+}
+
+#[cfg(feature = "video")]
+#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
+fn get_video_pipeline(video: &iced_video_player::Video) -> VideoPipeline {
+    video.pipeline()
+}
+
+#[cfg(feature = "video")]
+#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
+fn get_video_pipeline(_video: &iced_video_player::Video) -> VideoPipeline {
+    ()
+}
+
+#[cfg(feature = "video")]
+#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
+fn get_video_duration(pipeline: &VideoPipeline) -> Option<gstreamer::ClockTime> {
+    use gstreamer::prelude::ElementExtManual;
+
+    pipeline.query_duration::<gstreamer::ClockTime>()
+}
+
+#[cfg(feature = "video")]
+#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
+fn get_video_duration(_pipeline: &VideoPipeline) -> Option<gstreamer::ClockTime> {
+    None
 }
 
 #[cfg(feature = "video")]
@@ -319,7 +353,7 @@ pub enum Player {
     Video {
         media: Media,
         video: iced_video_player::Video,
-        pipeline: gstreamer::Pipeline,
+        pipeline: VideoPipeline,
         position: f64,
         duration: Duration,
         paused: bool,
@@ -415,7 +449,7 @@ impl Player {
                 Ok(video) => Ok(Self::Video {
                     media: media.clone(),
                     duration: video.duration(),
-                    pipeline: video.pipeline(),
+                    pipeline: get_video_pipeline(&video),
                     video,
                     position: 0.0,
                     paused: playback.paused,
@@ -759,11 +793,9 @@ impl Player {
             }
             #[cfg(feature = "video")]
             Self::Video { pipeline, duration, .. } => {
-                use gstreamer::prelude::ElementExtManual;
-
                 // If the video is still being downloaded/written,
                 // then we want to get the latest total duration.
-                if let Some(clock_time) = pipeline.query_duration::<gstreamer::ClockTime>() {
+                if let Some(clock_time) = get_video_duration(pipeline) {
                     *duration = Duration::from_nanos(clock_time.nseconds());
                 }
 
