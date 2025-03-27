@@ -14,7 +14,7 @@
         <p>Features:</p>
         <ul>
             <li>Customizable layout with multiple groups of dynamic media</li>
-            <li>Video formats: AVI, M4V, MKV, MOV, MP4, WebM</li>
+            <li>Video formats: AVI, M4V, MKV, MOV, MP4, WebM, plus any others supported by GStreamer</li>
             <li>Image formats: BMP, GIF, ICO, JPEG, PNG, TIFF, SVG, WebP</li>
             <li>Audio formats: FLAC, M4A, MP3, WAV</li>
             <li>Subtitles are supported within MKV (but not as separate files)</li>
@@ -46,13 +46,14 @@
     </keywords>
     <screenshots>
         <screenshot type="default">
-            <image type="source">https://raw.githubusercontent.com/mtkennerly/madamiru/v0.1.0/docs/sample-gui.png</image>
+            <image type="source">https://raw.githubusercontent.com/mtkennerly/madamiru/v0.2.0/docs/sample-gui.png</image>
             <caption>Graphical user interface</caption>
         </screenshot>
     </screenshots>
     <content_rating type="oars-1.1" />
     <launchable type="desktop-id">com.mtkennerly.madamiru.desktop</launchable>
     <releases>
+        <release version="0.2.0" date="2025-03-26"/>
         <release version="0.1.0" date="2024-12-12"/>
     </releases>
 </component>

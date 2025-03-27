@@ -32,6 +32,22 @@ definitions:
         type: string
         enum:
           - en-US
+      - description: French
+        type: string
+        enum:
+          - fr-FR
+      - description: German
+        type: string
+        enum:
+          - de-DE
+      - description: Polish
+        type: string
+        enum:
+          - pl-PL
+      - description: Brazilian Portuguese
+        type: string
+        enum:
+          - pt-BR
   Playback:
     type: object
     properties:

@@ -1,4 +1,4 @@
-## Unreleased
+## v0.2.0 (2025-03-26)
 
 * Added:
   * When the app can't detect a file's type,
