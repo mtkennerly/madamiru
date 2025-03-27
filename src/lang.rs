@@ -22,6 +22,10 @@ pub enum Language {
     #[serde(rename = "fr-FR")]
     French,
 
+    /// French
+    #[serde(rename = "de-DE")]
+    German,
+
     /// Polish
     #[serde(rename = "pl-PL")]
     Polish,
@@ -32,12 +36,19 @@ pub enum Language {
 }
 
 impl Language {
-    pub const ALL: &'static [Self] = &[Self::English, Self::French, Self::Polish, Self::PortugueseBrazilian];
+    pub const ALL: &'static [Self] = &[
+        Self::German,
+        Self::English,
+        Self::French,
+        Self::Polish,
+        Self::PortugueseBrazilian,
+    ];
 
     pub fn id(&self) -> LanguageIdentifier {
         let id = match self {
             Self::English => "en-US",
             Self::French => "fr-FR",
+            Self::German => "de-DE",
             Self::Polish => "pl-PL",
             Self::PortugueseBrazilian => "pt-BR",
         };
@@ -48,6 +59,7 @@ impl Language {
         match self {
             Self::English => "English",
             Self::French => "Français",
+            Self::German => "Deutsch",
             Self::Polish => "Polski",
             Self::PortugueseBrazilian => "Português brasileiro",
         }
@@ -57,6 +69,7 @@ impl Language {
         match self {
             Self::English => 100,
             Self::French => 2,
+            Self::German => 2,
             Self::Polish => 87,
             Self::PortugueseBrazilian => 1,
         }
@@ -94,6 +107,7 @@ fn set_language(language: Language) {
     let ftl = match language {
         Language::English => include_str!("../lang/en-US.ftl"),
         Language::French => include_str!("../lang/fr-FR.ftl"),
+        Language::German => include_str!("../lang/de-DE.ftl"),
         Language::Polish => include_str!("../lang/pl-PL.ftl"),
         Language::PortugueseBrazilian => include_str!("../lang/pt-BR.ftl"),
     }
