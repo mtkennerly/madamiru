@@ -1107,7 +1107,7 @@ impl Player {
                 }
                 Event::SeekRandom => {
                     use rand::Rng;
-                    let position = rand::thread_rng().gen_range(0.0..duration.as_secs_f64());
+                    let position = rand::rng().random_range(0.0..duration.as_secs_f64());
                     let _ = sink.try_seek(Duration::from_secs_f64(position));
                     None
                 }
@@ -1185,7 +1185,7 @@ impl Player {
                 }
                 Event::SeekRandom => {
                     use rand::Rng;
-                    *position = rand::thread_rng().gen_range(0.0..duration.as_secs_f64());
+                    *position = rand::rng().random_range(0.0..duration.as_secs_f64());
                     seek_video(video, *position);
                     None
                 }

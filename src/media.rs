@@ -387,7 +387,7 @@ impl Collection {
             .flatten()
             .unique()
             .collect();
-        media.shuffle(&mut rand::thread_rng());
+        media.shuffle(&mut rand::rng());
 
         let media: Vec<_> = media
             .iter()
@@ -414,7 +414,7 @@ impl Collection {
             .flatten()
             .unique()
             .collect();
-        media.shuffle(&mut rand::thread_rng());
+        media.shuffle(&mut rand::rng());
 
         media
             .into_iter()
