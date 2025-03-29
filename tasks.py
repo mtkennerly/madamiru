@@ -43,7 +43,13 @@ def legal(ctx):
 
 @task
 def flatpak(ctx, generator="/opt/flatpak-cargo-generator.py"):
-    ctx.run(f'python "{generator}" "{ROOT}/Cargo.lock" -o "{DIST}/generated-sources.json"', hide=True)
+    target = Path(f"{DIST}/generated-sources.json")
+
+    ctx.run(f'python "{generator}" "{ROOT}/Cargo.lock" -o "{target}"', hide=True)
+
+    content = target.read_text("utf-8")
+    updated = re.sub(r"flatpak-cargo/git\\\\(.+)\\\\.", "flatpak-cargo/git/\\1/.", content)
+    target.write_text(updated, "utf-8")
 
 
 @task
