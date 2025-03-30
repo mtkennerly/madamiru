@@ -1,5 +1,7 @@
+import datetime as dt
 import re
 import shutil
+import sys
 import zipfile
 from pathlib import Path
 
@@ -15,7 +17,19 @@ def get_version() -> str:
         if line.startswith("version ="):
             return line.replace("version = ", "").strip('"')
 
-    return "0.0.0"
+    raise RuntimeError("Could not determine version")
+
+
+def replace_pattern_in_file(file: Path, old: str, new: str, count: int = 1):
+    content = file.read_text("utf-8")
+    updated = re.sub(old, new, content, count=count)
+    file.write_text(updated, "utf-8")
+
+
+def confirm(prompt: str):
+    response = input(f"Confirm by typing '{prompt}': ")
+    if response.lower() != prompt.lower():
+        sys.exit(1)
 
 
 @task
@@ -136,7 +150,42 @@ def docs_schema(ctx):
 
 
 @task
-def prerelease(ctx, update_lang=True):
+def prerelease(ctx, new_version, update_lang=True):
+    date = dt.datetime.now().strftime("%Y-%m-%d")
+
+    replace_pattern_in_file(
+        ROOT / "Cargo.toml",
+        'version = ".+"',
+        f'version = "{new_version}"',
+    )
+
+    replace_pattern_in_file(
+        ROOT / "CHANGELOG.md",
+        "## Unreleased",
+        f"## v{new_version} ({date})",
+    )
+
+    replace_pattern_in_file(
+        ROOT / ".github/ISSUE_TEMPLATE/bug.yaml",
+        r"(options:)(\n        - v\d+\.\d+\.\d+)",
+        fr"\g<1>\n        - v{new_version}\g<2>",
+    )
+
+    replace_pattern_in_file(
+        ROOT / "assets/linux/com.mtkennerly.madamiru.metainfo.xml",
+        "(madamiru/v).+(/docs/sample-gui.png)",
+        fr"\g<1>{new_version}\g<2>",
+    )
+
+    replace_pattern_in_file(
+        ROOT / "assets/linux/com.mtkennerly.madamiru.metainfo.xml",
+        "<releases>",
+        f'<releases>\n        <release version="{new_version}" date="{date}"/>',
+    )
+
+    # Update version in Cargo.lock
+    ctx.run("cargo build")
+
     clean(ctx)
     legal(ctx)
     flatpak(ctx)
@@ -148,10 +197,13 @@ def prerelease(ctx, update_lang=True):
 @task
 def release(ctx):
     version = get_version()
+
+    confirm(f"release {version}")
+
     ctx.run(f'git commit -m "Release v{version}"')
     ctx.run(f'git tag v{version} -m "Release"')
     ctx.run("git push")
-    ctx.run("git push --tags")
+    ctx.run("git push origin tag v{version}")
 
 
 @task
