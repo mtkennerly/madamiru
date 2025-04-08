@@ -733,10 +733,10 @@ impl App {
                     &self.config.playback,
                 ) {
                     match update {
-                        grid::Update::PauseChanged { .. } => {
+                        grid::Update::PauseChanged => {
                             self.update_playback();
                         }
-                        grid::Update::MuteChanged { .. } => {
+                        grid::Update::MuteChanged => {
                             self.update_playback();
                         }
                         grid::Update::PlayerClosed => {

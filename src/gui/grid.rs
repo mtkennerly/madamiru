@@ -380,9 +380,9 @@ impl Grid {
 
                 match player.update(event, &playback) {
                     Some(update) => match update {
-                        player::Update::MuteChanged { .. } => Some(Update::MuteChanged),
-                        player::Update::PauseChanged { .. } => Some(Update::PauseChanged),
-                        player::Update::EndOfStream { .. } => {
+                        player::Update::MuteChanged => Some(Update::MuteChanged),
+                        player::Update::PauseChanged => Some(Update::PauseChanged),
+                        player::Update::EndOfStream => {
                             let media = collection.one_new(&self.sources, active_media.iter().collect());
 
                             match media {
@@ -421,7 +421,7 @@ impl Grid {
 
                             None
                         }
-                        player::Update::Close { .. } => {
+                        player::Update::Close => {
                             self.remove(player_id);
                             Some(Update::PlayerClosed)
                         }
