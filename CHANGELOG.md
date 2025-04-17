@@ -1,3 +1,9 @@
+## Unreleased
+
+* Changed:
+  * The standalone Linux release is now compiled on Ubuntu 22.04 instead of Ubuntu 20.04
+    because of [a change by GitHub](https://github.com/actions/runner-images/issues/11101).
+
 ## v0.2.0 (2025-03-26)
 
 * Added:
