@@ -2,6 +2,7 @@ import datetime as dt
 import re
 import shutil
 import sys
+import textwrap
 import zipfile
 from pathlib import Path
 
@@ -231,14 +232,38 @@ def release_flatpak(ctx, target="/git/com.mtkennerly.madamiru"):
 def release_winget(ctx, target="/git/_forks/winget-pkgs"):
     target = Path(target)
     version = get_version()
+    changelog = textwrap.indent(latest_changelog(), "  ")
 
     with ctx.cd(target):
         ctx.run("git checkout master")
         ctx.run("git pull upstream master")
         ctx.run(f"git checkout -b mtkennerly.madamiru-{version}")
         ctx.run(f"wingetcreate update mtkennerly.madamiru --version {version} --urls https://github.com/mtkennerly/madamiru/releases/download/v{version}/madamiru-v{version}-win64.zip https://github.com/mtkennerly/madamiru/releases/download/v{version}/madamiru-v{version}-win32.zip")
-        ctx.run(f"code --wait manifests/m/mtkennerly/madamiru/{version}/mtkennerly.madamiru.locale.en-US.yaml")
+
+        spec = target / f"manifests/m/mtkennerly/madamiru/{version}/mtkennerly.madamiru.locale.en-US.yaml"
+        spec_content = spec.read_bytes().decode("utf-8")
+        spec_content = spec_content.replace("Moniker: madamiru", f"Moniker: madamiru\nReleaseNotes: |-\n{changelog}\nReleaseNotesUrl: https://github.com/mtkennerly/madamiru/releases/tag/v{version}")
+        spec.write_bytes(spec_content.encode("utf-8"))
+
         ctx.run(f"winget validate --manifest manifests/m/mtkennerly/madamiru/{version}")
         ctx.run("git add .")
         ctx.run(f'git commit -m "mtkennerly.madamiru version {version}"')
         ctx.run("git push origin HEAD")
+
+
+def latest_changelog() -> str:
+    changelog = ROOT / "CHANGELOG.md"
+    content = changelog.read_bytes().decode("utf-8")
+
+    lines = []
+    header = False
+    for line in content.splitlines():
+        if line.startswith("#"):
+            if header:
+                break
+            header = True
+            continue
+
+        lines.append(line)
+
+    return "\n".join(lines).strip()
