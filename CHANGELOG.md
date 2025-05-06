@@ -1,6 +1,11 @@
 ## Unreleased
 
 * Changed:
+  * If the `WGPU_POWER_PREF` environment variable is not set,
+    then Madamiru will automatically set it to `high` while running.
+    This has fixed application crashes on several users' systems,
+    but is ultimately dependent on graphics hardware and drivers.
+    If you experience any issues with this, please report it.
   * The standalone Linux release is now compiled on Ubuntu 22.04 instead of Ubuntu 20.04
     because of [a change by GitHub](https://github.com/actions/runner-images/issues/11101).
 
