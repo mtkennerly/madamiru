@@ -37,7 +37,7 @@ impl Config {
     }
 
     pub fn load() -> Result<Self, Error> {
-        ResourceFile::load().map_err(|e| Error::ConfigInvalid { why: format!("{}", e) })
+        ResourceFile::load().map_err(|e| Error::ConfigInvalid { why: format!("{e}") })
     }
 
     pub fn archive_invalid() -> Result<(), Box<dyn std::error::Error>> {

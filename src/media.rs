@@ -231,7 +231,7 @@ impl Media {
             })
             .or_else(|| mime_guess::from_path(&inferrable).first().map(Mime::Extension));
 
-        log::debug!("Inferred file type '{:?}': {path:?}", mime);
+        log::debug!("Inferred file type '{mime:?}': {path:?}");
 
         mime.and_then(|mime| {
             let mime = mime.essence();

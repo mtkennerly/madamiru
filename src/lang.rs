@@ -145,17 +145,17 @@ fn translate_args(id: &str, args: &FluentArgs) -> String {
 
     let message = match bundle.get_message(name) {
         Some(x) => x,
-        None => return format!("fluent-no-message={}", name),
+        None => return format!("fluent-no-message={name}"),
     };
 
     let pattern = match attr {
         None => match message.value() {
             Some(x) => x,
-            None => return format!("fluent-no-message-value={}", id),
+            None => return format!("fluent-no-message-value={id}"),
         },
         Some(attr) => match message.get_attribute(attr) {
             Some(x) => x.value(),
-            None => return format!("fluent-no-attr={}", id),
+            None => return format!("fluent-no-attr={id}"),
         },
     };
     let mut errors = vec![];
@@ -188,8 +188,8 @@ pub fn window_title() -> String {
 pub fn field(text: &str) -> String {
     let language = LANGUAGE.lock().unwrap();
     match *language {
-        Language::French => format!("{} :", text),
-        _ => format!("{}:", text),
+        Language::French => format!("{text} :"),
+        _ => format!("{text}:"),
     }
 }
 

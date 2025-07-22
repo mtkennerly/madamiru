@@ -200,7 +200,7 @@ impl StrictPath {
                             correct_windows_slashes!(r"\\?\UNC\", Some(server), share)
                         }
                         WindowsPrefix::VerbatimDisk(id) => format!("{}:", id.to_ascii_uppercase()),
-                        WindowsPrefix::DeviceNS(id) => format!(r"\\.\{}", id),
+                        WindowsPrefix::DeviceNS(id) => format!(r"\\.\{id}"),
                         WindowsPrefix::UNC(server, share) => correct_windows_slashes!(r"\\", Some(server), share),
                         WindowsPrefix::Disk(id) => format!("{}:", id.to_ascii_uppercase()),
                     };

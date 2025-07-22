@@ -132,8 +132,8 @@ unsafe fn detach_console() {
     };
 
     fn tell(msg: &str) {
-        eprintln!("{}", msg);
-        log::error!("{}", msg);
+        eprintln!("{msg}");
+        log::error!("{msg}");
     }
 
     if FreeConsole().is_err() {
