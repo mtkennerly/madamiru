@@ -77,9 +77,15 @@ pub struct Grid {
 
 impl Grid {
     pub fn new(settings: &Settings) -> Self {
+        let players = if settings.sources.is_empty() {
+            vec![]
+        } else {
+            vec![Player::default()]
+        };
+
         Self {
             sources: settings.sources.clone(),
-            players: vec![],
+            players,
             content_fit: settings.content_fit,
             orientation: settings.orientation,
             orientation_limit: settings.orientation_limit,

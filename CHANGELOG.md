@@ -1,3 +1,9 @@
+## Unreleased
+
+* Fixed:
+  * When a source was specified on the command line,
+    you had to click "add player" for it to start playing.
+
 ## v0.2.1 (2025-07-22)
 
 * Fixed:
