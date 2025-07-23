@@ -1,5 +1,10 @@
 ## Unreleased
 
+* Fixed:
+  * When loading a playlist,
+    the application would wait until all sources were scanned before playing any media,
+    which could take a while for large collections or slow network folders.
+    Now, it will play media as each file is scanned.
 * Changed:
   * If the `WGPU_POWER_PREF` environment variable is not set,
     then Madamiru will automatically set it to `high` while running.
@@ -8,6 +13,13 @@
     If you experience any issues with this, please report it.
   * The standalone Linux release is now compiled on Ubuntu 22.04 instead of Ubuntu 20.04
     because of [a change by GitHub](https://github.com/actions/runner-images/issues/11101).
+  * Previously, when loading a playlist,
+    if there weren't enough media to fill all of the configured grid slots,
+    the application would automatically remove slots that it couldn't fill.
+    However, now that slots are filled one-by-one in case the media scan is slow,
+    we don't know right away if there's enough valid media to fill all slots.
+    Therefore, empty slots will now stay on the grid,
+    and you can either remove them manually or reconfigure your sources.
 
 ## v0.2.0 (2025-03-26)
 

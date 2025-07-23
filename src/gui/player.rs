@@ -289,10 +289,10 @@ struct Overlay {
     timestamps: bool,
 }
 
-#[derive(Default)]
 pub enum Player {
-    #[default]
-    Idle,
+    Idle {
+        hovered: bool,
+    },
     Error {
         media: Media,
         message: String,
@@ -361,6 +361,12 @@ pub enum Player {
         hovered: bool,
         need_play_on_focus: bool,
     },
+}
+
+impl Default for Player {
+    fn default() -> Self {
+        Self::Idle { hovered: false }
+    }
 }
 
 impl Player {
@@ -546,9 +552,7 @@ impl Player {
             }
         };
 
-        if let Some(hovered) = hovered {
-            self.set_hovered(hovered);
-        }
+        self.set_hovered(hovered);
 
         if error {
             Err(())
@@ -557,9 +561,15 @@ impl Player {
         }
     }
 
+    pub fn go_idle(&mut self) {
+        *self = Self::Idle {
+            hovered: self.is_hovered(),
+        };
+    }
+
     pub fn restart(&mut self) {
         match self {
-            Self::Idle => {}
+            Self::Idle { .. } => {}
             Self::Error { .. } => {}
             Self::Image { position, .. } => {
                 *position = 0.0;
@@ -593,7 +603,7 @@ impl Player {
 
     pub fn media(&self) -> Option<&Media> {
         match self {
-            Self::Idle => None,
+            Self::Idle { .. } => None,
             Self::Error { media, .. } => Some(media),
             Self::Image { media, .. } => Some(media),
             Self::Svg { media, .. } => Some(media),
@@ -607,7 +617,7 @@ impl Player {
 
     pub fn is_error(&self) -> bool {
         match self {
-            Self::Idle => false,
+            Self::Idle { .. } => false,
             Self::Error { .. } => true,
             Self::Image { .. } => false,
             Self::Svg { .. } => false,
@@ -621,7 +631,7 @@ impl Player {
 
     pub fn is_paused(&self) -> Option<bool> {
         match self {
-            Self::Idle => None,
+            Self::Idle { .. } => None,
             Self::Error { .. } => None,
             Self::Image { paused, .. } => Some(*paused),
             Self::Svg { paused, .. } => Some(*paused),
@@ -635,7 +645,7 @@ impl Player {
 
     pub fn is_muted(&self) -> Option<bool> {
         match self {
-            Self::Idle => None,
+            Self::Idle { .. } => None,
             Self::Error { .. } => None,
             Self::Image { muted, .. } => Some(*muted),
             Self::Svg { muted, .. } => Some(*muted),
@@ -649,7 +659,7 @@ impl Player {
 
     pub fn can_jump(&self) -> bool {
         match self {
-            Self::Idle => false,
+            Self::Idle { .. } => false,
             Self::Error { .. } => false,
             Self::Image { .. } => false,
             Self::Svg { .. } => false,
@@ -661,23 +671,25 @@ impl Player {
         }
     }
 
-    pub fn is_hovered(&self) -> Option<bool> {
+    pub fn is_hovered(&self) -> bool {
         match self {
-            Self::Idle => None,
-            Self::Error { hovered, .. } => Some(*hovered),
-            Self::Image { hovered, .. } => Some(*hovered),
-            Self::Svg { hovered, .. } => Some(*hovered),
-            Self::Gif { hovered, .. } => Some(*hovered),
+            Self::Idle { hovered } => *hovered,
+            Self::Error { hovered, .. } => *hovered,
+            Self::Image { hovered, .. } => *hovered,
+            Self::Svg { hovered, .. } => *hovered,
+            Self::Gif { hovered, .. } => *hovered,
             #[cfg(feature = "audio")]
-            Self::Audio { hovered, .. } => Some(*hovered),
+            Self::Audio { hovered, .. } => *hovered,
             #[cfg(feature = "video")]
-            Self::Video { hovered, .. } => Some(*hovered),
+            Self::Video { hovered, .. } => *hovered,
         }
     }
 
     pub fn set_hovered(&mut self, flag: bool) {
         match self {
-            Self::Idle => {}
+            Self::Idle { hovered } => {
+                *hovered = flag;
+            }
             Self::Error { hovered, .. } => {
                 *hovered = flag;
             }
@@ -703,7 +715,7 @@ impl Player {
 
     pub fn tick(&mut self, elapsed: Duration) -> Option<Update> {
         match self {
-            Self::Idle => None,
+            Self::Idle { .. } => None,
             Self::Error { .. } => None,
             Self::Image {
                 position,
@@ -846,7 +858,13 @@ impl Player {
         let show = !obscured && hovered;
 
         match self {
-            Self::Idle => Overlay::default(),
+            Self::Idle { .. } => Overlay {
+                show,
+                center_controls: false,
+                top_controls: show && viewport.width > 80.0,
+                bottom_controls: false,
+                timestamps: false,
+            },
             Self::Error { .. } => Overlay {
                 show,
                 center_controls: show && viewport.height > 40.0 && viewport.width > 80.0,
@@ -883,7 +901,29 @@ impl Player {
     #[must_use]
     pub fn update(&mut self, event: Event, playback: &Playback) -> Option<Update> {
         match self {
-            Self::Idle => None,
+            Self::Idle { hovered } => match event {
+                Event::SetPause(_) => None,
+                Event::SetLoop(_) => None,
+                Event::SetMute(_) => None,
+                Event::SetVolume(_) => None,
+                Event::Seek(_) => None,
+                Event::SeekStop => None,
+                Event::SeekRandom => None,
+                Event::EndOfStream => None,
+                Event::NewFrame => None,
+                Event::MouseEnter => {
+                    *hovered = true;
+                    None
+                }
+                Event::MouseExit => {
+                    *hovered = false;
+                    None
+                }
+                Event::Refresh => None,
+                Event::Close => Some(Update::Close),
+                Event::WindowFocused => None,
+                Event::WindowUnfocused => None,
+            },
             Self::Error { hovered, .. } => match event {
                 Event::SetPause(_) => None,
                 Event::SetLoop(_) => None,
@@ -1302,12 +1342,43 @@ impl Player {
         viewport: iced::Size,
     ) -> Element {
         match self {
-            Self::Idle => Container::new("")
-                .align_x(Alignment::Center)
-                .align_y(Alignment::Center)
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .into(),
+            Self::Idle { hovered } => {
+                let overlay = self.overlay(viewport, obscured, *hovered);
+
+                Stack::new()
+                    .push(
+                        Container::new("")
+                            .align_x(Alignment::Center)
+                            .align_y(Alignment::Center)
+                            .width(Length::Fill)
+                            .height(Length::Fill),
+                    )
+                    .push_maybe(
+                        overlay.show.then_some(
+                            Container::new("")
+                                .center(Length::Fill)
+                                .class(style::Container::ModalBackground),
+                        ),
+                    )
+                    .push_maybe(
+                        overlay.top_controls.then_some(
+                            Container::new(
+                                Row::new().push(horizontal_space()).push(
+                                    button::icon(Icon::Close)
+                                        .on_press(Message::Player {
+                                            grid_id,
+                                            player_id,
+                                            event: Event::Close,
+                                        })
+                                        .tooltip(lang::action::close()),
+                                ),
+                            )
+                            .align_top(Length::Fill)
+                            .width(Length::Fill),
+                        ),
+                    )
+                    .into()
+            }
             Self::Error {
                 media,
                 message,

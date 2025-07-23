@@ -83,10 +83,7 @@ pub enum Message {
     },
     ShowSettings,
     FindMedia,
-    MediaFound {
-        context: media::RefreshContext,
-        media: media::SourceMap,
-    },
+    MediaScanned(Vec<media::Scan>),
     FileDragDrop(StrictPath),
     FileDragDropGridSelected(grid::Id),
     WindowFocused,

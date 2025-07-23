@@ -4,8 +4,6 @@ use itertools::Itertools;
 
 use crate::{lang, path::StrictPath};
 
-pub const MAX_INITIAL: usize = 1;
-
 mod placeholder {
     pub const PLAYLIST: &str = "<playlist>";
 }
@@ -17,12 +15,13 @@ pub fn fill_placeholders_in_path(path: &StrictPath, playlist: Option<&StrictPath
     path.replace_raw_prefix(placeholder::PLAYLIST, playlist.raw_ref())
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RefreshContext {
     Launch,
     Edit,
     Playlist,
     Automatic,
+    Manual,
 }
 
 #[derive(
@@ -168,6 +167,25 @@ impl Mime {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Scan {
+    Source {
+        source: Source,
+        playlist: Option<StrictPath>,
+        context: RefreshContext,
+    },
+    Identify {
+        source: Source,
+        path: StrictPath,
+        context: RefreshContext,
+    },
+    Found {
+        source: Source,
+        media: Media,
+        context: RefreshContext,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Media {
     Image {
         path: StrictPath,
@@ -292,6 +310,10 @@ impl Collection {
         self.media.clear();
     }
 
+    pub fn prune(&mut self, sources: &[Source]) {
+        self.media.retain(|k, _| sources.contains(k));
+    }
+
     pub fn mark_error(&mut self, media: &Media) {
         self.errored.insert(media.clone());
     }
@@ -307,102 +329,83 @@ impl Collection {
             .all(|known| !known.contains(media))
     }
 
-    pub fn find(sources: &[Source], playlist: Option<StrictPath>) -> SourceMap {
-        let mut media = SourceMap::new();
-        let playlist = playlist
-            .and_then(|x| x.parent_if_file().ok())
-            .unwrap_or_else(StrictPath::cwd);
+    pub fn find(scan: Scan) -> Vec<Scan> {
+        match scan {
+            Scan::Source {
+                source,
+                playlist,
+                context,
+            } => {
+                let basis = playlist
+                    .as_ref()
+                    .and_then(|x| x.parent_if_file().ok())
+                    .unwrap_or_else(StrictPath::cwd);
 
-        for source in sources {
-            media.insert(source.clone(), Self::find_in_source(source, Some(&playlist)));
-        }
-
-        media
-    }
-
-    fn find_in_source(source: &Source, playlist: Option<&StrictPath>) -> HashSet<Media> {
-        log::debug!("Finding media in source: {source:?}, playlist: {playlist:?}");
-
-        let source = match playlist {
-            Some(playlist) => source.fill_placeholders(playlist),
-            None => source.clone(),
-        };
-        log::debug!("Source with placeholders filled: {source:?}");
-
-        match &source {
-            Source::Path { path } => {
-                if path.is_file() {
-                    log::debug!("Source is file");
-                    match Media::identify(path) {
-                        Some(source) => HashSet::from_iter([source]),
-                        None => HashSet::new(),
+                match source.fill_placeholders(&basis) {
+                    Source::Path { path } => {
+                        if path.is_file() {
+                            log::debug!("Source is file: {path:?}");
+                            vec![Scan::Identify { path, source, context }]
+                        } else if path.is_dir() {
+                            log::debug!("Source is directory: {path:?}");
+                            path.joined("*")
+                                .glob()
+                                .into_iter()
+                                .filter(|x| x.is_file())
+                                .map(|file| {
+                                    log::debug!("Found file from directory: {file:?} <- {path:?}");
+                                    Scan::Identify {
+                                        path: file,
+                                        source: source.clone(),
+                                        context,
+                                    }
+                                })
+                                .collect()
+                        } else if path.is_symlink() {
+                            log::debug!("Source is symlink: {path:?}");
+                            match path.interpreted() {
+                                Ok(target) => {
+                                    log::debug!("Found target from symlink: {target:?} <- {path:?}");
+                                    vec![Scan::Source {
+                                        source: Source::new_path(target),
+                                        playlist,
+                                        context,
+                                    }]
+                                }
+                                Err(error) => {
+                                    log::error!("Failed to traverse symlink: {path:?} | {error:?}");
+                                    vec![]
+                                }
+                            }
+                        } else {
+                            log::debug!("Source is unknown path: {path:?}");
+                            vec![]
+                        }
                     }
-                } else if path.is_dir() {
-                    log::debug!("Source is directory");
-                    path.joined("*")
+                    Source::Glob { pattern } => StrictPath::new(pattern.clone())
                         .glob()
                         .into_iter()
-                        .filter(|x| x.is_file())
-                        .filter_map(|path| Media::identify(&path))
-                        .collect()
-                } else if path.is_symlink() {
-                    log::debug!("Source is symlink");
-                    match path.interpreted() {
-                        Ok(path) => Self::find_in_source(&Source::new_path(path), None),
-                        Err(_) => HashSet::new(),
-                    }
-                } else {
-                    log::debug!("Source is unknown path");
-                    HashSet::new()
+                        .map(|file| {
+                            log::debug!("Found file from glob: {file:?} <- {pattern}");
+                            Scan::Source {
+                                source: Source::new_path(file),
+                                playlist: playlist.clone(),
+                                context,
+                            }
+                        })
+                        .collect(),
                 }
             }
-            Source::Glob { pattern } => {
-                log::debug!("Source is glob");
-                let mut media = HashSet::new();
-                for path in StrictPath::new(pattern).glob() {
-                    media.extend(Self::find_in_source(&Source::new_path(path), None));
-                }
-                media
-            }
+            Scan::Identify { path, source, context } => match Media::identify(&path) {
+                Some(media) => vec![Scan::Found { media, source, context }],
+                None => vec![],
+            },
+            Scan::Found { media, source, context } => vec![Scan::Found { media, source, context }],
         }
     }
 
-    pub fn update(&mut self, new: SourceMap, context: RefreshContext) {
-        match context {
-            RefreshContext::Launch | RefreshContext::Playlist | RefreshContext::Automatic => {
-                self.media = new;
-            }
-            RefreshContext::Edit => {
-                self.media.extend(new);
-            }
-        }
-    }
-
-    pub fn new_first(&self, sources: &[Source], take: usize, old: HashSet<&Media>) -> Option<Vec<Media>> {
-        use rand::seq::SliceRandom;
-
-        let mut media: Vec<_> = sources
-            .iter()
-            .filter_map(|source| self.media.get(source))
-            .flatten()
-            .unique()
-            .collect();
-        media.shuffle(&mut rand::rng());
-
-        let media: Vec<_> = media
-            .iter()
-            .filter(|media| !self.errored.contains(media) && !old.contains(*media))
-            .chain(
-                media
-                    .iter()
-                    .filter(|media| !self.errored.contains(media) && old.contains(*media)),
-            )
-            .take(take)
-            .cloned()
-            .cloned()
-            .collect();
-
-        (!media.is_empty()).then_some(media)
+    pub fn insert(&mut self, source: Source, media: Media) {
+        self.media.entry(source).or_default().insert(media);
     }
 
     pub fn one_new(&self, sources: &[Source], old: HashSet<&Media>) -> Option<Media> {

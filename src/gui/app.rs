@@ -233,11 +233,11 @@ impl App {
         crate::gui::style::Theme::from(self.config.view.theme)
     }
 
-    fn refresh(&mut self) -> Task<Message> {
+    fn refresh(&mut self, context: media::RefreshContext) {
+        self.media.prune(&self.all_sources());
         for (_id, grid) in self.grids.iter_mut() {
-            grid.refresh(&mut self.media, &self.config.playback);
+            grid.refresh(&mut self.media, &self.config.playback, context);
         }
-        Task::none()
     }
 
     fn all_idle(&self) -> bool {
@@ -324,16 +324,37 @@ impl App {
         playlist: Option<StrictPath>,
     ) -> Task<Message> {
         log::info!("Finding media ({context:?})");
+        let mut tasks = vec![];
+
+        for source in sources {
+            let playlist = playlist.clone();
+            tasks.push(Task::future(async move {
+                match tokio::task::spawn_blocking(move || {
+                    media::Collection::find(media::Scan::Source {
+                        source,
+                        playlist,
+                        context,
+                    })
+                })
+                .await
+                {
+                    Ok(scans) => Message::MediaScanned(scans),
+                    Err(error) => {
+                        log::error!("Failed to join task for media scan: {error:?}");
+                        Message::Ignore
+                    }
+                }
+            }));
+        }
+
+        Task::batch(tasks)
+    }
+
+    fn find_media_one(scan: media::Scan) -> Task<Message> {
         Task::future(async move {
-            match tokio::task::spawn_blocking(move || media::Collection::find(&sources, playlist)).await {
-                Ok(media) => {
-                    log::info!("Found media ({context:?}): {media:?}");
-                    Message::MediaFound { context, media }
-                }
-                Err(e) => {
-                    log::error!("Unable to find media ({context:?}): {e:?}");
-                    Message::Ignore
-                }
+            match tokio::task::spawn_blocking(move || media::Collection::find(scan)).await {
+                Ok(scans) => Message::MediaScanned(scans),
+                Err(_) => Message::Ignore,
             }
         })
     }
@@ -705,7 +726,10 @@ impl App {
                 self.close_modal();
                 Self::open_url(url)
             }
-            Message::Refresh => self.refresh(),
+            Message::Refresh => {
+                self.refresh(media::RefreshContext::Manual);
+                Task::none()
+            }
             Message::SetPause(flag) => {
                 self.set_paused(flag);
                 Task::none()
@@ -764,6 +788,7 @@ impl App {
                     if let Some(update) = modal.update(event) {
                         match update {
                             modal::Update::SavedGridSettings { grid_id, settings } => {
+                                let context = media::RefreshContext::Edit;
                                 self.modals.pop();
                                 let sources = settings.sources.clone();
                                 if let Some(grid) = self.grids.get_mut(grid_id) {
@@ -774,11 +799,8 @@ impl App {
                                         }
                                     }
                                 }
-                                return Self::find_media(
-                                    sources,
-                                    media::RefreshContext::Edit,
-                                    self.playlist_path.clone(),
-                                );
+                                self.refresh(context);
+                                return Self::find_media(sources, context, self.playlist_path.clone());
                             }
                             modal::Update::Task(task) => {
                                 return task;
@@ -797,12 +819,20 @@ impl App {
                 media::RefreshContext::Automatic,
                 self.playlist_path.clone(),
             ),
-            Message::MediaFound { context, media } => {
-                self.media.update(media, context);
-                for (_grid_id, grid) in self.grids.iter_mut() {
-                    grid.refresh_on_media_collection_changed(context, &mut self.media, &self.config.playback);
+            Message::MediaScanned(scans) => {
+                let mut tasks = vec![];
+                for scan in scans {
+                    match scan {
+                        media::Scan::Found { source, media, context } => {
+                            self.media.insert(source, media);
+                            self.refresh(context);
+                        }
+                        scan => {
+                            tasks.push(Self::find_media_one(scan));
+                        }
+                    }
                 }
-                Task::none()
+                Task::batch(tasks)
             }
             Message::FileDragDrop(path) => {
                 if path.file_extension().is_some_and(|ext| ext == Playlist::EXTENSION) {
@@ -1019,12 +1049,10 @@ impl App {
 
                 match Playlist::load_from(&path) {
                     Ok(playlist) => {
+                        let context = media::RefreshContext::Playlist;
                         self.grids = Self::load_playlist(playlist);
-                        Self::find_media(
-                            self.all_sources(),
-                            media::RefreshContext::Playlist,
-                            self.playlist_path.clone(),
-                        )
+                        self.refresh(context);
+                        Self::find_media(self.all_sources(), context, self.playlist_path.clone())
                     }
                     Err(e) => {
                         self.show_error(e);

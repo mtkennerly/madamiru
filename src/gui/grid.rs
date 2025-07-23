@@ -89,7 +89,7 @@ impl Grid {
     pub fn new_with_players(settings: &Settings, players: usize) -> Self {
         Self {
             sources: settings.sources.clone(),
-            players: std::iter::repeat_with(|| Player::Idle).take(players).collect(),
+            players: std::iter::repeat_with(Player::default).take(players).collect(),
             content_fit: settings.content_fit,
             orientation: settings.orientation,
             orientation_limit: settings.orientation_limit,
@@ -206,6 +206,10 @@ impl Grid {
 
     #[must_use]
     pub fn set_settings(&mut self, settings: Settings) -> Change {
+        if self.players.is_empty() && settings.sources.iter().any(|x| !x.is_empty()) {
+            self.players.push(Player::default());
+        }
+
         if self.settings() == settings {
             return Change::Same;
         }
@@ -237,51 +241,30 @@ impl Grid {
         self.players.len()
     }
 
-    pub fn refresh(&mut self, collection: &mut media::Collection, playback: &Playback) {
+    pub fn refresh(&mut self, collection: &mut media::Collection, playback: &Playback, context: media::RefreshContext) {
         let playback = self.playback(playback);
-
-        let total = if self.is_idle() {
-            media::MAX_INITIAL
-        } else {
-            self.players.len()
+        let mut active: HashSet<_> = self.active_media().into_iter().cloned().collect();
+        let force = match context {
+            media::RefreshContext::Launch => false,
+            media::RefreshContext::Edit => false,
+            media::RefreshContext::Playlist => false,
+            media::RefreshContext::Automatic => false,
+            media::RefreshContext::Manual => true,
         };
 
-        if let Some(media) = collection.new_first(&self.sources, total, self.active_media()) {
-            self.players.clear();
-
-            for item in media {
-                match Player::new(&item, &playback) {
-                    Ok(player) => {
-                        self.players.push(player);
-                    }
-                    Err(player) => {
-                        collection.mark_error(&item);
-                        self.players.push(player);
-                    }
-                }
-            }
-        } else {
-            self.players.clear();
-        }
-    }
-
-    fn refresh_outdated(&mut self, collection: &mut media::Collection, playback: &Playback) {
-        let playback = self.playback(playback);
-
-        let mut remove = vec![];
-        let mut active: HashSet<_> = self.active_media().into_iter().cloned().collect();
-
-        for (index, player) in self.players.iter_mut().enumerate() {
-            if player.is_error() {
+        for player in self.players.iter_mut() {
+            if player.is_error() && !force {
                 continue;
             }
 
             let old_media = player.media();
-            let outdated = old_media
-                .map(|old_media| collection.is_outdated(old_media, &self.sources))
-                .unwrap_or(true);
+            let refresh = force
+                || old_media
+                    .map(|old_media| collection.is_outdated(old_media, &self.sources))
+                    .unwrap_or(true)
+                || player.is_error();
 
-            if outdated {
+            if refresh {
                 if let Some(old_media) = old_media {
                     active.remove(old_media);
                 }
@@ -294,41 +277,9 @@ impl Grid {
                         active.insert(new_media);
                     }
                     None => {
-                        remove.push(player::Id(index));
+                        player.go_idle();
                     }
                 }
-            }
-        }
-
-        for id in remove.into_iter().rev() {
-            self.remove(id);
-        }
-    }
-
-    pub fn refresh_on_media_collection_changed(
-        &mut self,
-        context: media::RefreshContext,
-        collection: &mut media::Collection,
-        playback: &Playback,
-    ) {
-        let playback = self.playback(playback);
-
-        match context {
-            media::RefreshContext::Launch => {
-                self.refresh(collection, &playback);
-            }
-            media::RefreshContext::Edit => {
-                if self.is_idle() {
-                    self.refresh(collection, &playback);
-                } else {
-                    self.refresh_outdated(collection, &playback);
-                }
-            }
-            media::RefreshContext::Playlist => {
-                self.refresh(collection, &playback);
-            }
-            media::RefreshContext::Automatic => {
-                self.refresh_outdated(collection, &playback);
             }
         }
     }
@@ -339,10 +290,6 @@ impl Grid {
         let Some(media) = collection.one_new(&self.sources, self.active_media()) else {
             return Err(Error::NoMediaAvailable);
         };
-
-        if self.is_idle() {
-            self.players.clear();
-        }
 
         match Player::new(&media, &playback) {
             Ok(player) => {
