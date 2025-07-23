@@ -20,6 +20,8 @@
     we don't know right away if there's enough valid media to fill all slots.
     Therefore, empty slots will now stay on the grid,
     and you can either remove them manually or reconfigure your sources.
+  * Updated translations.
+    (Thanks to contributors on the [Crowdin project](https://crowdin.com/project/madamiru))
 
 ## v0.2.0 (2025-03-26)
 
