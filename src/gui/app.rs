@@ -305,6 +305,11 @@ impl App {
         }
     }
 
+    fn set_synchronized(&mut self, synchronized: bool) {
+        self.config.playback.synchronized = synchronized;
+        self.save_config();
+    }
+
     fn can_jump(&self) -> bool {
         self.grids.iter().any(|(_grid_id, grid)| grid.can_jump())
     }
@@ -480,6 +485,18 @@ impl App {
                 self.config.playback.muted = muted;
                 self.save_config();
             }
+        }
+    }
+
+    fn synchronize_players(&mut self, originator: grid::Id, category: player::Category, event: player::Event) {
+        if !self.config.playback.synchronized {
+            return;
+        }
+        for (other_grid_id, grid) in self.grids.iter_mut() {
+            if *other_grid_id == originator {
+                continue;
+            }
+            grid.synchronize_players(None, category, event.clone(), &self.config.playback);
         }
     }
 
@@ -742,6 +759,10 @@ impl App {
                 self.set_volume(volume);
                 Task::none()
             }
+            Message::SetSynchronized(flag) => {
+                self.set_synchronized(flag);
+                Task::none()
+            }
             Message::Player {
                 grid_id,
                 player_id,
@@ -757,11 +778,15 @@ impl App {
                     &self.config.playback,
                 ) {
                     match update {
-                        grid::Update::PauseChanged => {
+                        grid::Update::PauseChanged { category, paused } => {
                             self.update_playback();
+                            self.synchronize_players(grid_id, category, player::Event::SetPause(paused));
                         }
                         grid::Update::MuteChanged => {
                             self.update_playback();
+                        }
+                        grid::Update::RelativePositionChanged { category, position } => {
+                            self.synchronize_players(grid_id, category, player::Event::SeekRelative(position));
                         }
                         grid::Update::PlayerClosed => {
                             self.playlist_dirty = true;
@@ -1209,6 +1234,22 @@ impl App {
                                     Container::new(
                                         Container::new(
                                             Row::new()
+                                                .push(
+                                                    button::icon(if self.config.playback.synchronized {
+                                                        Icon::Link
+                                                    } else {
+                                                        Icon::Unlink
+                                                    })
+                                                    .on_press(Message::SetSynchronized(
+                                                        !self.config.playback.synchronized,
+                                                    ))
+                                                    .obscured(obscured)
+                                                    .tooltip_below(if self.config.playback.synchronized {
+                                                        lang::action::desynchronize()
+                                                    } else {
+                                                        lang::action::synchronize()
+                                                    }),
+                                                )
                                                 .push(
                                                     button::icon(if self.config.playback.muted {
                                                         Icon::Mute

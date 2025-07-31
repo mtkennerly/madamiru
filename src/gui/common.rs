@@ -70,6 +70,7 @@ pub enum Message {
     SetVolume {
         volume: f32,
     },
+    SetSynchronized(bool),
     Player {
         grid_id: grid::Id,
         player_id: player::Id,

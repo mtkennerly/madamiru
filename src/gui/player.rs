@@ -258,6 +258,7 @@ pub enum Event {
     SetMute(bool),
     SetVolume(f32),
     Seek(f64),
+    SeekRelative(f64),
     SeekStop,
     SeekRandom,
     EndOfStream,
@@ -272,12 +273,20 @@ pub enum Event {
 
 #[derive(Debug, Clone)]
 pub enum Update {
-    PauseChanged,
+    PauseChanged(bool),
     #[cfg_attr(not(any(feature = "audio", feature = "video")), allow(unused))]
     MuteChanged,
+    RelativePositionChanged(f64),
     EndOfStream,
     Refresh,
     Close,
+}
+
+impl Update {
+    fn relative_position_changed(absolute_position: f64, duration: Duration) -> Option<Self> {
+        let relative = absolute_position / duration.as_secs_f64();
+        relative.is_finite().then_some(Self::RelativePositionChanged(relative))
+    }
 }
 
 #[derive(Default)]
@@ -287,6 +296,16 @@ struct Overlay {
     top_controls: bool,
     bottom_controls: bool,
     timestamps: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Category {
+    Other,
+    Image,
+    #[cfg(feature = "audio")]
+    Audio,
+    #[cfg(feature = "video")]
+    Video,
 }
 
 pub enum Player {
@@ -615,6 +634,20 @@ impl Player {
         }
     }
 
+    pub fn category(&self) -> Category {
+        match self {
+            Self::Idle { .. } => Category::Other,
+            Self::Error { .. } => Category::Other,
+            Self::Image { .. } => Category::Image,
+            Self::Svg { .. } => Category::Image,
+            Self::Gif { .. } => Category::Image,
+            #[cfg(feature = "audio")]
+            Self::Audio { .. } => Category::Audio,
+            #[cfg(feature = "video")]
+            Self::Video { .. } => Category::Video,
+        }
+    }
+
     pub fn is_error(&self) -> bool {
         match self {
             Self::Idle { .. } => false,
@@ -907,6 +940,7 @@ impl Player {
                 Event::SetMute(_) => None,
                 Event::SetVolume(_) => None,
                 Event::Seek(_) => None,
+                Event::SeekRelative(_) => None,
                 Event::SeekStop => None,
                 Event::SeekRandom => None,
                 Event::EndOfStream => None,
@@ -930,6 +964,7 @@ impl Player {
                 Event::SetMute(_) => None,
                 Event::SetVolume(_) => None,
                 Event::Seek(_) => None,
+                Event::SeekRelative(_) => None,
                 Event::SeekStop => None,
                 Event::SeekRandom => None,
                 Event::EndOfStream => None,
@@ -960,7 +995,7 @@ impl Player {
             } => match event {
                 Event::SetPause(flag) => {
                     *paused = flag;
-                    Some(Update::PauseChanged)
+                    Some(Update::PauseChanged(flag))
                 }
                 Event::SetLoop(flag) => {
                     *looping = flag;
@@ -974,6 +1009,10 @@ impl Player {
                 Event::Seek(offset) => {
                     *dragging = true;
                     *position = offset.min(duration.as_secs_f64());
+                    Update::relative_position_changed(*position, *duration)
+                }
+                Event::SeekRelative(offset) => {
+                    *position = duration.as_secs_f64() * offset;
                     None
                 }
                 Event::SeekStop => {
@@ -1021,7 +1060,7 @@ impl Player {
             } => match event {
                 Event::SetPause(flag) => {
                     *paused = flag;
-                    Some(Update::PauseChanged)
+                    Some(Update::PauseChanged(flag))
                 }
                 Event::SetLoop(flag) => {
                     *looping = flag;
@@ -1035,6 +1074,10 @@ impl Player {
                 Event::Seek(offset) => {
                     *dragging = true;
                     *position = offset.min(duration.as_secs_f64());
+                    Update::relative_position_changed(*position, *duration)
+                }
+                Event::SeekRelative(offset) => {
+                    *position = duration.as_secs_f64() * offset;
                     None
                 }
                 Event::SeekStop => {
@@ -1082,7 +1125,7 @@ impl Player {
             } => match event {
                 Event::SetPause(flag) => {
                     *paused = flag;
-                    Some(Update::PauseChanged)
+                    Some(Update::PauseChanged(flag))
                 }
                 Event::SetLoop(flag) => {
                     *looping = flag;
@@ -1096,6 +1139,10 @@ impl Player {
                 Event::Seek(offset) => {
                     *dragging = true;
                     *position = offset.min(duration.as_secs_f64());
+                    Update::relative_position_changed(*position, *duration)
+                }
+                Event::SeekRelative(offset) => {
+                    *position = duration.as_secs_f64() * offset;
                     None
                 }
                 Event::SeekStop => {
@@ -1148,7 +1195,7 @@ impl Player {
                     } else {
                         sink.play();
                     }
-                    Some(Update::PauseChanged)
+                    Some(Update::PauseChanged(flag))
                 }
                 Event::SetLoop(flag) => {
                     *looping = flag;
@@ -1171,6 +1218,10 @@ impl Player {
                 Event::Seek(offset) => {
                     *dragging = true;
                     let _ = sink.try_seek(Duration::from_secs_f64(offset));
+                    Update::relative_position_changed(offset, *duration)
+                }
+                Event::SeekRelative(offset) => {
+                    let _ = sink.try_seek(Duration::from_secs_f64(duration.as_secs_f64() * offset));
                     None
                 }
                 Event::SeekStop => {
@@ -1181,7 +1232,7 @@ impl Player {
                     use rand::Rng;
                     let position = rand::rng().random_range(0.0..duration.as_secs_f64());
                     let _ = sink.try_seek(Duration::from_secs_f64(position));
-                    None
+                    Update::relative_position_changed(position, *duration)
                 }
                 Event::EndOfStream => (!*looping).then_some(Update::EndOfStream),
                 Event::NewFrame => None,
@@ -1226,7 +1277,7 @@ impl Player {
                 Event::SetPause(flag) => {
                     *paused = flag;
                     video.set_paused(flag);
-                    Some(Update::PauseChanged)
+                    Some(Update::PauseChanged(flag))
                 }
                 Event::SetLoop(flag) => {
                     video.set_looping(flag);
@@ -1249,6 +1300,11 @@ impl Player {
                     *dragging = true;
                     *position = offset;
                     seek_video(video, *position);
+                    Update::relative_position_changed(offset, *duration)
+                }
+                Event::SeekRelative(offset) => {
+                    *position = duration.as_secs_f64() * offset;
+                    seek_video(video, *position);
                     None
                 }
                 Event::SeekStop => {
@@ -1259,7 +1315,7 @@ impl Player {
                     use rand::Rng;
                     *position = rand::rng().random_range(0.0..duration.as_secs_f64());
                     seek_video(video, *position);
-                    None
+                    Update::relative_position_changed(*position, *duration)
                 }
                 Event::EndOfStream => (!video.looping()).then_some(Update::EndOfStream),
                 Event::NewFrame => {

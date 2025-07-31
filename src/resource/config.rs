@@ -113,6 +113,8 @@ pub struct Playback {
     pub image_duration: NonZeroUsize,
     /// Whether to pause when window loses focus.
     pub pause_on_unfocus: bool,
+    /// Whether to synchronize play/pause/seek events in media of the same category.
+    pub synchronized: bool,
 }
 
 impl Playback {
@@ -147,6 +149,7 @@ impl Default for Playback {
             volume: 1.0,
             image_duration: NonZeroUsize::new(10).unwrap(),
             pause_on_unfocus: false,
+            synchronized: false,
         }
     }
 }
@@ -178,6 +181,7 @@ mod tests {
                   volume: 0.5
                   image_duration: 2
                   pause_on_unfocus: true
+                  synchronized: true
             "#,
         )
         .unwrap();
@@ -196,6 +200,7 @@ mod tests {
                     volume: 0.5,
                     image_duration: NonZeroUsize::new(2).unwrap(),
                     pause_on_unfocus: true,
+                    synchronized: true,
                 },
             },
             config,
@@ -218,6 +223,7 @@ playback:
   volume: 1.0
   image_duration: 10
   pause_on_unfocus: false
+  synchronized: false
 "#
             .trim(),
             serde_yaml::to_string(&Config::default()).unwrap().trim(),

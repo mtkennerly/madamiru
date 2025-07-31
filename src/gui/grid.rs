@@ -41,8 +41,9 @@ pub enum Event {
 
 #[derive(Debug, Clone)]
 pub enum Update {
-    PauseChanged,
+    PauseChanged { category: player::Category, paused: bool },
     MuteChanged,
+    RelativePositionChanged { category: player::Category, position: f64 },
     PlayerClosed,
 }
 
@@ -126,8 +127,9 @@ impl Grid {
         for (index, update) in updates {
             if let Some(update) = update {
                 match update {
-                    player::Update::PauseChanged => {}
+                    player::Update::PauseChanged(_) => {}
                     player::Update::MuteChanged => {}
+                    player::Update::RelativePositionChanged(_) => {}
                     player::Update::EndOfStream => {
                         let media = collection.one_new(&self.sources, self.active_media());
                         let player = &mut self.players[index];
@@ -330,11 +332,29 @@ impl Grid {
             Event::Player { player_id, event } => {
                 let active_media: HashSet<_> = self.active_media().into_iter().cloned().collect();
                 let player = self.players.get_mut(player_id.0)?;
+                let category = player.category();
 
                 match player.update(event, &playback) {
                     Some(update) => match update {
                         player::Update::MuteChanged => Some(Update::MuteChanged),
-                        player::Update::PauseChanged => Some(Update::PauseChanged),
+                        player::Update::PauseChanged(paused) => {
+                            self.synchronize_players(
+                                Some(player_id),
+                                category,
+                                player::Event::SetPause(paused),
+                                &playback,
+                            );
+                            Some(Update::PauseChanged { category, paused })
+                        }
+                        player::Update::RelativePositionChanged(position) => {
+                            self.synchronize_players(
+                                Some(player_id),
+                                category,
+                                player::Event::SeekRelative(position),
+                                &playback,
+                            );
+                            Some(Update::RelativePositionChanged { category, position })
+                        }
                         player::Update::EndOfStream => {
                             let media = collection.one_new(&self.sources, active_media.iter().collect());
 
@@ -409,6 +429,24 @@ impl Grid {
                 collection,
                 &playback,
             );
+        }
+    }
+
+    pub fn synchronize_players(
+        &mut self,
+        originator: Option<player::Id>,
+        category: player::Category,
+        event: player::Event,
+        playback: &Playback,
+    ) {
+        if !playback.synchronized {
+            return;
+        }
+        for (i, player) in self.players.iter_mut().enumerate() {
+            if Some(player::Id(i)) == originator || player.category() != category {
+                continue;
+            }
+            let _ = player.update(event.clone(), playback);
         }
     }
 

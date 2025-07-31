@@ -27,6 +27,7 @@ action-close = Close
 action-confirm = Confirm
 action-confirm-when-discarding-unsaved-playlist = Confirm when discarding unsaved playlist
 action-crop = Crop
+action-desynchronize = Desynchronize
 action-exit-app = Exit application
 action-jump-position = Jump to random position
 action-mute = Mute
@@ -49,6 +50,7 @@ action-split-horizontally = Split horizontally
 action-split-vertically = Split vertically
 action-start-new-playlist = Start new playlist
 action-stretch = Stretch
+action-synchronize = Synchronize
 action-unmute = Unmute
 action-view-releases = View releases
 

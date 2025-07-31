@@ -15,6 +15,7 @@ pub enum Icon {
     FileOpen,
     FolderOpen,
     Image,
+    Link,
     LogOut,
     Loop,
     MoreVert,
@@ -37,6 +38,7 @@ pub enum Icon {
     SplitHorizontal,
     SplitVertical,
     TimerRefresh,
+    Unlink,
     VolumeHigh,
 }
 
@@ -52,6 +54,7 @@ impl Icon {
             Self::FileOpen => '\u{eaf3}',
             Self::FolderOpen => '\u{E2C8}',
             Self::Image => '\u{e3f4}',
+            Self::Link => '\u{e157}',
             Self::LogOut => '\u{e9ba}',
             Self::Loop => '\u{e040}',
             Self::MoreVert => '\u{E5D4}',
@@ -64,6 +67,8 @@ impl Icon {
             Self::OpenInNew => '\u{E89E}',
             Self::Pause => '\u{e034}',
             Self::Play => '\u{e037}',
+            Self::PlaylistAdd => '\u{e03b}',
+            Self::PlaylistRemove => '\u{eb80}',
             Self::Refresh => '\u{E5D5}',
             Self::Save => '\u{e161}',
             Self::SaveAs => '\u{eb60}',
@@ -72,9 +77,8 @@ impl Icon {
             Self::SplitHorizontal => '\u{e8d4}',
             Self::SplitVertical => '\u{e8d5}',
             Self::TimerRefresh => '\u{e889}',
+            Self::Unlink => '\u{e16f}',
             Self::VolumeHigh => '\u{e050}',
-            Self::PlaylistAdd => '\u{e03b}',
-            Self::PlaylistRemove => '\u{eb80}',
         }
     }
 

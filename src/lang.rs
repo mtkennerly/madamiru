@@ -317,6 +317,10 @@ pub mod action {
         translate("action-crop")
     }
 
+    pub fn desynchronize() -> String {
+        translate("action-desynchronize")
+    }
+
     pub fn exit_app() -> String {
         translate("action-exit-app")
     }
@@ -399,6 +403,10 @@ pub mod action {
 
     pub fn stretch() -> String {
         translate("action-stretch")
+    }
+
+    pub fn synchronize() -> String {
+        translate("action-synchronize")
     }
 
     pub fn unmute() -> String {
