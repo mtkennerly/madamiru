@@ -1,11 +1,15 @@
-use iced::{alignment, keyboard, widget::tooltip, Padding};
+use iced::{
+    alignment, keyboard,
+    widget::{text::IntoFragment, tooltip},
+    Padding,
+};
 
 use crate::{
     gui::{
         common::{BrowseFileSubject, BrowseSubject, EditAction, Message},
         icon::Icon,
         style,
-        widget::{text, Button, Container, Element, Tooltip},
+        widget::{text, Button, Container, Element, Row, Tooltip},
     },
     lang,
     path::StrictPath,
@@ -171,6 +175,25 @@ pub fn max_icon<'a>(icon: Icon) -> CustomButton<'a> {
         enabled: true,
         class: style::Button::Icon,
         padding: None,
+        tooltip: None,
+        tooltip_position: tooltip::Position::Top,
+        obscured: false,
+    }
+}
+
+pub fn menu<'a>(icon: Icon, label: impl IntoFragment<'a>) -> CustomButton<'a> {
+    CustomButton {
+        content: Row::new()
+            .push(icon.small_control())
+            .push(text(label))
+            .spacing(10)
+            .width(250)
+            .align_y(iced::alignment::Vertical::Center)
+            .into(),
+        on_press: None,
+        enabled: true,
+        class: style::Button::Icon,
+        padding: Some([0, 5].into()),
         tooltip: None,
         tooltip_position: tooltip::Position::Top,
         obscured: false,

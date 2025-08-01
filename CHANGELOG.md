@@ -4,6 +4,8 @@
   * There is now a "synchronize" toggle (link icon in the top bar),
     which synchronizes play/pause/seek events for all media of the same category
     (image, audio, video).
+* Changed:
+  * GUI: In the top bar, the playlist actions are now grouped together in a submenu.
 * Fixed:
   * When a source was specified on the command line,
     you had to click "add player" for it to start playing.

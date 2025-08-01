@@ -106,6 +106,12 @@ pub enum Message {
     PlaylistSavedAs {
         path: StrictPath,
     },
+    ShowMenu {
+        show: Option<bool>,
+    },
+    Menu {
+        message: Box<Self>,
+    },
 }
 
 impl Message {
@@ -143,6 +149,12 @@ impl Message {
                 }
             },
             None => Self::Ignore,
+        }
+    }
+
+    pub fn menu(message: Self) -> Self {
+        Self::Menu {
+            message: Box::new(message),
         }
     }
 }

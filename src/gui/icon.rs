@@ -18,6 +18,7 @@ pub enum Icon {
     Link,
     LogOut,
     Loop,
+    Menu,
     MoreVert,
     #[cfg(feature = "video")]
     Movie,
@@ -57,6 +58,7 @@ impl Icon {
             Self::Link => '\u{e157}',
             Self::LogOut => '\u{e9ba}',
             Self::Loop => '\u{e040}',
+            Self::Menu => '\u{e5d2}',
             Self::MoreVert => '\u{E5D4}',
             #[cfg(feature = "video")]
             Self::Movie => '\u{e02c}',
