@@ -1185,197 +1185,170 @@ impl App {
         let obscured = !self.modals.is_empty();
 
         Responsive::new(move |viewport| {
-            let content = Container::new(
-                Column::new()
-                    .spacing(5)
+            let left_controls = DropDown::new(
+                button::icon(Icon::Menu)
+                    .on_press(Message::ShowMenu { show: None })
+                    .obscured(obscured),
+                Container::new(
+                    Column::new()
+                        .push(
+                            button::menu(Icon::FolderOpen, lang::action::open_playlist())
+                                .on_press(Message::menu(Message::PlaylistSelect { force: false }))
+                                .padding(4),
+                        )
+                        .push(
+                            button::menu(Icon::Save, lang::action::save_playlist())
+                                .on_press(Message::menu(Message::PlaylistSave))
+                                .enabled(self.playlist_dirty && self.playlist_path.is_some())
+                                .padding(4),
+                        )
+                        .push(
+                            button::menu(Icon::SaveAs, lang::action::save_playlist_as_new_file())
+                                .on_press(Message::menu(Message::PlaylistSaveAs))
+                                .padding(4),
+                        )
+                        .push(
+                            button::menu(Icon::PlaylistRemove, lang::action::start_new_playlist())
+                                .on_press(Message::menu(Message::PlaylistReset { force: false }))
+                                .enabled(self.playlist_dirty || self.playlist_path.is_some())
+                                .padding(4),
+                        )
+                        .push_maybe(STEAM_DECK.then(|| {
+                            button::menu(Icon::LogOut, lang::action::exit_app())
+                                .on_press(Message::menu(Message::Exit { force: false }))
+                                .padding(4)
+                        }))
+                        // .spacing(10)
+                        .padding(4),
+                )
+                .class(style::Container::Tooltip),
+                self.viewing_menu,
+            )
+            .on_dismiss(Message::ShowMenu { show: Some(false) });
+
+            let right_controls = Row::new().push(
+                button::icon(Icon::Settings)
+                    .on_press(Message::ShowSettings)
+                    .obscured(obscured)
+                    .tooltip_below(lang::thing::settings()),
+            );
+
+            let center_controls = Container::new(
+                Row::new()
                     .push(
-                        Stack::new()
-                            .push(
-                                Container::new(
-                                    Row::new().push(
-                                        button::icon(Icon::Settings)
-                                            .on_press(Message::ShowSettings)
-                                            .obscured(obscured)
-                                            .tooltip_below(lang::thing::settings()),
-                                    ),
-                                )
-                                .align_right(Length::Fill),
-                            )
-                            .push(
-                                Container::new(
-                                    DropDown::new(
-                                        button::icon(Icon::Menu)
-                                            .on_press(Message::ShowMenu { show: None })
-                                            .obscured(obscured),
-                                        Container::new(
-                                            Column::new()
-                                                .push(
-                                                    button::menu(Icon::FolderOpen, lang::action::open_playlist())
-                                                        .on_press(Message::menu(Message::PlaylistSelect {
-                                                            force: false,
-                                                        }))
-                                                        .padding(4),
-                                                )
-                                                .push(
-                                                    button::menu(Icon::Save, lang::action::save_playlist())
-                                                        .on_press(Message::menu(Message::PlaylistSave))
-                                                        .enabled(self.playlist_dirty && self.playlist_path.is_some())
-                                                        .padding(4),
-                                                )
-                                                .push(
-                                                    button::menu(
-                                                        Icon::SaveAs,
-                                                        lang::action::save_playlist_as_new_file(),
-                                                    )
-                                                    .on_press(Message::menu(Message::PlaylistSaveAs))
-                                                    .padding(4),
-                                                )
-                                                .push(
-                                                    button::menu(
-                                                        Icon::PlaylistRemove,
-                                                        lang::action::start_new_playlist(),
-                                                    )
-                                                    .on_press(Message::menu(Message::PlaylistReset { force: false }))
-                                                    .enabled(self.playlist_dirty || self.playlist_path.is_some())
-                                                    .padding(4),
-                                                )
-                                                .push_maybe(STEAM_DECK.then(|| {
-                                                    button::menu(Icon::LogOut, lang::action::exit_app())
-                                                        .on_press(Message::menu(Message::Exit { force: false }))
-                                                        .padding(4)
-                                                }))
-                                                // .spacing(10)
-                                                .padding(4),
-                                        )
-                                        .class(style::Container::Tooltip),
-                                        self.viewing_menu,
-                                    )
-                                    .on_dismiss(Message::ShowMenu { show: Some(false) }),
-                                )
-                                .align_left(Length::Fill),
-                            )
-                            .push(
-                                Container::new(
-                                    Container::new(
-                                        Row::new()
-                                            .push(
-                                                button::icon(if self.config.playback.synchronized {
-                                                    Icon::Link
-                                                } else {
-                                                    Icon::Unlink
-                                                })
-                                                .on_press(Message::SetSynchronized(!self.config.playback.synchronized))
-                                                .obscured(obscured)
-                                                .tooltip_below(
-                                                    if self.config.playback.synchronized {
-                                                        lang::action::desynchronize()
-                                                    } else {
-                                                        lang::action::synchronize()
-                                                    },
-                                                ),
-                                            )
-                                            .push(
-                                                button::icon(if self.config.playback.muted {
-                                                    Icon::Mute
-                                                } else {
-                                                    Icon::VolumeHigh
-                                                })
-                                                .on_press(Message::SetMute(!self.config.playback.muted))
-                                                .obscured(obscured)
-                                                .tooltip_below(
-                                                    if self.config.playback.muted {
-                                                        lang::action::unmute()
-                                                    } else {
-                                                        lang::action::mute()
-                                                    },
-                                                ),
-                                            )
-                                            .push(
-                                                button::icon(if self.config.playback.paused {
-                                                    Icon::Play
-                                                } else {
-                                                    Icon::Pause
-                                                })
-                                                .on_press(Message::SetPause(!self.config.playback.paused))
-                                                .obscured(obscured)
-                                                .tooltip_below(
-                                                    if self.config.playback.paused {
-                                                        lang::action::play()
-                                                    } else {
-                                                        lang::action::pause()
-                                                    },
-                                                ),
-                                            )
-                                            .push(
-                                                button::icon(Icon::TimerRefresh)
-                                                    .on_press(Message::AllPlayers {
-                                                        event: player::Event::SeekRandom,
-                                                    })
-                                                    .enabled(!self.all_idle() && self.can_jump())
-                                                    .obscured(obscured)
-                                                    .tooltip_below(lang::action::jump_position()),
-                                            )
-                                            .push(
-                                                button::icon(Icon::Refresh)
-                                                    .on_press(Message::Refresh)
-                                                    .enabled(!self.all_idle())
-                                                    .obscured(obscured)
-                                                    .tooltip_below(lang::action::shuffle()),
-                                            ),
-                                    )
-                                    .class(style::Container::Player),
-                                )
-                                .center(Length::Fill),
-                            ),
+                        button::icon(if self.config.playback.synchronized {
+                            Icon::Link
+                        } else {
+                            Icon::Unlink
+                        })
+                        .on_press(Message::SetSynchronized(!self.config.playback.synchronized))
+                        .obscured(obscured)
+                        .tooltip_below(if self.config.playback.synchronized {
+                            lang::action::desynchronize()
+                        } else {
+                            lang::action::synchronize()
+                        }),
                     )
                     .push(
-                        PaneGrid::new(&self.grids, |grid_id, grid, _maximized| {
-                            pane_grid::Content::new(
-                                Container::new(grid.view(grid_id, obscured, dragging_file))
-                                    .padding(5)
-                                    .class(style::Container::PlayerGroup),
-                            )
-                            .title_bar({
-                                let mut bar = pane_grid::TitleBar::new(" ")
-                                    .class(style::Container::PlayerGroupTitle)
-                                    .controls(pane_grid::Controls::dynamic(
-                                        grid.controls(grid_id, obscured, self.grids.len() > 1),
-                                        DropDown::new(
-                                            button::mini_icon(Icon::MoreVert)
-                                                .on_press(Message::Pane {
-                                                    event: PaneEvent::ShowControls { grid_id },
-                                                })
-                                                .obscured(obscured),
-                                            Container::new(grid.controls(grid_id, obscured, self.grids.len() > 1))
-                                                .class(style::Container::PlayerGroupControls),
-                                            self.viewing_pane_controls.is_some_and(|x| x == grid_id),
-                                        )
-                                        .on_dismiss(Message::Pane {
-                                            event: PaneEvent::CloseControls,
-                                        }),
-                                    ));
-
-                                if grid.is_idle() {
-                                    bar = bar.always_show_controls();
-                                }
-
-                                bar
-                            })
+                        button::icon(if self.config.playback.muted {
+                            Icon::Mute
+                        } else {
+                            Icon::VolumeHigh
                         })
-                        .spacing(5)
-                        .on_drag(|event| Message::Pane {
-                            event: PaneEvent::Drag(event),
-                        })
-                        .on_resize(5, |event| Message::Pane {
-                            event: PaneEvent::Resize(event),
+                        .on_press(Message::SetMute(!self.config.playback.muted))
+                        .obscured(obscured)
+                        .tooltip_below(if self.config.playback.muted {
+                            lang::action::unmute()
+                        } else {
+                            lang::action::mute()
                         }),
+                    )
+                    .push(
+                        button::icon(if self.config.playback.paused {
+                            Icon::Play
+                        } else {
+                            Icon::Pause
+                        })
+                        .on_press(Message::SetPause(!self.config.playback.paused))
+                        .obscured(obscured)
+                        .tooltip_below(if self.config.playback.paused {
+                            lang::action::play()
+                        } else {
+                            lang::action::pause()
+                        }),
+                    )
+                    .push(
+                        button::icon(Icon::TimerRefresh)
+                            .on_press(Message::AllPlayers {
+                                event: player::Event::SeekRandom,
+                            })
+                            .enabled(!self.all_idle() && self.can_jump())
+                            .obscured(obscured)
+                            .tooltip_below(lang::action::jump_position()),
+                    )
+                    .push(
+                        button::icon(Icon::Refresh)
+                            .on_press(Message::Refresh)
+                            .enabled(!self.all_idle())
+                            .obscured(obscured)
+                            .tooltip_below(lang::action::shuffle()),
                     ),
-            );
+            )
+            .class(style::Container::Player);
+
+            let controls = Stack::new()
+                .push(Container::new(left_controls).align_left(Length::Fill))
+                .push(Container::new(right_controls).align_right(Length::Fill))
+                .push(Container::new(center_controls).center(Length::Fill));
+
+            let grids = PaneGrid::new(&self.grids, |grid_id, grid, _maximized| {
+                pane_grid::Content::new(
+                    Container::new(grid.view(grid_id, obscured, dragging_file))
+                        .padding(5)
+                        .class(style::Container::PlayerGroup),
+                )
+                .title_bar({
+                    let mut bar = pane_grid::TitleBar::new(" ")
+                        .class(style::Container::PlayerGroupTitle)
+                        .controls(pane_grid::Controls::dynamic(
+                            grid.controls(grid_id, obscured, self.grids.len() > 1),
+                            DropDown::new(
+                                button::mini_icon(Icon::MoreVert)
+                                    .on_press(Message::Pane {
+                                        event: PaneEvent::ShowControls { grid_id },
+                                    })
+                                    .obscured(obscured),
+                                Container::new(grid.controls(grid_id, obscured, self.grids.len() > 1))
+                                    .class(style::Container::PlayerGroupControls),
+                                self.viewing_pane_controls.is_some_and(|x| x == grid_id),
+                            )
+                            .on_dismiss(Message::Pane {
+                                event: PaneEvent::CloseControls,
+                            }),
+                        ));
+
+                    if grid.is_idle() {
+                        bar = bar.always_show_controls();
+                    }
+
+                    bar
+                })
+            })
+            .spacing(5)
+            .on_drag(|event| Message::Pane {
+                event: PaneEvent::Drag(event),
+            })
+            .on_resize(5, |event| Message::Pane {
+                event: PaneEvent::Resize(event),
+            });
+
+            let content =
+                Container::new(Column::new().spacing(5).push(controls).push(grids)).class(style::Container::Primary);
 
             let stack = Stack::new()
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .push(content.class(style::Container::Primary))
+                .push(content)
                 .push_maybe(self.modals.last().map(|modal| {
                     modal.view(
                         viewport,

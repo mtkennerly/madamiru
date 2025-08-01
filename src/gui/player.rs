@@ -1401,38 +1401,38 @@ impl Player {
             Self::Idle { hovered } => {
                 let overlay = self.overlay(viewport, obscured, *hovered);
 
+                let body = Container::new("")
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center)
+                    .width(Length::Fill)
+                    .height(Length::Fill);
+
+                let controls_background = overlay.show.then_some(
+                    Container::new("")
+                        .center(Length::Fill)
+                        .class(style::Container::ModalBackground),
+                );
+
+                let top_controls = overlay.top_controls.then_some(
+                    Container::new(
+                        Row::new().push(horizontal_space()).push(
+                            button::icon(Icon::Close)
+                                .on_press(Message::Player {
+                                    grid_id,
+                                    player_id,
+                                    event: Event::Close,
+                                })
+                                .tooltip(lang::action::close()),
+                        ),
+                    )
+                    .align_top(Length::Fill)
+                    .width(Length::Fill),
+                );
+
                 Stack::new()
-                    .push(
-                        Container::new("")
-                            .align_x(Alignment::Center)
-                            .align_y(Alignment::Center)
-                            .width(Length::Fill)
-                            .height(Length::Fill),
-                    )
-                    .push_maybe(
-                        overlay.show.then_some(
-                            Container::new("")
-                                .center(Length::Fill)
-                                .class(style::Container::ModalBackground),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.top_controls.then_some(
-                            Container::new(
-                                Row::new().push(horizontal_space()).push(
-                                    button::icon(Icon::Close)
-                                        .on_press(Message::Player {
-                                            grid_id,
-                                            player_id,
-                                            event: Event::Close,
-                                        })
-                                        .tooltip(lang::action::close()),
-                                ),
-                            )
-                            .align_top(Length::Fill)
-                            .width(Length::Fill),
-                        ),
-                    )
+                    .push(body)
+                    .push_maybe(controls_background)
+                    .push_maybe(top_controls)
                     .into()
             }
             Self::Error {
@@ -1442,67 +1442,67 @@ impl Player {
             } => {
                 let overlay = self.overlay(viewport, obscured, *hovered);
 
+                let body = Container::new(text(message))
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center)
+                    .width(Length::Fill)
+                    .height(Length::Fill);
+
+                let controls_background = overlay.show.then_some(
+                    Container::new("")
+                        .center(Length::Fill)
+                        .class(style::Container::ModalBackground),
+                );
+
+                let top_controls = overlay.top_controls.then_some(
+                    Container::new(
+                        Row::new()
+                            .push(
+                                button::icon(Icon::OpenInNew)
+                                    .on_press(Message::OpenDir {
+                                        path: media.path().clone(),
+                                    })
+                                    .tooltip(media.path().render()),
+                            )
+                            .push(horizontal_space())
+                            .push(
+                                button::icon(Icon::Close)
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Close,
+                                    })
+                                    .tooltip(lang::action::close()),
+                            ),
+                    )
+                    .align_top(Length::Fill)
+                    .width(Length::Fill),
+                );
+
+                let center_controls = overlay.center_controls.then_some(
+                    Container::new(
+                        Row::new()
+                            .spacing(5)
+                            .align_y(alignment::Vertical::Center)
+                            .padding(padding::all(10.0))
+                            .push(
+                                button::big_icon(Icon::Refresh)
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Refresh,
+                                    })
+                                    .tooltip(lang::action::shuffle()),
+                            ),
+                    )
+                    .center(Length::Fill),
+                );
+
                 Stack::new()
-                    .push(
-                        Container::new(text(message))
-                            .align_x(Alignment::Center)
-                            .align_y(Alignment::Center)
-                            .width(Length::Fill)
-                            .height(Length::Fill),
-                    )
-                    .push_maybe(
-                        overlay.show.then_some(
-                            Container::new("")
-                                .center(Length::Fill)
-                                .class(style::Container::ModalBackground),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.top_controls.then_some(
-                            Container::new(
-                                Row::new()
-                                    .push(
-                                        button::icon(Icon::OpenInNew)
-                                            .on_press(Message::OpenDir {
-                                                path: media.path().clone(),
-                                            })
-                                            .tooltip(media.path().render()),
-                                    )
-                                    .push(horizontal_space())
-                                    .push(
-                                        button::icon(Icon::Close)
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Close,
-                                            })
-                                            .tooltip(lang::action::close()),
-                                    ),
-                            )
-                            .align_top(Length::Fill)
-                            .width(Length::Fill),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.center_controls.then_some(
-                            Container::new(
-                                Row::new()
-                                    .spacing(5)
-                                    .align_y(alignment::Vertical::Center)
-                                    .padding(padding::all(10.0))
-                                    .push(
-                                        button::big_icon(Icon::Refresh)
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Refresh,
-                                            })
-                                            .tooltip(lang::action::shuffle()),
-                                    ),
-                            )
-                            .center(Length::Fill),
-                        ),
-                    )
+                    .push(body)
+                    .push_maybe(controls_background)
+                    .push_maybe(top_controls)
+                    .push_maybe(center_controls)
                     .into()
             }
             Self::Image {
@@ -1519,138 +1519,138 @@ impl Player {
             } => {
                 let overlay = self.overlay(viewport, obscured, *hovered || *dragging);
 
-                Stack::new()
-                    .push(
-                        Container::new(
-                            Image::new(handle)
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .content_fit(content_fit.into()),
-                        )
-                        .align_x(Alignment::Center)
-                        .align_y(Alignment::Center)
+                let body = Container::new(
+                    Image::new(handle)
                         .width(Length::Fill)
-                        .height(Length::Fill),
-                    )
-                    .push_maybe(
-                        overlay.show.then_some(
-                            Container::new("")
-                                .center(Length::Fill)
-                                .class(style::Container::ModalBackground),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.top_controls.then_some(
-                            Container::new(
-                                Row::new()
-                                    .push(
-                                        button::icon(Icon::Image)
-                                            .on_press(Message::OpenDir {
-                                                path: media.path().clone(),
-                                            })
-                                            .tooltip(media.path().render()),
-                                    )
-                                    .push(horizontal_space())
-                                    .push(
-                                        button::icon(Icon::Refresh)
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Refresh,
-                                            })
-                                            .tooltip(lang::action::shuffle()),
-                                    )
-                                    .push(
-                                        button::icon(Icon::Close)
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Close,
-                                            })
-                                            .tooltip(lang::action::close()),
-                                    ),
+                        .height(Length::Fill)
+                        .content_fit(content_fit.into()),
+                )
+                .align_x(Alignment::Center)
+                .align_y(Alignment::Center)
+                .width(Length::Fill)
+                .height(Length::Fill);
+
+                let controls_background = overlay.show.then_some(
+                    Container::new("")
+                        .center(Length::Fill)
+                        .class(style::Container::ModalBackground),
+                );
+
+                let oveerlay_top_controls = overlay.top_controls.then_some(
+                    Container::new(
+                        Row::new()
+                            .push(
+                                button::icon(Icon::Image)
+                                    .on_press(Message::OpenDir {
+                                        path: media.path().clone(),
+                                    })
+                                    .tooltip(media.path().render()),
                             )
-                            .align_top(Length::Fill)
-                            .width(Length::Fill),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.center_controls.then_some(
-                            Container::new(
-                                Row::new()
-                                    .spacing(5)
-                                    .align_y(alignment::Vertical::Center)
-                                    .padding(padding::all(10.0))
-                                    .push(
-                                        button::icon(if *muted { Icon::Mute } else { Icon::VolumeHigh })
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::SetMute(!*muted),
-                                            })
-                                            .tooltip(if *muted {
-                                                lang::action::unmute()
-                                            } else {
-                                                lang::action::mute()
-                                            }),
-                                    )
-                                    .push(
-                                        button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::SetPause(!*paused),
-                                            })
-                                            .tooltip(if *paused {
-                                                lang::action::play()
-                                            } else {
-                                                lang::action::pause()
-                                            }),
-                                    )
-                                    .push(
-                                        button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::SetLoop(!*looping),
-                                            })
-                                            .tooltip(if *looping {
-                                                lang::tell::player_will_loop()
-                                            } else {
-                                                lang::tell::player_will_shuffle()
-                                            }),
-                                    ),
+                            .push(horizontal_space())
+                            .push(
+                                button::icon(Icon::Refresh)
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Refresh,
+                                    })
+                                    .tooltip(lang::action::shuffle()),
                             )
-                            .center(Length::Fill),
-                        ),
+                            .push(
+                                button::icon(Icon::Close)
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Close,
+                                    })
+                                    .tooltip(lang::action::close()),
+                            ),
                     )
-                    .push_maybe(
-                        overlay.bottom_controls.then_some(
-                            Container::new(
-                                Column::new()
-                                    .padding(padding::left(10).right(10).bottom(5))
-                                    .push(vertical_space())
-                                    .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
-                                    .push(Container::new(
-                                        iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
-                                            Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Seek(x),
-                                            }
-                                        })
-                                        .step(0.1)
-                                        .on_release(Message::Player {
-                                            grid_id,
-                                            player_id,
-                                            event: Event::SeekStop,
-                                        }),
-                                    )),
+                    .align_top(Length::Fill)
+                    .width(Length::Fill),
+                );
+
+                let center_controls = overlay.center_controls.then_some(
+                    Container::new(
+                        Row::new()
+                            .spacing(5)
+                            .align_y(alignment::Vertical::Center)
+                            .padding(padding::all(10.0))
+                            .push(
+                                button::icon(if *muted { Icon::Mute } else { Icon::VolumeHigh })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetMute(!*muted),
+                                    })
+                                    .tooltip(if *muted {
+                                        lang::action::unmute()
+                                    } else {
+                                        lang::action::mute()
+                                    }),
                             )
-                            .align_bottom(Length::Fill)
-                            .center_x(Length::Fill),
-                        ),
+                            .push(
+                                button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetPause(!*paused),
+                                    })
+                                    .tooltip(if *paused {
+                                        lang::action::play()
+                                    } else {
+                                        lang::action::pause()
+                                    }),
+                            )
+                            .push(
+                                button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetLoop(!*looping),
+                                    })
+                                    .tooltip(if *looping {
+                                        lang::tell::player_will_loop()
+                                    } else {
+                                        lang::tell::player_will_shuffle()
+                                    }),
+                            ),
                     )
+                    .center(Length::Fill),
+                );
+
+                let bottom_controls = overlay.bottom_controls.then_some(
+                    Container::new(
+                        Column::new()
+                            .padding(padding::left(10).right(10).bottom(5))
+                            .push(vertical_space())
+                            .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
+                            .push(Container::new(
+                                iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
+                                    Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Seek(x),
+                                    }
+                                })
+                                .step(0.1)
+                                .on_release(Message::Player {
+                                    grid_id,
+                                    player_id,
+                                    event: Event::SeekStop,
+                                }),
+                            )),
+                    )
+                    .align_bottom(Length::Fill)
+                    .center_x(Length::Fill),
+                );
+
+                Stack::new()
+                    .push(body)
+                    .push_maybe(controls_background)
+                    .push_maybe(oveerlay_top_controls)
+                    .push_maybe(center_controls)
+                    .push_maybe(bottom_controls)
                     .into()
             }
             Self::Svg {
@@ -1667,138 +1667,138 @@ impl Player {
             } => {
                 let overlay = self.overlay(viewport, obscured, *hovered || *dragging);
 
-                Stack::new()
-                    .push(
-                        Container::new(
-                            Svg::new(handle.clone())
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .content_fit(content_fit.into()),
-                        )
-                        .align_x(Alignment::Center)
-                        .align_y(Alignment::Center)
+                let body = Container::new(
+                    Svg::new(handle.clone())
                         .width(Length::Fill)
-                        .height(Length::Fill),
-                    )
-                    .push_maybe(
-                        overlay.show.then_some(
-                            Container::new("")
-                                .center(Length::Fill)
-                                .class(style::Container::ModalBackground),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.top_controls.then_some(
-                            Container::new(
-                                Row::new()
-                                    .push(
-                                        button::icon(Icon::Image)
-                                            .on_press(Message::OpenDir {
-                                                path: media.path().clone(),
-                                            })
-                                            .tooltip(media.path().render()),
-                                    )
-                                    .push(horizontal_space())
-                                    .push(
-                                        button::icon(Icon::Refresh)
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Refresh,
-                                            })
-                                            .tooltip(lang::action::shuffle()),
-                                    )
-                                    .push(
-                                        button::icon(Icon::Close)
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Close,
-                                            })
-                                            .tooltip(lang::action::close()),
-                                    ),
+                        .height(Length::Fill)
+                        .content_fit(content_fit.into()),
+                )
+                .align_x(Alignment::Center)
+                .align_y(Alignment::Center)
+                .width(Length::Fill)
+                .height(Length::Fill);
+
+                let controls_background = overlay.show.then_some(
+                    Container::new("")
+                        .center(Length::Fill)
+                        .class(style::Container::ModalBackground),
+                );
+
+                let top_controls = overlay.top_controls.then_some(
+                    Container::new(
+                        Row::new()
+                            .push(
+                                button::icon(Icon::Image)
+                                    .on_press(Message::OpenDir {
+                                        path: media.path().clone(),
+                                    })
+                                    .tooltip(media.path().render()),
                             )
-                            .align_top(Length::Fill)
-                            .width(Length::Fill),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.center_controls.then_some(
-                            Container::new(
-                                Row::new()
-                                    .spacing(5)
-                                    .align_y(alignment::Vertical::Center)
-                                    .padding(padding::all(10.0))
-                                    .push(
-                                        button::icon(if *muted { Icon::Mute } else { Icon::VolumeHigh })
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::SetMute(!*muted),
-                                            })
-                                            .tooltip(if *muted {
-                                                lang::action::unmute()
-                                            } else {
-                                                lang::action::mute()
-                                            }),
-                                    )
-                                    .push(
-                                        button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::SetPause(!*paused),
-                                            })
-                                            .tooltip(if *paused {
-                                                lang::action::play()
-                                            } else {
-                                                lang::action::pause()
-                                            }),
-                                    )
-                                    .push(
-                                        button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::SetLoop(!*looping),
-                                            })
-                                            .tooltip(if *looping {
-                                                lang::tell::player_will_loop()
-                                            } else {
-                                                lang::tell::player_will_shuffle()
-                                            }),
-                                    ),
+                            .push(horizontal_space())
+                            .push(
+                                button::icon(Icon::Refresh)
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Refresh,
+                                    })
+                                    .tooltip(lang::action::shuffle()),
                             )
-                            .center(Length::Fill),
-                        ),
+                            .push(
+                                button::icon(Icon::Close)
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Close,
+                                    })
+                                    .tooltip(lang::action::close()),
+                            ),
                     )
-                    .push_maybe(
-                        overlay.bottom_controls.then_some(
-                            Container::new(
-                                Column::new()
-                                    .padding(padding::left(10).right(10).bottom(5))
-                                    .push(vertical_space())
-                                    .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
-                                    .push(Container::new(
-                                        iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
-                                            Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Seek(x),
-                                            }
-                                        })
-                                        .step(0.1)
-                                        .on_release(Message::Player {
-                                            grid_id,
-                                            player_id,
-                                            event: Event::SeekStop,
-                                        }),
-                                    )),
+                    .align_top(Length::Fill)
+                    .width(Length::Fill),
+                );
+
+                let center_controls = overlay.center_controls.then_some(
+                    Container::new(
+                        Row::new()
+                            .spacing(5)
+                            .align_y(alignment::Vertical::Center)
+                            .padding(padding::all(10.0))
+                            .push(
+                                button::icon(if *muted { Icon::Mute } else { Icon::VolumeHigh })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetMute(!*muted),
+                                    })
+                                    .tooltip(if *muted {
+                                        lang::action::unmute()
+                                    } else {
+                                        lang::action::mute()
+                                    }),
                             )
-                            .align_bottom(Length::Fill)
-                            .center_x(Length::Fill),
-                        ),
+                            .push(
+                                button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetPause(!*paused),
+                                    })
+                                    .tooltip(if *paused {
+                                        lang::action::play()
+                                    } else {
+                                        lang::action::pause()
+                                    }),
+                            )
+                            .push(
+                                button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetLoop(!*looping),
+                                    })
+                                    .tooltip(if *looping {
+                                        lang::tell::player_will_loop()
+                                    } else {
+                                        lang::tell::player_will_shuffle()
+                                    }),
+                            ),
                     )
+                    .center(Length::Fill),
+                );
+
+                let bottom_controls = overlay.bottom_controls.then_some(
+                    Container::new(
+                        Column::new()
+                            .padding(padding::left(10).right(10).bottom(5))
+                            .push(vertical_space())
+                            .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
+                            .push(Container::new(
+                                iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
+                                    Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Seek(x),
+                                    }
+                                })
+                                .step(0.1)
+                                .on_release(Message::Player {
+                                    grid_id,
+                                    player_id,
+                                    event: Event::SeekStop,
+                                }),
+                            )),
+                    )
+                    .align_bottom(Length::Fill)
+                    .center_x(Length::Fill),
+                );
+
+                Stack::new()
+                    .push(body)
+                    .push_maybe(controls_background)
+                    .push_maybe(top_controls)
+                    .push_maybe(center_controls)
+                    .push_maybe(bottom_controls)
                     .into()
             }
             Self::Gif {
@@ -1816,149 +1816,151 @@ impl Player {
             } => {
                 let overlay = self.overlay(viewport, obscured, *hovered || *dragging);
 
-                Stack::new()
-                    .push({
-                        let media = if *paused {
-                            Container::new(
-                                Image::new(handle)
-                                    .width(Length::Fill)
-                                    .height(Length::Fill)
-                                    .content_fit(content_fit.into()),
-                            )
-                        } else {
-                            Container::new(
-                                gif(frames)
-                                    .width(Length::Fill)
-                                    .height(Length::Fill)
-                                    .content_fit(content_fit.into()),
-                            )
-                        };
+                let body = {
+                    let media = if *paused {
+                        Container::new(
+                            Image::new(handle)
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .content_fit(content_fit.into()),
+                        )
+                    } else {
+                        Container::new(
+                            gif(frames)
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .content_fit(content_fit.into()),
+                        )
+                    };
 
-                        media
-                            .align_x(Alignment::Center)
-                            .align_y(Alignment::Center)
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                    })
-                    .push_maybe(
-                        overlay.show.then_some(
-                            Container::new("")
-                                .center(Length::Fill)
-                                .class(style::Container::ModalBackground),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.top_controls.then_some(
-                            Container::new(
-                                Row::new()
-                                    .push(
-                                        button::icon(Icon::Image)
-                                            .on_press(Message::OpenDir {
-                                                path: media.path().clone(),
-                                            })
-                                            .tooltip(media.path().render()),
-                                    )
-                                    .push(horizontal_space())
-                                    .push(
-                                        button::icon(Icon::Refresh)
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Refresh,
-                                            })
-                                            .tooltip(lang::action::shuffle()),
-                                    )
-                                    .push(
-                                        button::icon(Icon::Close)
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Close,
-                                            })
-                                            .tooltip(lang::action::close()),
-                                    ),
+                    media
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center)
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                };
+
+                let controls_background = overlay.show.then_some(
+                    Container::new("")
+                        .center(Length::Fill)
+                        .class(style::Container::ModalBackground),
+                );
+
+                let top_controls = overlay.top_controls.then_some(
+                    Container::new(
+                        Row::new()
+                            .push(
+                                button::icon(Icon::Image)
+                                    .on_press(Message::OpenDir {
+                                        path: media.path().clone(),
+                                    })
+                                    .tooltip(media.path().render()),
                             )
-                            .align_top(Length::Fill)
-                            .width(Length::Fill),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.center_controls.then_some(
-                            Container::new(
-                                Row::new()
-                                    .spacing(5)
-                                    .align_y(alignment::Vertical::Center)
-                                    .padding(padding::all(10.0))
-                                    .push(
-                                        button::icon(if *muted { Icon::Mute } else { Icon::VolumeHigh })
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::SetMute(!*muted),
-                                            })
-                                            .tooltip(if *muted {
-                                                lang::action::unmute()
-                                            } else {
-                                                lang::action::mute()
-                                            }),
-                                    )
-                                    .push(
-                                        button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::SetPause(!*paused),
-                                            })
-                                            .tooltip(if *paused {
-                                                lang::action::play()
-                                            } else {
-                                                lang::action::pause()
-                                            }),
-                                    )
-                                    .push(
-                                        button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::SetLoop(!*looping),
-                                            })
-                                            .tooltip(if *looping {
-                                                lang::tell::player_will_loop()
-                                            } else {
-                                                lang::tell::player_will_shuffle()
-                                            }),
-                                    ),
+                            .push(horizontal_space())
+                            .push(
+                                button::icon(Icon::Refresh)
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Refresh,
+                                    })
+                                    .tooltip(lang::action::shuffle()),
                             )
-                            .center(Length::Fill),
-                        ),
+                            .push(
+                                button::icon(Icon::Close)
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Close,
+                                    })
+                                    .tooltip(lang::action::close()),
+                            ),
                     )
-                    .push_maybe(
-                        overlay.bottom_controls.then_some(
-                            Container::new(
-                                Column::new()
-                                    .padding(padding::left(10).right(10).bottom(5))
-                                    .push(vertical_space())
-                                    .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
-                                    .push(Container::new(
-                                        iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
-                                            Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Seek(x),
-                                            }
-                                        })
-                                        .step(0.1)
-                                        .on_release(Message::Player {
-                                            grid_id,
-                                            player_id,
-                                            event: Event::SeekStop,
-                                        }),
-                                    )),
+                    .align_top(Length::Fill)
+                    .width(Length::Fill),
+                );
+
+                let center_controls = overlay.center_controls.then_some(
+                    Container::new(
+                        Row::new()
+                            .spacing(5)
+                            .align_y(alignment::Vertical::Center)
+                            .padding(padding::all(10.0))
+                            .push(
+                                button::icon(if *muted { Icon::Mute } else { Icon::VolumeHigh })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetMute(!*muted),
+                                    })
+                                    .tooltip(if *muted {
+                                        lang::action::unmute()
+                                    } else {
+                                        lang::action::mute()
+                                    }),
                             )
-                            .align_bottom(Length::Fill)
-                            .center_x(Length::Fill),
-                        ),
+                            .push(
+                                button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetPause(!*paused),
+                                    })
+                                    .tooltip(if *paused {
+                                        lang::action::play()
+                                    } else {
+                                        lang::action::pause()
+                                    }),
+                            )
+                            .push(
+                                button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetLoop(!*looping),
+                                    })
+                                    .tooltip(if *looping {
+                                        lang::tell::player_will_loop()
+                                    } else {
+                                        lang::tell::player_will_shuffle()
+                                    }),
+                            ),
                     )
+                    .center(Length::Fill),
+                );
+
+                let bottom_controls = overlay.bottom_controls.then_some(
+                    Container::new(
+                        Column::new()
+                            .padding(padding::left(10).right(10).bottom(5))
+                            .push(vertical_space())
+                            .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
+                            .push(Container::new(
+                                iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
+                                    Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Seek(x),
+                                    }
+                                })
+                                .step(0.1)
+                                .on_release(Message::Player {
+                                    grid_id,
+                                    player_id,
+                                    event: Event::SeekStop,
+                                }),
+                            )),
+                    )
+                    .align_bottom(Length::Fill)
+                    .center_x(Length::Fill),
+                );
+
+                Stack::new()
+                    .push(body)
+                    .push_maybe(controls_background)
+                    .push_maybe(top_controls)
+                    .push_maybe(center_controls)
+                    .push_maybe(bottom_controls)
                     .into()
             }
             #[cfg(feature = "audio")]
@@ -1974,143 +1976,143 @@ impl Player {
             } => {
                 let overlay = self.overlay(viewport, obscured, *hovered || *dragging);
 
-                Stack::new()
-                    .push_maybe(
-                        (!overlay.show).then_some(
-                            Container::new(Icon::Music.max_control())
-                                .align_x(Alignment::Center)
-                                .align_y(Alignment::Center)
-                                .width(Length::Fill)
-                                .height(Length::Fill),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.show.then_some(
-                            Container::new("")
-                                .center(Length::Fill)
-                                .class(style::Container::ModalBackground),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.top_controls.then_some(
-                            Container::new(
-                                Row::new()
-                                    .push(
-                                        button::icon(Icon::Music)
-                                            .on_press(Message::OpenDir {
-                                                path: media.path().clone(),
-                                            })
-                                            .tooltip(media.path().render()),
-                                    )
-                                    .push(horizontal_space())
-                                    .push(
-                                        button::icon(Icon::Refresh)
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Refresh,
-                                            })
-                                            .tooltip(lang::action::shuffle()),
-                                    )
-                                    .push(
-                                        button::icon(Icon::Close)
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Close,
-                                            })
-                                            .tooltip(lang::action::close()),
-                                    ),
-                            )
-                            .align_top(Length::Fill)
-                            .width(Length::Fill),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.center_controls.then_some(
-                            Container::new(
-                                Row::new()
-                                    .spacing(5)
-                                    .align_y(alignment::Vertical::Center)
-                                    .padding(padding::all(10.0))
-                                    .push({
-                                        let muted = sink.volume() == 0.0;
+                let body = (!overlay.show).then_some(
+                    Container::new(Icon::Music.max_control())
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center)
+                        .width(Length::Fill)
+                        .height(Length::Fill),
+                );
 
-                                        button::icon(if muted { Icon::Mute } else { Icon::VolumeHigh })
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::SetMute(!muted),
-                                            })
-                                            .tooltip(if muted {
-                                                lang::action::unmute()
-                                            } else {
-                                                lang::action::mute()
-                                            })
+                let controls_background = overlay.show.then_some(
+                    Container::new("")
+                        .center(Length::Fill)
+                        .class(style::Container::ModalBackground),
+                );
+
+                let top_controls = overlay.top_controls.then_some(
+                    Container::new(
+                        Row::new()
+                            .push(
+                                button::icon(Icon::Music)
+                                    .on_press(Message::OpenDir {
+                                        path: media.path().clone(),
                                     })
-                                    .push({
-                                        button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::SetPause(!*paused),
-                                            })
-                                            .tooltip(if *paused {
-                                                lang::action::play()
-                                            } else {
-                                                lang::action::pause()
-                                            })
+                                    .tooltip(media.path().render()),
+                            )
+                            .push(horizontal_space())
+                            .push(
+                                button::icon(Icon::Refresh)
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Refresh,
                                     })
-                                    .push(
-                                        button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::SetLoop(!*looping),
-                                            })
-                                            .tooltip(if *looping {
-                                                lang::tell::player_will_loop()
-                                            } else {
-                                                lang::tell::player_will_shuffle()
-                                            }),
-                                    ),
+                                    .tooltip(lang::action::shuffle()),
                             )
-                            .center(Length::Fill),
-                        ),
+                            .push(
+                                button::icon(Icon::Close)
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Close,
+                                    })
+                                    .tooltip(lang::action::close()),
+                            ),
                     )
-                    .push_maybe(
-                        overlay.bottom_controls.then_some(
-                            Container::new(
-                                Column::new()
-                                    .padding(padding::left(10).right(10).bottom(5))
-                                    .push(vertical_space())
-                                    .push_maybe(
-                                        overlay
-                                            .timestamps
-                                            .then_some(timestamps(sink.get_pos().as_secs_f64(), *duration)),
-                                    )
-                                    .push(Container::new(
-                                        iced::widget::slider(
-                                            0.0..=duration.as_secs_f64(),
-                                            sink.get_pos().as_secs_f64(),
-                                            move |x| Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Seek(x),
-                                            },
-                                        )
-                                        .step(0.1)
-                                        .on_release(Message::Player {
-                                            grid_id,
-                                            player_id,
-                                            event: Event::SeekStop,
-                                        }),
-                                    )),
+                    .align_top(Length::Fill)
+                    .width(Length::Fill),
+                );
+
+                let center_controls = overlay.center_controls.then_some(
+                    Container::new(
+                        Row::new()
+                            .spacing(5)
+                            .align_y(alignment::Vertical::Center)
+                            .padding(padding::all(10.0))
+                            .push({
+                                let muted = sink.volume() == 0.0;
+
+                                button::icon(if muted { Icon::Mute } else { Icon::VolumeHigh })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetMute(!muted),
+                                    })
+                                    .tooltip(if muted {
+                                        lang::action::unmute()
+                                    } else {
+                                        lang::action::mute()
+                                    })
+                            })
+                            .push({
+                                button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetPause(!*paused),
+                                    })
+                                    .tooltip(if *paused {
+                                        lang::action::play()
+                                    } else {
+                                        lang::action::pause()
+                                    })
+                            })
+                            .push(
+                                button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetLoop(!*looping),
+                                    })
+                                    .tooltip(if *looping {
+                                        lang::tell::player_will_loop()
+                                    } else {
+                                        lang::tell::player_will_shuffle()
+                                    }),
+                            ),
+                    )
+                    .center(Length::Fill),
+                );
+
+                let bottom_controls = overlay.bottom_controls.then_some(
+                    Container::new(
+                        Column::new()
+                            .padding(padding::left(10).right(10).bottom(5))
+                            .push(vertical_space())
+                            .push_maybe(
+                                overlay
+                                    .timestamps
+                                    .then_some(timestamps(sink.get_pos().as_secs_f64(), *duration)),
                             )
-                            .align_bottom(Length::Fill)
-                            .center_x(Length::Fill),
-                        ),
+                            .push(Container::new(
+                                iced::widget::slider(
+                                    0.0..=duration.as_secs_f64(),
+                                    sink.get_pos().as_secs_f64(),
+                                    move |x| Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Seek(x),
+                                    },
+                                )
+                                .step(0.1)
+                                .on_release(Message::Player {
+                                    grid_id,
+                                    player_id,
+                                    event: Event::SeekStop,
+                                }),
+                            )),
                     )
+                    .align_bottom(Length::Fill)
+                    .center_x(Length::Fill),
+                );
+
+                Stack::new()
+                    .push_maybe(body)
+                    .push_maybe(controls_background)
+                    .push_maybe(top_controls)
+                    .push_maybe(center_controls)
+                    .push_maybe(bottom_controls)
                     .into()
             }
             #[cfg(feature = "video")]
@@ -2126,133 +2128,133 @@ impl Player {
             } => {
                 let overlay = self.overlay(viewport, obscured, *hovered || *dragging);
 
+                let body = Container::new(build_video_player(video, grid_id, player_id, content_fit))
+                    .align_x(Alignment::Center)
+                    .align_y(Alignment::Center)
+                    .width(Length::Fill)
+                    .height(Length::Fill);
+
+                let controls_background = overlay.show.then_some(
+                    Container::new("")
+                        .center(Length::Fill)
+                        .class(style::Container::ModalBackground),
+                );
+
+                let top_controls = overlay.top_controls.then_some(
+                    Container::new(
+                        Row::new()
+                            .push(
+                                button::icon(Icon::Movie)
+                                    .on_press(Message::OpenDir {
+                                        path: media.path().clone(),
+                                    })
+                                    .tooltip(media.path().render()),
+                            )
+                            .push(horizontal_space())
+                            .push(
+                                button::icon(Icon::Refresh)
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Refresh,
+                                    })
+                                    .tooltip(lang::action::shuffle()),
+                            )
+                            .push(
+                                button::icon(Icon::Close)
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Close,
+                                    })
+                                    .tooltip(lang::action::close()),
+                            ),
+                    )
+                    .align_top(Length::Fill)
+                    .width(Length::Fill),
+                );
+
+                let center_controls = overlay.center_controls.then_some(
+                    Container::new(
+                        Row::new()
+                            .spacing(5)
+                            .align_y(alignment::Vertical::Center)
+                            .padding(padding::all(10.0))
+                            .push(
+                                button::icon(if video.muted() { Icon::Mute } else { Icon::VolumeHigh })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetMute(!video.muted()),
+                                    })
+                                    .tooltip(if video.muted() {
+                                        lang::action::unmute()
+                                    } else {
+                                        lang::action::mute()
+                                    }),
+                            )
+                            .push(
+                                button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetPause(!*paused),
+                                    })
+                                    .tooltip(if *paused {
+                                        lang::action::play()
+                                    } else {
+                                        lang::action::pause()
+                                    }),
+                            )
+                            .push(
+                                button::icon(if video.looping() { Icon::Loop } else { Icon::Shuffle })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetLoop(!video.looping()),
+                                    })
+                                    .tooltip(if video.looping() {
+                                        lang::tell::player_will_loop()
+                                    } else {
+                                        lang::tell::player_will_shuffle()
+                                    }),
+                            ),
+                    )
+                    .center(Length::Fill),
+                );
+
+                let bottom_controls = overlay.bottom_controls.then_some(
+                    Container::new(
+                        Column::new()
+                            .padding(padding::left(10).right(10).bottom(5))
+                            .push(vertical_space())
+                            .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
+                            .push(Container::new(
+                                iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
+                                    Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Seek(x),
+                                    }
+                                })
+                                .step(0.1)
+                                .on_release(Message::Player {
+                                    grid_id,
+                                    player_id,
+                                    event: Event::SeekStop,
+                                }),
+                            )),
+                    )
+                    .align_bottom(Length::Fill)
+                    .center_x(Length::Fill),
+                );
+
                 Stack::new()
-                    .push(
-                        Container::new(build_video_player(video, grid_id, player_id, content_fit))
-                            .align_x(Alignment::Center)
-                            .align_y(Alignment::Center)
-                            .width(Length::Fill)
-                            .height(Length::Fill),
-                    )
-                    .push_maybe(
-                        overlay.show.then_some(
-                            Container::new("")
-                                .center(Length::Fill)
-                                .class(style::Container::ModalBackground),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.top_controls.then_some(
-                            Container::new(
-                                Row::new()
-                                    .push(
-                                        button::icon(Icon::Movie)
-                                            .on_press(Message::OpenDir {
-                                                path: media.path().clone(),
-                                            })
-                                            .tooltip(media.path().render()),
-                                    )
-                                    .push(horizontal_space())
-                                    .push(
-                                        button::icon(Icon::Refresh)
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Refresh,
-                                            })
-                                            .tooltip(lang::action::shuffle()),
-                                    )
-                                    .push(
-                                        button::icon(Icon::Close)
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Close,
-                                            })
-                                            .tooltip(lang::action::close()),
-                                    ),
-                            )
-                            .align_top(Length::Fill)
-                            .width(Length::Fill),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.center_controls.then_some(
-                            Container::new(
-                                Row::new()
-                                    .spacing(5)
-                                    .align_y(alignment::Vertical::Center)
-                                    .padding(padding::all(10.0))
-                                    .push(
-                                        button::icon(if video.muted() { Icon::Mute } else { Icon::VolumeHigh })
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::SetMute(!video.muted()),
-                                            })
-                                            .tooltip(if video.muted() {
-                                                lang::action::unmute()
-                                            } else {
-                                                lang::action::mute()
-                                            }),
-                                    )
-                                    .push(
-                                        button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::SetPause(!*paused),
-                                            })
-                                            .tooltip(if *paused {
-                                                lang::action::play()
-                                            } else {
-                                                lang::action::pause()
-                                            }),
-                                    )
-                                    .push(
-                                        button::icon(if video.looping() { Icon::Loop } else { Icon::Shuffle })
-                                            .on_press(Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::SetLoop(!video.looping()),
-                                            })
-                                            .tooltip(if video.looping() {
-                                                lang::tell::player_will_loop()
-                                            } else {
-                                                lang::tell::player_will_shuffle()
-                                            }),
-                                    ),
-                            )
-                            .center(Length::Fill),
-                        ),
-                    )
-                    .push_maybe(
-                        overlay.bottom_controls.then_some(
-                            Container::new(
-                                Column::new()
-                                    .padding(padding::left(10).right(10).bottom(5))
-                                    .push(vertical_space())
-                                    .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
-                                    .push(Container::new(
-                                        iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
-                                            Message::Player {
-                                                grid_id,
-                                                player_id,
-                                                event: Event::Seek(x),
-                                            }
-                                        })
-                                        .step(0.1)
-                                        .on_release(Message::Player {
-                                            grid_id,
-                                            player_id,
-                                            event: Event::SeekStop,
-                                        }),
-                                    )),
-                            )
-                            .align_bottom(Length::Fill)
-                            .center_x(Length::Fill),
-                        ),
-                    )
+                    .push(body)
+                    .push_maybe(controls_background)
+                    .push_maybe(top_controls)
+                    .push_maybe(center_controls)
+                    .push_maybe(bottom_controls)
                     .into()
             }
         }
