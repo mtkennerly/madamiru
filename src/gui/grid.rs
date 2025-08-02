@@ -249,6 +249,14 @@ impl Grid {
         self.players.len()
     }
 
+    pub fn player_ids(&self) -> Vec<player::Id> {
+        self.players
+            .iter()
+            .enumerate()
+            .map(|(i, _player)| player::Id(i))
+            .collect()
+    }
+
     pub fn refresh(&mut self, collection: &mut media::Collection, playback: &Playback, context: media::RefreshContext) {
         let playback = self.playback(playback);
         let mut active: HashSet<_> = self.active_media().into_iter().cloned().collect();
@@ -312,6 +320,10 @@ impl Grid {
         Ok(())
     }
 
+    pub fn player(&self, player_id: player::Id) -> Option<&Player> {
+        self.players.get(player_id.0)
+    }
+
     fn calculate_row_limit(&self) -> usize {
         let mut limit = 1;
         loop {
@@ -340,7 +352,7 @@ impl Grid {
                         player::Update::PauseChanged(paused) => {
                             self.synchronize_players(
                                 Some(player_id),
-                                category,
+                                Some(category),
                                 player::Event::SetPause(paused),
                                 &playback,
                             );
@@ -349,7 +361,7 @@ impl Grid {
                         player::Update::RelativePositionChanged(position) => {
                             self.synchronize_players(
                                 Some(player_id),
-                                category,
+                                Some(category),
                                 player::Event::SeekRelative(position),
                                 &playback,
                             );
@@ -405,13 +417,33 @@ impl Grid {
         }
     }
 
+    #[must_use]
+    pub fn update_player(
+        &mut self,
+        player_id: player::Id,
+        event: player::Event,
+        collection: &mut media::Collection,
+        playback: &Playback,
+    ) -> Option<Update> {
+        let playback = self.playback(playback);
+
+        self.update(
+            Event::Player {
+                player_id,
+                event: event.clone(),
+            },
+            collection,
+            &playback,
+        )
+    }
+
     pub fn update_all_players(
         &mut self,
         event: player::Event,
         collection: &mut media::Collection,
         playback: &Playback,
     ) {
-        let playback = self.playback(playback);
+        let playback = self.playback(playback).with_synchronized(false);
 
         let player_ids: Vec<_> = self
             .players
@@ -435,7 +467,7 @@ impl Grid {
     pub fn synchronize_players(
         &mut self,
         originator: Option<player::Id>,
-        category: player::Category,
+        category: Option<player::Category>,
         event: player::Event,
         playback: &Playback,
     ) {
@@ -443,14 +475,21 @@ impl Grid {
             return;
         }
         for (i, player) in self.players.iter_mut().enumerate() {
-            if Some(player::Id(i)) == originator || player.category() != category {
+            if Some(player::Id(i)) == originator || category.is_some_and(|x| x != player.category()) {
                 continue;
             }
             let _ = player.update(event.clone(), playback);
         }
     }
 
-    pub fn view(&self, grid_id: Id, obscured: bool, dragging_file: bool) -> Element {
+    pub fn view(
+        &self,
+        grid_id: Id,
+        selected: bool,
+        selected_player: Option<player::Id>,
+        obscured: bool,
+        dragging_file: bool,
+    ) -> Element {
         let obscured = obscured || dragging_file;
 
         let mut row = Row::new().spacing(5);
@@ -462,9 +501,11 @@ impl Grid {
         };
 
         for (i, player) in self.players.iter().enumerate() {
-            let new = Container::new(player.view(grid_id, player::Id(i), obscured, self.content_fit))
+            let player_id = player::Id(i);
+            let selected = selected || selected_player == Some(player_id);
+            let new = Container::new(player.view(grid_id, player_id, selected, obscured, self.content_fit))
                 .padding(5)
-                .class(style::Container::Player);
+                .class(style::Container::Player { selected });
 
             match self.orientation {
                 Orientation::Horizontal => {
@@ -501,7 +542,7 @@ impl Grid {
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .padding(5)
-                .class(style::Container::Player);
+                .class(style::Container::Player { selected: false });
         }
 
         Stack::new()

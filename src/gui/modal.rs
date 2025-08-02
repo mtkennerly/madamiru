@@ -241,7 +241,7 @@ impl Modal {
                                     },
                                 )),
                         )
-                        .class(style::Container::Player),
+                        .class(style::Container::Player { selected: false }),
                     )
                     .push(text(lang::field(&lang::thing::audio())))
                     .push(
@@ -277,7 +277,7 @@ impl Modal {
                                     ),
                             ),
                         )
-                        .class(style::Container::Player),
+                        .class(style::Container::Player { selected: false }),
                     )
                     .push(text(lang::field(&lang::thing::image())))
                     .push(
@@ -290,7 +290,7 @@ impl Modal {
                                     .push(UndoSubject::ImageDuration.view_with(histories)),
                             ),
                         )
-                        .class(style::Container::Player),
+                        .class(style::Container::Player { selected: false }),
                     );
             }
             Self::GridSettings {

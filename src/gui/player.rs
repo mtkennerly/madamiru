@@ -1352,9 +1352,16 @@ impl Player {
         }
     }
 
-    pub fn view(&self, grid_id: grid::Id, player_id: Id, obscured: bool, content_fit: ContentFit) -> Element {
+    pub fn view(
+        &self,
+        grid_id: grid::Id,
+        player_id: Id,
+        selected: bool,
+        obscured: bool,
+        content_fit: ContentFit,
+    ) -> Element {
         Responsive::new(move |viewport| {
-            mouse_area(self.view_inner(grid_id, player_id, obscured, content_fit, viewport))
+            mouse_area(self.view_inner(grid_id, player_id, selected, obscured, content_fit, viewport))
                 .on_enter(if obscured {
                     Message::Ignore
                 } else {
@@ -1393,13 +1400,14 @@ impl Player {
         &self,
         grid_id: grid::Id,
         player_id: Id,
+        selected: bool,
         obscured: bool,
         content_fit: ContentFit,
         viewport: iced::Size,
     ) -> Element {
         match self {
             Self::Idle { hovered } => {
-                let overlay = self.overlay(viewport, obscured, *hovered);
+                let overlay = self.overlay(viewport, obscured, *hovered || selected);
 
                 let body = Container::new("")
                     .align_x(Alignment::Center)
@@ -1440,7 +1448,7 @@ impl Player {
                 message,
                 hovered,
             } => {
-                let overlay = self.overlay(viewport, obscured, *hovered);
+                let overlay = self.overlay(viewport, obscured, *hovered || selected);
 
                 let body = Container::new(text(message))
                     .align_x(Alignment::Center)
@@ -1517,7 +1525,7 @@ impl Player {
                 hovered,
                 ..
             } => {
-                let overlay = self.overlay(viewport, obscured, *hovered || *dragging);
+                let overlay = self.overlay(viewport, obscured, *hovered || selected || *dragging);
 
                 let body = Container::new(
                     Image::new(handle)
@@ -1665,7 +1673,7 @@ impl Player {
                 hovered,
                 ..
             } => {
-                let overlay = self.overlay(viewport, obscured, *hovered || *dragging);
+                let overlay = self.overlay(viewport, obscured, *hovered || selected || *dragging);
 
                 let body = Container::new(
                     Svg::new(handle.clone())
@@ -1814,7 +1822,7 @@ impl Player {
                 hovered,
                 ..
             } => {
-                let overlay = self.overlay(viewport, obscured, *hovered || *dragging);
+                let overlay = self.overlay(viewport, obscured, *hovered || selected || *dragging);
 
                 let body = {
                     let media = if *paused {
@@ -1974,7 +1982,7 @@ impl Player {
                 hovered,
                 ..
             } => {
-                let overlay = self.overlay(viewport, obscured, *hovered || *dragging);
+                let overlay = self.overlay(viewport, obscured, *hovered || selected || *dragging);
 
                 let body = (!overlay.show).then_some(
                     Container::new(Icon::Music.max_control())
@@ -2126,7 +2134,7 @@ impl Player {
                 hovered,
                 ..
             } => {
-                let overlay = self.overlay(viewport, obscured, *hovered || *dragging);
+                let overlay = self.overlay(viewport, obscured, *hovered || selected || *dragging);
 
                 let body = Container::new(build_video_player(video, grid_id, player_id, content_fit))
                     .align_x(Alignment::Center)

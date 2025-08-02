@@ -287,3 +287,75 @@ pub enum PaneEvent {
     SeekRandom { grid_id: grid::Id },
     Refresh { grid_id: grid::Id },
 }
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Selection {
+    grid: Option<grid::Id>,
+    player: Option<player::Id>,
+}
+
+impl Selection {
+    pub fn is_any_selected(&self) -> bool {
+        self.grid.is_some() || self.player.is_some()
+    }
+
+    pub fn is_grid_selected(&self, grid: grid::Id) -> bool {
+        self.grid == Some(grid) && self.player.is_none()
+    }
+
+    pub fn pair(&self) -> Option<(grid::Id, Option<player::Id>)> {
+        self.grid.map(|grid| (grid, self.player))
+    }
+
+    pub fn player_for_grid(&self, grid: grid::Id) -> Option<player::Id> {
+        if self.grid == Some(grid) {
+            self.player
+        } else {
+            None
+        }
+    }
+
+    pub fn deselect(&mut self) {
+        self.grid = None;
+        self.player = None;
+    }
+
+    pub fn cycle(&mut self, available: Vec<(grid::Id, Option<player::Id>)>, reverse: bool) {
+        if available.is_empty() {
+            self.grid = None;
+            self.player = None;
+            return;
+        }
+
+        let result = match self
+            .grid
+            .and_then(|grid_id| available.iter().position(|x| *x == (grid_id, self.player)))
+        {
+            Some(index) => {
+                if reverse {
+                    index.checked_sub(1).map(|index| available[index])
+                } else {
+                    available.get(index + 1).copied()
+                }
+            }
+            None => {
+                if reverse {
+                    available.last().copied()
+                } else {
+                    available.first().copied()
+                }
+            }
+        };
+
+        match result {
+            Some((grid, player)) => {
+                self.grid = Some(grid);
+                self.player = player;
+            }
+            None => {
+                self.grid = None;
+                self.player = None;
+            }
+        }
+    }
+}

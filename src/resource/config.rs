@@ -139,6 +139,13 @@ impl Playback {
             ..self.clone()
         }
     }
+
+    pub fn with_synchronized(&self, synchronized: bool) -> Self {
+        Self {
+            synchronized,
+            ..self.clone()
+        }
+    }
 }
 
 impl Default for Playback {

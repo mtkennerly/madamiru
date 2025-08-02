@@ -10,11 +10,11 @@ use itertools::Itertools;
 use crate::{
     gui::{
         button,
-        common::{BrowseFileSubject, Flags, Message, PaneEvent, UndoSubject},
+        common::{BrowseFileSubject, Flags, Message, PaneEvent, Selection, UndoSubject},
         grid::{self, Grid},
         icon::Icon,
         modal::{self, Modal},
-        player::{self},
+        player::{self, Player},
         shortcuts::{Shortcut, TextHistories, TextHistory},
         style,
         widget::{Column, Container, DropDown, Element, PaneGrid, Responsive, Row, Stack},
@@ -53,6 +53,7 @@ pub struct App {
     viewing_pane_controls: Option<grid::Id>,
     playlist_path: Option<StrictPath>,
     playlist_dirty: bool,
+    selection: Selection,
     #[cfg_attr(not(feature = "audio"), allow(unused))]
     default_audio_output_device: Option<String>,
 }
@@ -213,6 +214,7 @@ impl App {
                 viewing_pane_controls: None,
                 playlist_path,
                 playlist_dirty,
+                selection: Default::default(),
                 #[cfg(feature = "audio")]
                 default_audio_output_device: Self::get_audio_device(),
                 #[cfg(not(feature = "audio"))]
@@ -287,6 +289,65 @@ impl App {
         for (_grid_id, grid) in self.grids.iter_mut() {
             grid.update_all_players(player::Event::SetPause(paused), &mut self.media, &self.config.playback);
         }
+    }
+
+    fn generate_player_event_in_selection<T>(
+        &mut self,
+        message: impl FnOnce(T) -> player::Event,
+        from_app: impl FnOnce(&mut Self) -> T,
+        from_grid: impl FnOnce(&Grid) -> T,
+        from_player: impl FnOnce(&Player) -> T,
+    ) {
+        match self.selection.pair() {
+            Some((grid_id, player_id)) => {
+                if let Some(grid) = self.grids.get_mut(grid_id) {
+                    match player_id {
+                        Some(player_id) => {
+                            if let Some(value) = grid.player(player_id).map(from_player) {
+                                let update = grid.update_player(
+                                    player_id,
+                                    message(value),
+                                    &mut self.media,
+                                    &self.config.playback,
+                                );
+                                if let Some(update) = update {
+                                    self.handle_grid_update(update, grid_id);
+                                }
+                            }
+                        }
+                        None => {
+                            let event = message(from_grid(grid));
+                            grid.update_all_players(event.clone(), &mut self.media, &self.config.playback);
+                            self.synchronize_players(grid_id, None, event);
+                        }
+                    }
+                }
+            }
+            None => match message(from_app(self)) {
+                player::Event::SetPause(paused) => {
+                    self.set_paused(paused);
+                }
+                player::Event::SetLoop(_) => {}
+                player::Event::SetMute(muted) => {
+                    self.set_muted(muted);
+                }
+                player::Event::SetVolume(_) => {}
+                player::Event::Seek(_) => {}
+                player::Event::SeekRelative(_) => {}
+                player::Event::SeekStop => {}
+                player::Event::SeekRandom => {}
+                player::Event::EndOfStream => {}
+                player::Event::NewFrame => {}
+                player::Event::MouseEnter => {}
+                player::Event::MouseExit => {}
+                player::Event::Refresh => {}
+                player::Event::Close => {}
+                player::Event::WindowFocused => {}
+                player::Event::WindowUnfocused => {}
+            },
+        }
+
+        self.update_playback();
     }
 
     fn set_muted(&mut self, muted: bool) {
@@ -490,7 +551,7 @@ impl App {
         }
     }
 
-    fn synchronize_players(&mut self, originator: grid::Id, category: player::Category, event: player::Event) {
+    fn synchronize_players(&mut self, originator: grid::Id, category: Option<player::Category>, event: player::Event) {
         if !self.config.playback.synchronized {
             return;
         }
@@ -499,6 +560,47 @@ impl App {
                 continue;
             }
             grid.synchronize_players(None, category, event.clone(), &self.config.playback);
+        }
+    }
+
+    fn selectables(&self) -> Vec<(grid::Id, Option<player::Id>)> {
+        let mut out = vec![];
+
+        for (grid_id, grid) in self.grids.iter() {
+            out.push((*grid_id, None));
+            let player_ids = grid.player_ids();
+            if player_ids.len() > 1 {
+                for player_id in player_ids {
+                    out.push((*grid_id, Some(player_id)));
+                }
+            }
+        }
+
+        out
+    }
+
+    fn handle_grid_update(&mut self, update: grid::Update, grid_id: grid::Id) {
+        match update {
+            grid::Update::PauseChanged { category, paused } => {
+                self.update_playback();
+                self.synchronize_players(grid_id, Some(category), player::Event::SetPause(paused));
+            }
+            grid::Update::MuteChanged => {
+                self.update_playback();
+            }
+            grid::Update::RelativePositionChanged { category, position } => {
+                self.synchronize_players(grid_id, Some(category), player::Event::SeekRelative(position));
+            }
+            grid::Update::PlayerClosed => {
+                self.playlist_dirty = true;
+                self.update_playback();
+
+                if let Some(grid) = self.grids.get(grid_id) {
+                    if grid.is_idle() {
+                        self.show_modal(Modal::new_grid_settings(grid_id, grid.settings()));
+                    }
+                };
+            }
         }
     }
 
@@ -682,10 +784,15 @@ impl App {
                 match event {
                     keyboard::Event::KeyPressed { key, modifiers, .. } => match key {
                         Key::Named(key::Named::Tab) => {
-                            if modifiers.shift() {
-                                iced::widget::focus_previous()
+                            if !self.modals.is_empty() {
+                                if modifiers.shift() {
+                                    iced::widget::focus_previous()
+                                } else {
+                                    iced::widget::focus_next()
+                                }
                             } else {
-                                iced::widget::focus_next()
+                                self.selection.cycle(self.selectables(), modifiers.shift());
+                                Task::none()
                             }
                         }
                         Key::Named(key::Named::Escape) => {
@@ -693,12 +800,19 @@ impl App {
                                 self.modals.pop();
                             } else if !self.dragged_files.is_empty() {
                                 self.dragged_files.clear();
+                            } else if self.selection.is_any_selected() {
+                                self.selection.deselect();
                             }
                             Task::none()
                         }
                         Key::Named(key::Named::Space) => {
                             if self.modals.is_empty() {
-                                self.set_paused(!self.config.playback.paused);
+                                self.generate_player_event_in_selection(
+                                    player::Event::SetPause,
+                                    |app| !app.config.playback.paused,
+                                    |grid| !grid.all_paused().unwrap_or_default(),
+                                    |player| !player.is_paused().unwrap_or_default(),
+                                );
                             }
                             Task::none()
                         }
@@ -706,7 +820,12 @@ impl App {
                             if self.modals.is_empty() {
                                 match c.as_str() {
                                     "M" | "m" => {
-                                        self.set_muted(!self.config.playback.muted);
+                                        self.generate_player_event_in_selection(
+                                            player::Event::SetMute,
+                                            |app| !app.config.playback.muted,
+                                            |grid| !grid.all_muted().unwrap_or_default(),
+                                            |player| !player.is_muted().unwrap_or_default(),
+                                        );
                                     }
                                     _ => {}
                                 }
@@ -789,28 +908,7 @@ impl App {
                     &mut self.media,
                     &self.config.playback,
                 ) {
-                    match update {
-                        grid::Update::PauseChanged { category, paused } => {
-                            self.update_playback();
-                            self.synchronize_players(grid_id, category, player::Event::SetPause(paused));
-                        }
-                        grid::Update::MuteChanged => {
-                            self.update_playback();
-                        }
-                        grid::Update::RelativePositionChanged { category, position } => {
-                            self.synchronize_players(grid_id, category, player::Event::SeekRelative(position));
-                        }
-                        grid::Update::PlayerClosed => {
-                            self.playlist_dirty = true;
-                            self.update_playback();
-
-                            if let Some(grid) = self.grids.get(grid_id) {
-                                if grid.is_idle() {
-                                    self.show_modal(Modal::new_grid_settings(grid_id, grid.settings()));
-                                }
-                            };
-                        }
-                    }
+                    self.handle_grid_update(update, grid_id);
                 }
                 Task::none()
             }
@@ -1304,7 +1402,7 @@ impl App {
                             .tooltip_below(lang::action::shuffle()),
                     ),
             )
-            .class(style::Container::Player);
+            .class(style::Container::Player { selected: false });
 
             let controls = Stack::new()
                 .push(Container::new(left_controls).align_left(Length::Fill))
@@ -1313,9 +1411,15 @@ impl App {
 
             let grids = PaneGrid::new(&self.grids, |grid_id, grid, _maximized| {
                 pane_grid::Content::new(
-                    Container::new(grid.view(grid_id, obscured, dragging_file))
-                        .padding(5)
-                        .class(style::Container::PlayerGroup),
+                    Container::new(grid.view(
+                        grid_id,
+                        self.selection.is_grid_selected(grid_id),
+                        self.selection.player_for_grid(grid_id),
+                        obscured,
+                        dragging_file,
+                    ))
+                    .padding(5)
+                    .class(style::Container::PlayerGroup),
                 )
                 .title_bar({
                     let mut bar = pane_grid::TitleBar::new(" ")
