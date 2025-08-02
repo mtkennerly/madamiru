@@ -677,39 +677,49 @@ impl App {
                 Task::none()
             }
             Message::KeyboardEvent(event) => {
-                if let iced::keyboard::Event::ModifiersChanged(modifiers) = event {
-                    self.modifiers = modifiers;
-                }
+                use iced::keyboard::{self, key, Key};
+
                 match event {
-                    iced::keyboard::Event::KeyPressed {
-                        key: iced::keyboard::Key::Named(iced::keyboard::key::Named::Tab),
-                        modifiers,
-                        ..
-                    } => {
-                        if modifiers.shift() {
-                            iced::widget::focus_previous()
-                        } else {
-                            iced::widget::focus_next()
+                    keyboard::Event::KeyPressed { key, modifiers, .. } => match key {
+                        Key::Named(key::Named::Tab) => {
+                            if modifiers.shift() {
+                                iced::widget::focus_previous()
+                            } else {
+                                iced::widget::focus_next()
+                            }
                         }
-                    }
-                    iced::keyboard::Event::KeyPressed { key, .. } => {
-                        if self.modals.is_empty() {
-                            match key {
-                                iced::keyboard::Key::Named(iced::keyboard::key::Named::Space) => {
-                                    self.set_paused(!self.config.playback.paused);
-                                }
-                                iced::keyboard::Key::Character(c) => match c.as_str() {
+                        Key::Named(key::Named::Escape) => {
+                            if !self.modals.is_empty() {
+                                self.modals.pop();
+                            } else if !self.dragged_files.is_empty() {
+                                self.dragged_files.clear();
+                            }
+                            Task::none()
+                        }
+                        Key::Named(key::Named::Space) => {
+                            if self.modals.is_empty() {
+                                self.set_paused(!self.config.playback.paused);
+                            }
+                            Task::none()
+                        }
+                        Key::Character(c) => {
+                            if self.modals.is_empty() {
+                                match c.as_str() {
                                     "M" | "m" => {
                                         self.set_muted(!self.config.playback.muted);
                                     }
                                     _ => {}
-                                },
-                                _ => {}
+                                }
                             }
+                            Task::none()
                         }
+                        _ => Task::none(),
+                    },
+                    keyboard::Event::KeyReleased { .. } => Task::none(),
+                    keyboard::Event::ModifiersChanged(modifiers) => {
+                        self.modifiers = modifiers;
                         Task::none()
                     }
-                    _ => Task::none(),
                 }
             }
             Message::UndoRedo(action, subject) => {

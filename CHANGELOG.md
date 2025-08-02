@@ -4,11 +4,11 @@
   * There is now a "synchronize" toggle (link icon in the top bar),
     which synchronizes play/pause/seek events for all media of the same category
     (image, audio, video).
+  * GUI: You can now close modals and cancel file drag/drop by pressing the escape key.
 * Changed:
   * GUI: In the top bar, the playlist actions are now grouped together in a submenu.
 * Fixed:
-  * When a source was specified on the command line,
-    you had to click "add player" for it to start playing.
+  * CLI: When a source was specified, you had to click "add player" for media to start playing.
 
 ## v0.2.1 (2025-07-22)
 
