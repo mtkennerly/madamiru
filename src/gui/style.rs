@@ -205,7 +205,9 @@ pub enum Container {
     Player {
         selected: bool,
     },
-    PlayerGroup,
+    PlayerGroup {
+        selected: bool,
+    },
     PlayerGroupControls,
     PlayerGroupTitle,
     Tooltip,
@@ -223,7 +225,7 @@ impl container::Catalog for Theme {
             background: Some(match class {
                 Container::Wrapper => Color::TRANSPARENT.into(),
                 Container::Player { .. } => self.field.alpha(0.15).into(),
-                Container::PlayerGroup => self.field.alpha(0.3).into(),
+                Container::PlayerGroup { .. } => self.field.alpha(0.3).into(),
                 Container::PlayerGroupControls => self.field.into(),
                 Container::PlayerGroupTitle => self.field.alpha(0.45).into(),
                 Container::ModalBackground => self.field.alpha(0.5).into(),
@@ -241,14 +243,21 @@ impl container::Catalog for Theme {
                             self.field.alpha(0.8)
                         }
                     }
-                    Container::PlayerGroup | Container::PlayerGroupTitle => self.field,
+                    Container::PlayerGroup { selected } => {
+                        if *selected {
+                            self.positive
+                        } else {
+                            self.field
+                        }
+                    }
+                    Container::PlayerGroupTitle => self.field,
                     Container::PlayerGroupControls => self.disabled,
                     Container::ModalForeground => self.disabled,
                     _ => self.text,
                 },
                 width: match class {
                     Container::Player { .. }
-                    | Container::PlayerGroup
+                    | Container::PlayerGroup { .. }
                     | Container::PlayerGroupControls
                     | Container::PlayerGroupTitle
                     | Container::ModalForeground => 1.0,
@@ -258,7 +267,7 @@ impl container::Catalog for Theme {
                     Container::ModalForeground | Container::Player { .. } | Container::PlayerGroupControls => {
                         10.0.into()
                     }
-                    Container::PlayerGroup => Radius::new(10.0).top(0.0),
+                    Container::PlayerGroup { .. } => Radius::new(10.0).top(0.0),
                     Container::PlayerGroupTitle => Radius::new(10.0).bottom(0.0),
                     Container::ModalBackground => 5.0.into(),
                     Container::Tooltip => 20.0.into(),

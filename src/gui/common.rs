@@ -300,6 +300,10 @@ impl Selection {
     }
 
     pub fn is_grid_selected(&self, grid: grid::Id) -> bool {
+        self.grid == Some(grid)
+    }
+
+    pub fn is_grid_only_selected(&self, grid: grid::Id) -> bool {
         self.grid == Some(grid) && self.player.is_none()
     }
 
@@ -315,7 +319,7 @@ impl Selection {
         }
     }
 
-    pub fn deselect(&mut self) {
+    pub fn clear(&mut self) {
         self.grid = None;
         self.player = None;
     }
@@ -355,6 +359,30 @@ impl Selection {
             None => {
                 self.grid = None;
                 self.player = None;
+            }
+        }
+    }
+
+    pub fn ensure_valid_in_grid(&mut self, available: Vec<(grid::Id, player::Id)>) {
+        let known = self
+            .grid
+            .and_then(|grid_id| {
+                available
+                    .iter()
+                    .position(|(g, p)| *g == grid_id && Some(*p) == self.player)
+            })
+            .is_some();
+
+        if !known {
+            match available.last().copied() {
+                Some((grid, player)) => {
+                    self.grid = Some(grid);
+                    self.player = Some(player);
+                }
+                None => {
+                    self.grid = None;
+                    self.player = None;
+                }
             }
         }
     }

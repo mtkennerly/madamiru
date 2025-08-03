@@ -417,26 +417,6 @@ impl Grid {
         }
     }
 
-    #[must_use]
-    pub fn update_player(
-        &mut self,
-        player_id: player::Id,
-        event: player::Event,
-        collection: &mut media::Collection,
-        playback: &Playback,
-    ) -> Option<Update> {
-        let playback = self.playback(playback);
-
-        self.update(
-            Event::Player {
-                player_id,
-                event: event.clone(),
-            },
-            collection,
-            &playback,
-        )
-    }
-
     pub fn update_all_players(
         &mut self,
         event: player::Event,
@@ -502,10 +482,18 @@ impl Grid {
 
         for (i, player) in self.players.iter().enumerate() {
             let player_id = player::Id(i);
-            let selected = selected || selected_player == Some(player_id);
-            let new = Container::new(player.view(grid_id, player_id, selected, obscured, self.content_fit))
-                .padding(5)
-                .class(style::Container::Player { selected });
+            let selected_player = selected_player == Some(player_id);
+            let new = Container::new(player.view(
+                grid_id,
+                player_id,
+                selected || selected_player,
+                obscured,
+                self.content_fit,
+            ))
+            .padding(5)
+            .class(style::Container::Player {
+                selected: selected_player,
+            });
 
             match self.orientation {
                 Orientation::Horizontal => {
