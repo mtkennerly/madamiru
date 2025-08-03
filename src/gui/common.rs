@@ -71,12 +71,10 @@ pub enum Message {
         volume: f32,
     },
     SetSynchronized(bool),
+    SeekRandom,
     Player {
         grid_id: grid::Id,
         player_id: player::Id,
-        event: player::Event,
-    },
-    AllPlayers {
         event: player::Event,
     },
     Modal {

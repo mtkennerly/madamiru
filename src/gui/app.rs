@@ -534,7 +534,7 @@ impl App {
         }
     }
 
-    fn synchronize_players(&mut self, originator: grid::Id, category: Option<player::Category>, event: player::Event) {
+    fn synchronize_players(&mut self, originator: grid::Id, category: player::Category, event: player::Event) {
         if !self.config.playback.synchronized {
             return;
         }
@@ -581,13 +581,13 @@ impl App {
         match update {
             grid::Update::PauseChanged { category, paused } => {
                 self.update_playback();
-                self.synchronize_players(grid_id, Some(category), player::Event::SetPause(paused));
+                self.synchronize_players(grid_id, category, player::Event::SetPause(paused));
             }
             grid::Update::MuteChanged => {
                 self.update_playback();
             }
             grid::Update::RelativePositionChanged { category, position } => {
-                self.synchronize_players(grid_id, Some(category), player::Event::SeekRelative(position));
+                self.synchronize_players(grid_id, category, player::Event::SeekRelative(position));
             }
             grid::Update::PlayerClosed => {
                 self.playlist_dirty = true;
@@ -838,11 +838,7 @@ impl App {
                             if self.modals.is_empty() {
                                 match c.as_str() {
                                     "J" | "j" => self.generate_event_in_selection(
-                                        |_| {
-                                            Some(Message::AllPlayers {
-                                                event: player::Event::SeekRandom,
-                                            })
-                                        },
+                                        |_| Some(Message::SeekRandom),
                                         |grid_id, _| Some(PaneEvent::SeekRandom { grid_id }),
                                         |_| Some(player::Event::SeekRandom),
                                     ),
@@ -945,6 +941,19 @@ impl App {
                 self.set_synchronized(flag);
                 Task::none()
             }
+            Message::SeekRandom => {
+                let event = if self.config.playback.synchronized {
+                    player::Event::seek_random_relative()
+                } else {
+                    player::Event::SeekRandom
+                };
+
+                for (_grid_id, grid) in self.grids.iter_mut() {
+                    grid.update_all_players(event.clone(), &mut self.media, &self.config.playback);
+                }
+
+                Task::none()
+            }
             Message::Player {
                 grid_id,
                 player_id,
@@ -960,12 +969,6 @@ impl App {
                     &self.config.playback,
                 ) {
                     self.handle_grid_update(update, grid_id);
-                }
-                Task::none()
-            }
-            Message::AllPlayers { event } => {
-                for (_grid_id, grid) in self.grids.iter_mut() {
-                    grid.update_all_players(event.clone(), &mut self.media, &self.config.playback);
                 }
                 Task::none()
             }
@@ -1179,8 +1182,18 @@ impl App {
                         }
                     }
                     PaneEvent::SeekRandom { grid_id } => {
+                        let event = if self.config.playback.synchronized {
+                            player::Event::seek_random_relative()
+                        } else {
+                            player::Event::SeekRandom
+                        };
+
                         if let Some(grid) = self.grids.get_mut(grid_id) {
-                            grid.update_all_players(player::Event::SeekRandom, &mut self.media, &self.config.playback);
+                            grid.update_all_players(event.clone(), &mut self.media, &self.config.playback);
+
+                            for category in grid.categories() {
+                                self.synchronize_players(grid_id, category, event.clone());
+                            }
                         }
                     }
                     PaneEvent::Refresh { grid_id } => {
@@ -1439,9 +1452,7 @@ impl App {
                     )
                     .push(
                         button::icon(Icon::TimerRefresh)
-                            .on_press(Message::AllPlayers {
-                                event: player::Event::SeekRandom,
-                            })
+                            .on_press(Message::SeekRandom)
                             .enabled(!self.all_idle() && self.can_jump())
                             .obscured(obscured)
                             .tooltip_below(lang::action::jump_position()),

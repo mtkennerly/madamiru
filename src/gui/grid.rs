@@ -245,6 +245,10 @@ impl Grid {
         self.players.iter().filter_map(|x| x.media()).collect()
     }
 
+    pub fn categories(&self) -> HashSet<player::Category> {
+        self.players.iter().map(|player| player.category()).collect()
+    }
+
     pub fn total_players(&self) -> usize {
         self.players.len()
     }
@@ -352,7 +356,7 @@ impl Grid {
                         player::Update::PauseChanged(paused) => {
                             self.synchronize_players(
                                 Some(player_id),
-                                Some(category),
+                                category,
                                 player::Event::SetPause(paused),
                                 &playback,
                             );
@@ -361,7 +365,7 @@ impl Grid {
                         player::Update::RelativePositionChanged(position) => {
                             self.synchronize_players(
                                 Some(player_id),
-                                Some(category),
+                                category,
                                 player::Event::SeekRelative(position),
                                 &playback,
                             );
@@ -447,7 +451,7 @@ impl Grid {
     pub fn synchronize_players(
         &mut self,
         originator: Option<player::Id>,
-        category: Option<player::Category>,
+        category: player::Category,
         event: player::Event,
         playback: &Playback,
     ) {
@@ -455,7 +459,7 @@ impl Grid {
             return;
         }
         for (i, player) in self.players.iter_mut().enumerate() {
-            if Some(player::Id(i)) == originator || category.is_some_and(|x| x != player.category()) {
+            if Some(player::Id(i)) == originator || category != player.category() {
                 continue;
             }
             let _ = player.update(event.clone(), playback);

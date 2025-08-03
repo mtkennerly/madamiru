@@ -261,6 +261,7 @@ pub enum Event {
     SeekRelative(f64),
     SeekStop,
     SeekRandom,
+    SeekRandomRelative(f64),
     EndOfStream,
     NewFrame,
     MouseEnter,
@@ -269,6 +270,14 @@ pub enum Event {
     Close,
     WindowFocused,
     WindowUnfocused,
+}
+
+impl Event {
+    pub fn seek_random_relative() -> Self {
+        use rand::Rng;
+        let position = rand::rng().random_range(0.0..0.95);
+        Self::SeekRandomRelative(position)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -298,7 +307,7 @@ struct Overlay {
     timestamps: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Category {
     Other,
     Image,
@@ -943,6 +952,7 @@ impl Player {
                 Event::SeekRelative(_) => None,
                 Event::SeekStop => None,
                 Event::SeekRandom => None,
+                Event::SeekRandomRelative(_) => None,
                 Event::EndOfStream => None,
                 Event::NewFrame => None,
                 Event::MouseEnter => {
@@ -967,6 +977,7 @@ impl Player {
                 Event::SeekRelative(_) => None,
                 Event::SeekStop => None,
                 Event::SeekRandom => None,
+                Event::SeekRandomRelative(_) => None,
                 Event::EndOfStream => None,
                 Event::NewFrame => None,
                 Event::MouseEnter => {
@@ -1020,6 +1031,7 @@ impl Player {
                     None
                 }
                 Event::SeekRandom => None,
+                Event::SeekRandomRelative(_) => None,
                 Event::EndOfStream => Some(Update::EndOfStream),
                 Event::NewFrame => None,
                 Event::MouseEnter => {
@@ -1085,6 +1097,7 @@ impl Player {
                     None
                 }
                 Event::SeekRandom => None,
+                Event::SeekRandomRelative(_) => None,
                 Event::EndOfStream => Some(Update::EndOfStream),
                 Event::NewFrame => None,
                 Event::MouseEnter => {
@@ -1150,6 +1163,7 @@ impl Player {
                     None
                 }
                 Event::SeekRandom => None,
+                Event::SeekRandomRelative(_) => None,
                 Event::EndOfStream => Some(Update::EndOfStream),
                 Event::NewFrame => None,
                 Event::MouseEnter => {
@@ -1220,7 +1234,7 @@ impl Player {
                     let _ = sink.try_seek(Duration::from_secs_f64(offset));
                     Update::relative_position_changed(offset, *duration)
                 }
-                Event::SeekRelative(offset) => {
+                Event::SeekRelative(offset) | Event::SeekRandomRelative(offset) => {
                     let _ = sink.try_seek(Duration::from_secs_f64(duration.as_secs_f64() * offset));
                     None
                 }
@@ -1302,7 +1316,7 @@ impl Player {
                     seek_video(video, *position);
                     Update::relative_position_changed(offset, *duration)
                 }
-                Event::SeekRelative(offset) => {
+                Event::SeekRelative(offset) | Event::SeekRandomRelative(offset) => {
                     *position = duration.as_secs_f64() * offset;
                     seek_video(video, *position);
                     None
