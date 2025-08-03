@@ -8,12 +8,14 @@
 | select previous grid/player | shift+tab         |                |
 | deselect grid/player        | escape            |                |
 | play/pause                  | space             | yes            |
-| close grid/player           | backspace, delete | yes            |
-| add player in selected grid | N                 | yes            |
 | mute/unmute                 | M                 | yes            |
+| step earlier in media       | left arrow        | yes            |
+| step later in media         | right arrow       | yes            |
 | refresh                     | R                 | yes            |
 | jump to random position     | J                 | yes            |
 | toggle synchronization      | L                 |                |
+| add player in selected grid | N                 | yes            |
+| close grid/player           | backspace, delete | yes            |
 | open playlist               | ctrl+O            |                |
 | save playlist               | ctrl+S            |                |
 | save playlist as new file   | ctrl-shift+S      |                |

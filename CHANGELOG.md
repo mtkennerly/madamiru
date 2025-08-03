@@ -4,7 +4,8 @@
   * There is now a "synchronize" toggle (link icon in the top bar),
     which synchronizes play/pause/seek events for all media of the same category
     (image, audio, video).
-  * You can now close modals and cancel file drag/drop by pressing the escape key.
+  * Several actions now have keyboard shortcuts.
+    For more information, [click here](/docs/help/keyboard-controls.md).
   * You can cycle through grids or individual players with the tab key
     and then use keyboard controls on that selection.
 * Changed:

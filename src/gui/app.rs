@@ -10,7 +10,7 @@ use itertools::Itertools;
 use crate::{
     gui::{
         button,
-        common::{BrowseFileSubject, Flags, Message, PaneEvent, Selection, UndoSubject},
+        common::{BrowseFileSubject, Flags, Message, PaneEvent, Selection, Step, UndoSubject},
         grid::{self, Grid},
         icon::Icon,
         modal::{self, Modal},
@@ -589,6 +589,9 @@ impl App {
             grid::Update::RelativePositionChanged { category, position } => {
                 self.synchronize_players(grid_id, category, player::Event::SeekRelative(position));
             }
+            grid::Update::Step { category, step } => {
+                self.synchronize_players(grid_id, category, player::Event::Step(step));
+            }
             grid::Update::PlayerClosed => {
                 self.playlist_dirty = true;
                 self.update_playback();
@@ -820,6 +823,30 @@ impl App {
                                 Task::none()
                             }
                         }
+                        Key::Named(key::Named::ArrowLeft) => {
+                            if self.modals.is_empty() {
+                                let step = Step::Earlier;
+                                self.generate_event_in_selection(
+                                    |_| Some(Message::Step(step)),
+                                    |grid_id, _| Some(PaneEvent::Step { grid_id, step }),
+                                    |_| Some(player::Event::Step(step)),
+                                )
+                            } else {
+                                Task::none()
+                            }
+                        }
+                        Key::Named(key::Named::ArrowRight) => {
+                            if self.modals.is_empty() {
+                                let step = Step::Later;
+                                self.generate_event_in_selection(
+                                    |_| Some(Message::Step(step)),
+                                    |grid_id, _| Some(PaneEvent::Step { grid_id, step }),
+                                    |_| Some(player::Event::Step(step)),
+                                )
+                            } else {
+                                Task::none()
+                            }
+                        }
                         Key::Named(key::Named::Backspace | key::Named::Delete) => {
                             if self.modals.is_empty() {
                                 self.generate_event_in_selection(
@@ -952,6 +979,12 @@ impl App {
                     grid.update_all_players(event.clone(), &mut self.media, &self.config.playback);
                 }
 
+                Task::none()
+            }
+            Message::Step(step) => {
+                for (_grid_id, grid) in self.grids.iter_mut() {
+                    grid.update_all_players(player::Event::Step(step), &mut self.media, &self.config.playback);
+                }
                 Task::none()
             }
             Message::Player {
@@ -1187,6 +1220,17 @@ impl App {
                         } else {
                             player::Event::SeekRandom
                         };
+
+                        if let Some(grid) = self.grids.get_mut(grid_id) {
+                            grid.update_all_players(event.clone(), &mut self.media, &self.config.playback);
+
+                            for category in grid.categories() {
+                                self.synchronize_players(grid_id, category, event.clone());
+                            }
+                        }
+                    }
+                    PaneEvent::Step { grid_id, step } => {
+                        let event = player::Event::Step(step);
 
                         if let Some(grid) = self.grids.get_mut(grid_id) {
                             grid.update_all_players(event.clone(), &mut self.media, &self.config.playback);

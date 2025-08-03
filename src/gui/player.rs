@@ -18,7 +18,7 @@ type VideoPipeline = ();
 use crate::{
     gui::{
         button,
-        common::Message,
+        common::{Message, Step},
         grid,
         icon::Icon,
         style,
@@ -30,6 +30,12 @@ use crate::{
     prelude::{timestamp_hhmmss, timestamp_mmss},
     resource::{config::Playback, playlist::ContentFit},
 };
+
+const IMAGE_STEP: Duration = Duration::from_secs(2);
+#[cfg(feature = "audio")]
+const AUDIO_STEP: Duration = Duration::from_secs(10);
+#[cfg(feature = "video")]
+const VIDEO_STEP: Duration = Duration::from_secs(10);
 
 fn timestamps<'a>(current: f64, total: Duration) -> Element<'a> {
     let current = current as u64;
@@ -108,6 +114,21 @@ fn get_video_duration(pipeline: &VideoPipeline) -> Option<gstreamer::ClockTime> 
 #[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
 fn get_video_duration(_pipeline: &VideoPipeline) -> Option<gstreamer::ClockTime> {
     None
+}
+
+#[cfg(feature = "video")]
+#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
+fn get_video_position(pipeline: &VideoPipeline, _video: &iced_video_player::Video) -> Option<Duration> {
+    use gstreamer::prelude::ElementExtManual;
+
+    let clock_time = pipeline.query_position::<gstreamer::ClockTime>()?;
+    Some(Duration::from_nanos(clock_time.nseconds()))
+}
+
+#[cfg(feature = "video")]
+#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
+fn get_video_position(_pipeline: &VideoPipeline, video: &iced_video_player::Video) -> Option<Duration> {
+    Some(video.position())
 }
 
 #[cfg(feature = "video")]
@@ -262,6 +283,7 @@ pub enum Event {
     SeekStop,
     SeekRandom,
     SeekRandomRelative(f64),
+    Step(Step),
     EndOfStream,
     NewFrame,
     MouseEnter,
@@ -286,6 +308,7 @@ pub enum Update {
     #[cfg_attr(not(any(feature = "audio", feature = "video")), allow(unused))]
     MuteChanged,
     RelativePositionChanged(f64),
+    Step(Step),
     EndOfStream,
     Refresh,
     Close,
@@ -953,6 +976,7 @@ impl Player {
                 Event::SeekStop => None,
                 Event::SeekRandom => None,
                 Event::SeekRandomRelative(_) => None,
+                Event::Step { .. } => None,
                 Event::EndOfStream => None,
                 Event::NewFrame => None,
                 Event::MouseEnter => {
@@ -978,6 +1002,7 @@ impl Player {
                 Event::SeekStop => None,
                 Event::SeekRandom => None,
                 Event::SeekRandomRelative(_) => None,
+                Event::Step { .. } => None,
                 Event::EndOfStream => None,
                 Event::NewFrame => None,
                 Event::MouseEnter => {
@@ -1032,6 +1057,10 @@ impl Player {
                 }
                 Event::SeekRandom => None,
                 Event::SeekRandomRelative(_) => None,
+                Event::Step(step) => {
+                    *position = step.compute(*position, *duration, IMAGE_STEP);
+                    Some(Update::Step(step))
+                }
                 Event::EndOfStream => Some(Update::EndOfStream),
                 Event::NewFrame => None,
                 Event::MouseEnter => {
@@ -1098,6 +1127,10 @@ impl Player {
                 }
                 Event::SeekRandom => None,
                 Event::SeekRandomRelative(_) => None,
+                Event::Step(step) => {
+                    *position = step.compute(*position, *duration, IMAGE_STEP);
+                    Some(Update::Step(step))
+                }
                 Event::EndOfStream => Some(Update::EndOfStream),
                 Event::NewFrame => None,
                 Event::MouseEnter => {
@@ -1164,6 +1197,10 @@ impl Player {
                 }
                 Event::SeekRandom => None,
                 Event::SeekRandomRelative(_) => None,
+                Event::Step(step) => {
+                    *position = step.compute(*position, *duration, IMAGE_STEP);
+                    Some(Update::Step(step))
+                }
                 Event::EndOfStream => Some(Update::EndOfStream),
                 Event::NewFrame => None,
                 Event::MouseEnter => {
@@ -1248,6 +1285,11 @@ impl Player {
                     let _ = sink.try_seek(Duration::from_secs_f64(position));
                     Update::relative_position_changed(position, *duration)
                 }
+                Event::Step(step) => {
+                    let position = step.compute(sink.get_pos().as_secs_f64(), *duration, AUDIO_STEP);
+                    let _ = sink.try_seek(Duration::from_secs_f64(position));
+                    Some(Update::Step(step))
+                }
                 Event::EndOfStream => (!*looping).then_some(Update::EndOfStream),
                 Event::NewFrame => None,
                 Event::MouseEnter => {
@@ -1280,6 +1322,7 @@ impl Player {
             #[cfg(feature = "video")]
             Self::Video {
                 video,
+                pipeline,
                 position,
                 duration,
                 paused,
@@ -1331,9 +1374,16 @@ impl Player {
                     seek_video(video, *position);
                     Update::relative_position_changed(*position, *duration)
                 }
+                Event::Step(step) => {
+                    *position = step.compute(*position, *duration, VIDEO_STEP);
+                    seek_video(video, *position);
+                    Some(Update::Step(step))
+                }
                 Event::EndOfStream => (!video.looping()).then_some(Update::EndOfStream),
                 Event::NewFrame => {
-                    *position = video.position().as_secs_f64();
+                    if let Some(new_position) = get_video_position(pipeline, video) {
+                        *position = new_position.as_secs_f64();
+                    }
                     None
                 }
                 Event::MouseEnter => {

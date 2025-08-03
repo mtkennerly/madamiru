@@ -9,7 +9,7 @@ use iced::{
 use crate::{
     gui::{
         button,
-        common::{Message, PaneEvent},
+        common::{Message, PaneEvent, Step},
         icon::Icon,
         player::{self, Player},
         style,
@@ -44,6 +44,7 @@ pub enum Update {
     PauseChanged { category: player::Category, paused: bool },
     MuteChanged,
     RelativePositionChanged { category: player::Category, position: f64 },
+    Step { category: player::Category, step: Step },
     PlayerClosed,
 }
 
@@ -130,6 +131,7 @@ impl Grid {
                     player::Update::PauseChanged(_) => {}
                     player::Update::MuteChanged => {}
                     player::Update::RelativePositionChanged(_) => {}
+                    player::Update::Step { .. } => {}
                     player::Update::EndOfStream => {
                         let media = collection.one_new(&self.sources, self.active_media());
                         let player = &mut self.players[index];
@@ -370,6 +372,10 @@ impl Grid {
                                 &playback,
                             );
                             Some(Update::RelativePositionChanged { category, position })
+                        }
+                        player::Update::Step(step) => {
+                            self.synchronize_players(Some(player_id), category, player::Event::Step(step), &playback);
+                            Some(Update::Step { category, step })
                         }
                         player::Update::EndOfStream => {
                             let media = collection.one_new(&self.sources, active_media.iter().collect());

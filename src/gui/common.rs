@@ -1,4 +1,7 @@
-use std::{num::NonZeroUsize, time::Instant};
+use std::{
+    num::NonZeroUsize,
+    time::{Duration, Instant},
+};
 
 use iced::{
     widget::{pane_grid, text_input},
@@ -72,6 +75,7 @@ pub enum Message {
     },
     SetSynchronized(bool),
     SeekRandom,
+    Step(Step),
     Player {
         grid_id: grid::Id,
         player_id: player::Id,
@@ -283,6 +287,7 @@ pub enum PaneEvent {
     SetMute { grid_id: grid::Id, muted: bool },
     SetPause { grid_id: grid::Id, paused: bool },
     SeekRandom { grid_id: grid::Id },
+    Step { grid_id: grid::Id, step: Step },
     Refresh { grid_id: grid::Id },
 }
 
@@ -382,6 +387,21 @@ impl Selection {
                     self.player = None;
                 }
             }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Step {
+    Earlier,
+    Later,
+}
+
+impl Step {
+    pub fn compute(&self, position: f64, duration: Duration, size: Duration) -> f64 {
+        match self {
+            Step::Earlier => (position - size.as_secs_f64()).max(0.0),
+            Step::Later => (position + size.as_secs_f64()).min(duration.as_secs_f64()),
         }
     }
 }
