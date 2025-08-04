@@ -243,7 +243,7 @@ impl Grid {
         &self.sources
     }
 
-    fn active_media(&self) -> HashSet<&Media> {
+    pub fn active_media(&self) -> HashSet<&Media> {
         self.players.iter().filter_map(|x| x.media()).collect()
     }
 
@@ -324,6 +324,20 @@ impl Grid {
         }
 
         Ok(())
+    }
+
+    pub fn add_player_with_media(&mut self, media: Media, collection: &mut media::Collection, playback: &Playback) {
+        let playback = self.playback(playback);
+
+        match Player::new(&media, &playback) {
+            Ok(player) => {
+                self.players.push(player);
+            }
+            Err(player) => {
+                collection.mark_error(&media);
+                self.players.push(player);
+            }
+        }
     }
 
     pub fn player(&self, player_id: player::Id) -> Option<&Player> {
@@ -649,6 +663,14 @@ impl Grid {
                     .enabled(!self.sources.is_empty())
                     .obscured(obscured)
                     .tooltip(lang::action::add_player()),
+            )
+            .push(
+                button::mini_icon(Icon::PlaylistAdd)
+                    .on_press(Message::Pane {
+                        event: PaneEvent::ShowMedia { grid_id },
+                    })
+                    .obscured(obscured)
+                    .tooltip(lang::thing::media()),
             )
             .push(
                 button::mini_icon(Icon::Settings)

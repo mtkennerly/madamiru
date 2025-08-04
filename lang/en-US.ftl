@@ -10,6 +10,7 @@ thing-items-per-line = Items per line
 thing-key-shift = Shift
 thing-language = Language
 thing-layout = Layout
+thing-media = Media
 thing-orientation = Orientation
 # Path to a file/folder on the system.
 thing-path = Path

@@ -282,6 +282,7 @@ pub enum PaneEvent {
     Close { grid_id: grid::Id },
     AddPlayer { grid_id: grid::Id },
     ShowSettings { grid_id: grid::Id },
+    ShowMedia { grid_id: grid::Id },
     ShowControls { grid_id: grid::Id },
     CloseControls,
     SetMute { grid_id: grid::Id, muted: bool },

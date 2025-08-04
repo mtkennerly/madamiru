@@ -1024,6 +1024,12 @@ impl App {
                                 self.refresh(context);
                                 return Self::find_media(sources, context, self.playlist_path.clone());
                             }
+                            modal::Update::PlayMedia { grid_id, media } => {
+                                if let Some(grid) = self.grids.get_mut(grid_id) {
+                                    grid.add_player_with_media(media, &mut self.media, &self.config.playback);
+                                    self.playlist_dirty = true;
+                                }
+                            }
                             modal::Update::Task(task) => {
                                 return task;
                             }
@@ -1181,6 +1187,14 @@ impl App {
                     PaneEvent::ShowSettings { grid_id } => {
                         if let Some(grid) = self.grids.get(grid_id) {
                             self.show_modal(Modal::new_grid_settings(grid_id, grid.settings()));
+                        }
+                    }
+                    PaneEvent::ShowMedia { grid_id } => {
+                        if let Some(grid) = self.grids.get(grid_id) {
+                            self.show_modal(Modal::GridMedia {
+                                grid_id,
+                                sources: grid.sources().to_vec(),
+                            });
                         }
                     }
                     PaneEvent::ShowControls { grid_id } => {
@@ -1580,6 +1594,11 @@ impl App {
                         &self.text_histories,
                         &self.modifiers,
                         self.playlist_path.as_ref(),
+                        &self.media,
+                        modal
+                            .grid_id()
+                            .and_then(|grid_id| self.grids.get(grid_id).map(|grid| grid.active_media()))
+                            .unwrap_or_default(),
                     )
                 }));
 

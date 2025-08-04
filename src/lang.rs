@@ -253,6 +253,10 @@ pub mod thing {
         translate("thing-layout")
     }
 
+    pub fn media() -> String {
+        translate("thing-media")
+    }
+
     pub fn orientation() -> String {
         translate("thing-orientation")
     }

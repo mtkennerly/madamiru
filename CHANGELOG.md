@@ -4,6 +4,7 @@
   * There is now a "synchronize" toggle (link icon in the top bar),
     which synchronizes play/pause/seek events for all media of the same category
     (image, audio, video).
+  * Each grid now has an icon to view the available media for its configured sources.
   * Several actions now have keyboard shortcuts.
     For more information, [click here](/docs/help/keyboard-controls.md).
   * You can cycle through grids or individual players with the tab key

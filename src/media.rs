@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use itertools::Itertools;
 
@@ -185,6 +185,15 @@ pub enum Scan {
     },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Category {
+    Image,
+    #[cfg(feature = "audio")]
+    Audio,
+    #[cfg(feature = "video")]
+    Video,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Media {
     Image {
@@ -207,6 +216,18 @@ pub enum Media {
 }
 
 impl Media {
+    pub fn category(&self) -> Category {
+        match self {
+            Self::Image { .. } => Category::Image,
+            Self::Svg { .. } => Category::Image,
+            Self::Gif { .. } => Category::Image,
+            #[cfg(feature = "audio")]
+            Self::Audio { .. } => Category::Audio,
+            #[cfg(feature = "video")]
+            Self::Video { .. } => Category::Video,
+        }
+    }
+
     pub fn path(&self) -> &StrictPath {
         match self {
             Self::Image { path } => path,
@@ -318,6 +339,10 @@ impl Collection {
         self.errored.insert(media.clone());
     }
 
+    pub fn is_error(&self, media: &Media) -> bool {
+        self.errored.contains(media)
+    }
+
     pub fn is_outdated(&self, media: &Media, sources: &[Source]) -> bool {
         if sources.is_empty() {
             return true;
@@ -423,6 +448,15 @@ impl Collection {
             .into_iter()
             .find(|media| !self.errored.contains(media) && !old.contains(media))
             .cloned()
+    }
+
+    pub fn all_for_sources(&self, sources: &[Source]) -> BTreeSet<&Media> {
+        sources
+            .iter()
+            .filter_map(|source| self.media.get(source))
+            .flatten()
+            .unique()
+            .collect()
     }
 }
 

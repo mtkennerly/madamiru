@@ -1,4 +1,4 @@
-use std::{num::NonZeroUsize, sync::LazyLock};
+use std::{collections::HashSet, num::NonZeroUsize, sync::LazyLock};
 
 use iced::{
     alignment,
@@ -20,7 +20,7 @@ use crate::{
         widget::{checkbox, pick_list, text, Column, Container, Element, Row, Scrollable, Space, Stack},
     },
     lang::{self, Language},
-    media,
+    media::{self, Media},
     path::StrictPath,
     prelude::Error,
     resource::{
@@ -49,12 +49,17 @@ pub enum Event {
     EditedGridOrientationLimitKind { fixed: bool },
     EditedGridOrientationLimit { raw_limit: String },
     Save,
+    PlayMedia(Media),
 }
 
 pub enum Update {
     SavedGridSettings {
         grid_id: grid::Id,
         settings: grid::Settings,
+    },
+    PlayMedia {
+        grid_id: grid::Id,
+        media: Media,
     },
     Task(Task<Message>),
 }
@@ -73,6 +78,10 @@ pub enum Modal {
         tab: GridTab,
         settings: grid::Settings,
         histories: GridHistories,
+    },
+    GridMedia {
+        grid_id: grid::Id,
+        sources: Vec<media::Source>,
     },
     Error {
         variant: Error,
@@ -118,9 +127,22 @@ impl Modal {
         }
     }
 
+    pub fn grid_id(&self) -> Option<grid::Id> {
+        match self {
+            Self::Settings => None,
+            Self::GridSettings { grid_id, .. } => Some(*grid_id),
+            Self::GridMedia { grid_id, .. } => Some(*grid_id),
+            Self::Error { .. } => None,
+            Self::Errors { .. } => None,
+            Self::AppUpdate { .. } => None,
+            Self::ConfirmLoadPlaylist { .. } => None,
+            Self::ConfirmDiscardPlaylist { .. } => None,
+        }
+    }
+
     pub fn variant(&self) -> ModalVariant {
         match self {
-            Self::Error { .. } | Self::Errors { .. } => ModalVariant::Info,
+            Self::Error { .. } | Self::Errors { .. } | Self::GridMedia { .. } => ModalVariant::Info,
             Self::GridSettings { .. }
             | Self::AppUpdate { .. }
             | Self::ConfirmLoadPlaylist { .. }
@@ -139,6 +161,7 @@ impl Modal {
                     .push(GridTab::Layout.view(*tab))
                     .into(),
             ),
+            Self::GridMedia { .. } => None,
             Self::Error { .. } => None,
             Self::Errors { .. } => None,
             Self::AppUpdate { .. } => None,
@@ -151,6 +174,7 @@ impl Modal {
         match self {
             Self::Settings => Some(Message::CloseModal),
             Self::GridSettings { .. } => Some(Message::Modal { event: Event::Save }),
+            Self::GridMedia { .. } => Some(Message::CloseModal),
             Self::Error { .. } => Some(Message::CloseModal),
             Self::Errors { .. } => Some(Message::CloseModal),
             Self::AppUpdate { release } => Some(Message::OpenUrlAndCloseModal(release.url.clone())),
@@ -174,6 +198,8 @@ impl Modal {
         histories: &TextHistories,
         modifiers: &Modifiers,
         playlist: Option<&StrictPath>,
+        collection: &media::Collection,
+        active_media: HashSet<&Media>,
     ) -> Option<Column> {
         let mut col = Column::new().spacing(15).padding(padding::right(10));
 
@@ -419,6 +445,43 @@ impl Modal {
                             )),
                     );
             }
+            Self::GridMedia { sources, .. } => {
+                col = col.spacing(2);
+
+                let all_media = collection.all_for_sources(sources);
+
+                if all_media.is_empty() {
+                    col = col.push(text(lang::tell::no_media_found_in_sources()));
+                }
+
+                for media in all_media {
+                    col = col.push(
+                        Row::new()
+                            .spacing(20)
+                            .align_y(Alignment::Center)
+                            .push(if collection.is_error(media) {
+                                button::icon(Icon::Error)
+                            } else {
+                                button::icon(Icon::Play).on_press_maybe((!active_media.contains(media)).then(|| {
+                                    Message::Modal {
+                                        event: Event::PlayMedia(media.clone()),
+                                    }
+                                }))
+                            })
+                            .push(
+                                match media.category() {
+                                    media::Category::Image => Icon::Image,
+                                    #[cfg(feature = "audio")]
+                                    media::Category::Audio => Icon::Music,
+                                    #[cfg(feature = "video")]
+                                    media::Category::Video => Icon::Movie,
+                                }
+                                .small_control(),
+                            )
+                            .push(text(media.path().raw()).width(Length::Fill)),
+                    );
+                }
+            }
             Self::Error { variant } => {
                 col = col.push(text(lang::handle_error(variant)));
             }
@@ -474,6 +537,8 @@ impl Modal {
         histories: &TextHistories,
         modifiers: &Modifiers,
         playlist: Option<&StrictPath>,
+        collection: &media::Collection,
+        active_media: HashSet<&Media>,
     ) -> Container {
         Container::new(
             Column::new()
@@ -481,11 +546,14 @@ impl Modal {
                 .padding(padding::top(30).bottom(30))
                 .align_x(Alignment::Center)
                 .push_maybe(self.title(config))
-                .push_maybe(self.body(config, histories, modifiers, playlist).map(|body| {
-                    Container::new(Scrollable::new(body.padding([0, 30])).id((*SCROLLABLE).clone()))
-                        .padding(padding::right(5))
-                        .max_height(viewport.height - 300.0)
-                }))
+                .push_maybe(
+                    self.body(config, histories, modifiers, playlist, collection, active_media)
+                        .map(|body| {
+                            Container::new(Scrollable::new(body.padding([0, 30])).id((*SCROLLABLE).clone()))
+                                .padding(padding::right(5))
+                                .max_height(viewport.height - 300.0)
+                        }),
+                )
                 .push(Container::new(self.controls())),
         )
         .class(style::Container::ModalForeground)
@@ -494,6 +562,7 @@ impl Modal {
     pub fn apply_shortcut(&mut self, subject: UndoSubject, shortcut: Shortcut) -> bool {
         match self {
             Self::Settings
+            | Self::GridMedia { .. }
             | Self::Error { .. }
             | Self::Errors { .. }
             | Self::AppUpdate { .. }
@@ -606,6 +675,14 @@ impl Modal {
                         settings: settings.clone(),
                     })
                 }
+                Event::PlayMedia(_) => None,
+            },
+            Self::GridMedia { grid_id, .. } => match event {
+                Event::PlayMedia(media) => Some(Update::PlayMedia {
+                    grid_id: *grid_id,
+                    media,
+                }),
+                _ => None,
             },
         }
     }
@@ -617,6 +694,8 @@ impl Modal {
         histories: &TextHistories,
         modifiers: &Modifiers,
         playlist: Option<&StrictPath>,
+        collection: &media::Collection,
+        active_media: HashSet<&Media>,
     ) -> Element {
         Stack::new()
             .push({
@@ -633,9 +712,17 @@ impl Modal {
                 area
             })
             .push(
-                Container::new(opaque(self.content(viewport, config, histories, modifiers, playlist)))
-                    .center(Length::Fill)
-                    .padding([0.0, (100.0 + viewport.width - 640.0).clamp(0.0, 100.0)]),
+                Container::new(opaque(self.content(
+                    viewport,
+                    config,
+                    histories,
+                    modifiers,
+                    playlist,
+                    collection,
+                    active_media,
+                )))
+                .center(Length::Fill)
+                .padding([0.0, (100.0 + viewport.width - 640.0).clamp(0.0, 100.0)]),
             )
             .into()
     }
