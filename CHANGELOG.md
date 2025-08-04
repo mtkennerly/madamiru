@@ -12,6 +12,10 @@
   * In the top bar, the playlist actions are now grouped together in a submenu.
 * Fixed:
   * CLI: When a source was specified, you had to click "add player" for media to start playing.
+  * If you tried to add another player when no more media was available,
+    the playlist would still be marked as having unsaved changes.
+  * If you tried to load an invalid playlist,
+    the original playlist would no longer be marked as having unsaved changes.
 
 ## v0.2.1 (2025-07-22)
 

@@ -1145,10 +1145,10 @@ impl App {
                         self.grids.resize(event.split, event.ratio);
                     }
                     PaneEvent::Split { grid_id, axis } => {
-                        self.playlist_dirty = true;
                         let idle = self.grids.get(grid_id).is_some_and(|grid| grid.is_idle());
                         let settings = grid::Settings::default();
                         if let Some((grid_id, _split)) = self.grids.split(axis, grid_id, Grid::new(&settings)) {
+                            self.playlist_dirty = true;
                             if !idle {
                                 self.show_modal(Modal::new_grid_settings(grid_id, settings));
                             }
@@ -1161,13 +1161,14 @@ impl App {
                         self.selection.clear();
                     }
                     PaneEvent::AddPlayer { grid_id } => {
-                        self.playlist_dirty = true;
                         let Some(grid) = self.grids.get_mut(grid_id) else {
                             return Task::none();
                         };
 
                         match grid.add_player(&mut self.media, &self.config.playback) {
-                            Ok(_) => {}
+                            Ok(_) => {
+                                self.playlist_dirty = true;
+                            }
                             Err(e) => match e {
                                 grid::Error::NoMediaAvailable => {
                                     self.show_modal(Modal::Error {
@@ -1287,12 +1288,13 @@ impl App {
                 })
             }
             Message::PlaylistLoad { path } => {
-                self.playlist_dirty = false;
-                self.playlist_path = Some(path.clone());
                 self.modals.clear();
 
                 match Playlist::load_from(&path) {
                     Ok(playlist) => {
+                        self.playlist_dirty = false;
+                        self.playlist_path = Some(path.clone());
+
                         let context = media::RefreshContext::Playlist;
                         self.grids = Self::load_playlist(playlist);
                         self.refresh(context);
