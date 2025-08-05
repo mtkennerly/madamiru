@@ -762,7 +762,7 @@ impl App {
                     match result {
                         Ok(_) => Message::Ignore,
                         Err(e) => {
-                            log::error!("Unable to open directory: `{}` - {:?}", path2.resolve(), e);
+                            log::error!("Unable to open file: `{}` - {:?}", path2.resolve(), e);
                             Message::OpenPathFailure { path: path2 }
                         }
                     }

@@ -232,6 +232,20 @@ pub fn choose_file<'a>(
     ))
 }
 
+pub fn open_path<'a>(path: StrictPath, modifiers: &keyboard::Modifiers) -> CustomButton<'a> {
+    if modifiers.shift() {
+        icon(Icon::FileOpen).on_press(Message::OpenFile { path })
+    } else {
+        icon(Icon::OpenInNew).on_press(Message::OpenDir { path })
+    }
+    .tooltip(format!(
+        "{}\n{} {}",
+        lang::action::open_folder(),
+        lang::field(&lang::thing::key::shift()),
+        lang::action::open_file()
+    ))
+}
+
 pub fn move_up<'a>(action: fn(EditAction) -> Message, index: usize) -> CustomButton<'a> {
     icon(Icon::ArrowUpward).on_press_maybe((index > 0).then(|| action(EditAction::move_up(index))))
 }

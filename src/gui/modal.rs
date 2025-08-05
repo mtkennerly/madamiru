@@ -457,7 +457,7 @@ impl Modal {
                 for media in all_media {
                     col = col.push(
                         Row::new()
-                            .spacing(20)
+                            .spacing(10)
                             .align_y(Alignment::Center)
                             .push(if collection.is_error(media) {
                                 button::icon(Icon::Error)
@@ -478,7 +478,8 @@ impl Modal {
                                 }
                                 .small_control(),
                             )
-                            .push(text(media.path().raw()).width(Length::Fill)),
+                            .push(button::open_path(media.path().clone(), modifiers))
+                            .push(text(media.path().raw())),
                     );
                 }
             }
