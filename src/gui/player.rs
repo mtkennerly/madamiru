@@ -37,8 +37,8 @@ const AUDIO_STEP: Duration = Duration::from_secs(10);
 #[cfg(feature = "video")]
 const VIDEO_STEP: Duration = Duration::from_secs(10);
 
-fn timestamps<'a>(current: f64, total: Duration) -> Element<'a> {
-    let current = current as u64;
+fn timestamps<'a>(current: Duration, total: Duration) -> Element<'a> {
+    let current = current.as_secs();
     let total = total.as_secs();
 
     let (current, total) = if total > 60 * 60 {
@@ -202,14 +202,14 @@ fn set_video_volume(_video: &mut iced_video_player::Video, _volume: f32) {}
 
 #[cfg(feature = "video")]
 #[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
-fn seek_video(video: &mut iced_video_player::Video, position: f64) {
-    let _ = video.seek(Duration::from_secs_f64(position), false);
+fn seek_video(video: &mut iced_video_player::Video, position: Duration) {
+    let _ = video.seek(position, false);
 }
 
 #[cfg(feature = "video")]
 #[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn seek_video(video: &mut iced_video_player::Video, position: f64) {
-    let _ = video.seek(Duration::from_secs_f64(position));
+fn seek_video(video: &mut iced_video_player::Video, position: Duration) {
+    let _ = video.seek(position);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -278,7 +278,7 @@ pub enum Event {
     SetLoop(bool),
     SetMute(bool),
     SetVolume(f32),
-    Seek(f64),
+    Seek(Duration),
     SeekRelative(f64),
     SeekStop,
     SeekRandom,
@@ -315,8 +315,8 @@ pub enum Update {
 }
 
 impl Update {
-    fn relative_position_changed(absolute_position: f64, duration: Duration) -> Option<Self> {
-        let relative = absolute_position / duration.as_secs_f64();
+    fn relative_position_changed(absolute_position: Duration, duration: Duration) -> Option<Self> {
+        let relative = absolute_position.as_secs_f64() / duration.as_secs_f64();
         relative.is_finite().then_some(Self::RelativePositionChanged(relative))
     }
 }
@@ -352,7 +352,7 @@ pub enum Player {
     Image {
         media: Media,
         handle: iced::widget::image::Handle,
-        position: f64,
+        position: Duration,
         duration: Duration,
         paused: bool,
         muted: bool,
@@ -364,7 +364,7 @@ pub enum Player {
     Svg {
         media: Media,
         handle: iced::widget::svg::Handle,
-        position: f64,
+        position: Duration,
         duration: Duration,
         paused: bool,
         muted: bool,
@@ -377,7 +377,7 @@ pub enum Player {
         media: Media,
         frames: gif::Frames,
         handle: iced::widget::image::Handle,
-        position: f64,
+        position: Duration,
         duration: Duration,
         paused: bool,
         muted: bool,
@@ -405,7 +405,7 @@ pub enum Player {
         media: Media,
         video: iced_video_player::Video,
         pipeline: VideoPipeline,
-        position: f64,
+        position: Duration,
         duration: Duration,
         paused: bool,
         dragging: bool,
@@ -428,7 +428,7 @@ impl Player {
                 Ok(handle) => Ok(Self::Image {
                     media: media.clone(),
                     handle,
-                    position: 0.0,
+                    position: Duration::ZERO,
                     duration: Duration::from_secs(playback.image_duration.get() as u64),
                     paused: playback.paused,
                     muted: playback.muted,
@@ -447,7 +447,7 @@ impl Player {
                 Ok(handle) => Ok(Self::Svg {
                     media: media.clone(),
                     handle,
-                    position: 0.0,
+                    position: Duration::ZERO,
                     duration: Duration::from_secs(playback.image_duration.get() as u64),
                     paused: playback.paused,
                     muted: playback.muted,
@@ -467,7 +467,7 @@ impl Player {
                     media: media.clone(),
                     frames,
                     handle,
-                    position: 0.0,
+                    position: Duration::ZERO,
                     duration: Duration::from_secs(playback.image_duration.get() as u64),
                     paused: playback.paused,
                     muted: playback.muted,
@@ -508,7 +508,7 @@ impl Player {
                     duration: video.duration(),
                     pipeline: get_video_pipeline(&video),
                     video,
-                    position: 0.0,
+                    position: Duration::ZERO,
                     paused: playback.paused,
                     dragging: false,
                     hovered: false,
@@ -623,17 +623,17 @@ impl Player {
             Self::Idle { .. } => {}
             Self::Error { .. } => {}
             Self::Image { position, .. } => {
-                *position = 0.0;
+                *position = Duration::ZERO;
             }
             Self::Svg { position, .. } => {
-                *position = 0.0;
+                *position = Duration::ZERO;
             }
             Self::Gif { position, .. } => {
-                *position = 0.0;
+                *position = Duration::ZERO;
             }
             #[cfg(feature = "audio")]
             Self::Audio { sink, paused, .. } => {
-                let _ = sink.try_seek(Duration::from_millis(0));
+                let _ = sink.try_seek(Duration::ZERO);
                 *paused = false;
                 sink.play();
             }
@@ -644,7 +644,7 @@ impl Player {
                 paused,
                 ..
             } => {
-                *position = 0.0;
+                *position = Duration::ZERO;
                 seek_video(video, *position);
                 *paused = false;
                 video.set_paused(false);
@@ -791,12 +791,12 @@ impl Player {
                 ..
             } => {
                 if !*paused && !*dragging {
-                    *position += elapsed.as_secs_f64();
+                    *position += elapsed;
                 }
 
-                if *position >= duration.as_secs_f64() {
+                if *position >= *duration {
                     if *looping {
-                        *position = 0.0;
+                        *position = Duration::ZERO;
                         None
                     } else {
                         Some(Update::EndOfStream)
@@ -814,12 +814,12 @@ impl Player {
                 ..
             } => {
                 if !*paused && !*dragging {
-                    *position += elapsed.as_secs_f64();
+                    *position += elapsed;
                 }
 
-                if *position >= duration.as_secs_f64() {
+                if *position >= *duration {
                     if *looping {
-                        *position = 0.0;
+                        *position = Duration::ZERO;
                         None
                     } else {
                         Some(Update::EndOfStream)
@@ -837,12 +837,12 @@ impl Player {
                 ..
             } => {
                 if !*paused && !*dragging {
-                    *position += elapsed.as_secs_f64();
+                    *position += elapsed;
                 }
 
-                if *position >= duration.as_secs_f64() {
+                if *position >= *duration {
                     if *looping {
-                        *position = 0.0;
+                        *position = Duration::ZERO;
                         None
                     } else {
                         Some(Update::EndOfStream)
@@ -1044,11 +1044,11 @@ impl Player {
                 Event::SetVolume(_) => None,
                 Event::Seek(offset) => {
                     *dragging = true;
-                    *position = offset.min(duration.as_secs_f64());
+                    *position = offset.min(*duration);
                     Update::relative_position_changed(*position, *duration)
                 }
                 Event::SeekRelative(offset) => {
-                    *position = duration.as_secs_f64() * offset;
+                    *position = Duration::from_secs_f64(duration.as_secs_f64() * offset);
                     None
                 }
                 Event::SeekStop => {
@@ -1114,11 +1114,11 @@ impl Player {
                 Event::SetVolume(_) => None,
                 Event::Seek(offset) => {
                     *dragging = true;
-                    *position = offset.min(duration.as_secs_f64());
+                    *position = offset.min(*duration);
                     Update::relative_position_changed(*position, *duration)
                 }
                 Event::SeekRelative(offset) => {
-                    *position = duration.as_secs_f64() * offset;
+                    *position = Duration::from_secs_f64(duration.as_secs_f64() * offset);
                     None
                 }
                 Event::SeekStop => {
@@ -1184,11 +1184,11 @@ impl Player {
                 Event::SetVolume(_) => None,
                 Event::Seek(offset) => {
                     *dragging = true;
-                    *position = offset.min(duration.as_secs_f64());
+                    *position = offset.min(*duration);
                     Update::relative_position_changed(*position, *duration)
                 }
                 Event::SeekRelative(offset) => {
-                    *position = duration.as_secs_f64() * offset;
+                    *position = Duration::from_secs_f64(duration.as_secs_f64() * offset);
                     None
                 }
                 Event::SeekStop => {
@@ -1268,7 +1268,7 @@ impl Player {
                 }
                 Event::Seek(offset) => {
                     *dragging = true;
-                    let _ = sink.try_seek(Duration::from_secs_f64(offset));
+                    let _ = sink.try_seek(offset);
                     Update::relative_position_changed(offset, *duration)
                 }
                 Event::SeekRelative(offset) | Event::SeekRandomRelative(offset) => {
@@ -1281,13 +1281,13 @@ impl Player {
                 }
                 Event::SeekRandom => {
                     use rand::Rng;
-                    let position = rand::rng().random_range(0.0..duration.as_secs_f64());
-                    let _ = sink.try_seek(Duration::from_secs_f64(position));
+                    let position = Duration::from_secs_f64(rand::rng().random_range(0.0..duration.as_secs_f64()));
+                    let _ = sink.try_seek(position);
                     Update::relative_position_changed(position, *duration)
                 }
                 Event::Step(step) => {
-                    let position = step.compute(sink.get_pos().as_secs_f64(), *duration, AUDIO_STEP);
-                    let _ = sink.try_seek(Duration::from_secs_f64(position));
+                    let position = step.compute(sink.get_pos(), *duration, AUDIO_STEP);
+                    let _ = sink.try_seek(position);
                     Some(Update::Step(step))
                 }
                 Event::EndOfStream => (!*looping).then_some(Update::EndOfStream),
@@ -1360,7 +1360,7 @@ impl Player {
                     Update::relative_position_changed(offset, *duration)
                 }
                 Event::SeekRelative(offset) | Event::SeekRandomRelative(offset) => {
-                    *position = duration.as_secs_f64() * offset;
+                    *position = Duration::from_secs_f64(duration.as_secs_f64() * offset);
                     seek_video(video, *position);
                     None
                 }
@@ -1370,7 +1370,7 @@ impl Player {
                 }
                 Event::SeekRandom => {
                     use rand::Rng;
-                    *position = rand::rng().random_range(0.0..duration.as_secs_f64());
+                    *position = Duration::from_secs_f64(rand::rng().random_range(0.0..duration.as_secs_f64()));
                     seek_video(video, *position);
                     Update::relative_position_changed(*position, *duration)
                 }
@@ -1382,7 +1382,7 @@ impl Player {
                 Event::EndOfStream => (!video.looping()).then_some(Update::EndOfStream),
                 Event::NewFrame => {
                     if let Some(new_position) = get_video_position(pipeline, video) {
-                        *position = new_position.as_secs_f64();
+                        *position = new_position;
                     }
                     None
                 }
@@ -1698,11 +1698,11 @@ impl Player {
                             .push(vertical_space())
                             .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
                             .push(Container::new(
-                                iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
+                                iced::widget::slider(0.0..=duration.as_secs_f64(), position.as_secs_f64(), move |x| {
                                     Message::Player {
                                         grid_id,
                                         player_id,
-                                        event: Event::Seek(x),
+                                        event: Event::Seek(Duration::from_secs_f64(x)),
                                     }
                                 })
                                 .step(0.1)
@@ -1846,11 +1846,11 @@ impl Player {
                             .push(vertical_space())
                             .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
                             .push(Container::new(
-                                iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
+                                iced::widget::slider(0.0..=duration.as_secs_f64(), position.as_secs_f64(), move |x| {
                                     Message::Player {
                                         grid_id,
                                         player_id,
-                                        event: Event::Seek(x),
+                                        event: Event::Seek(Duration::from_secs_f64(x)),
                                     }
                                 })
                                 .step(0.1)
@@ -2008,11 +2008,11 @@ impl Player {
                             .push(vertical_space())
                             .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
                             .push(Container::new(
-                                iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
+                                iced::widget::slider(0.0..=duration.as_secs_f64(), position.as_secs_f64(), move |x| {
                                     Message::Player {
                                         grid_id,
                                         player_id,
-                                        event: Event::Seek(x),
+                                        event: Event::Seek(Duration::from_secs_f64(x)),
                                     }
                                 })
                                 .step(0.1)
@@ -2152,11 +2152,7 @@ impl Player {
                         Column::new()
                             .padding(padding::left(10).right(10).bottom(5))
                             .push(vertical_space())
-                            .push_maybe(
-                                overlay
-                                    .timestamps
-                                    .then_some(timestamps(sink.get_pos().as_secs_f64(), *duration)),
-                            )
+                            .push_maybe(overlay.timestamps.then_some(timestamps(sink.get_pos(), *duration)))
                             .push(Container::new(
                                 iced::widget::slider(
                                     0.0..=duration.as_secs_f64(),
@@ -2164,7 +2160,7 @@ impl Player {
                                     move |x| Message::Player {
                                         grid_id,
                                         player_id,
-                                        event: Event::Seek(x),
+                                        event: Event::Seek(Duration::from_secs_f64(x)),
                                     },
                                 )
                                 .step(0.1)
@@ -2302,11 +2298,11 @@ impl Player {
                             .push(vertical_space())
                             .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
                             .push(Container::new(
-                                iced::widget::slider(0.0..=duration.as_secs_f64(), *position, move |x| {
+                                iced::widget::slider(0.0..=duration.as_secs_f64(), position.as_secs_f64(), move |x| {
                                     Message::Player {
                                         grid_id,
                                         player_id,
-                                        event: Event::Seek(x),
+                                        event: Event::Seek(Duration::from_secs_f64(x)),
                                     }
                                 })
                                 .step(0.1)

@@ -399,10 +399,10 @@ pub enum Step {
 }
 
 impl Step {
-    pub fn compute(&self, position: f64, duration: Duration, size: Duration) -> f64 {
+    pub fn compute(&self, position: Duration, duration: Duration, size: Duration) -> Duration {
         match self {
-            Step::Earlier => (position - size.as_secs_f64()).max(0.0),
-            Step::Later => (position + size.as_secs_f64()).min(duration.as_secs_f64()),
+            Step::Earlier => (position - size).max(Duration::ZERO),
+            Step::Later => (position + size).min(duration),
         }
     }
 }
