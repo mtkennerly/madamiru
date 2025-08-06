@@ -12,6 +12,8 @@
 * Changed:
   * In the top bar, the playlist actions are now grouped together in a submenu.
 * Fixed:
+  * Glob sources did not load correctly.
+    This was related to v0.2.1's incremental media loading behavior.
   * CLI: When a source was specified, you had to click "add player" for media to start playing.
   * If you tried to add another player when no more media was available,
     the playlist would still be marked as having unsaved changes.

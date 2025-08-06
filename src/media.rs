@@ -170,6 +170,7 @@ impl Mime {
 pub enum Scan {
     Source {
         source: Source,
+        original_source: Option<Source>,
         playlist: Option<StrictPath>,
         context: RefreshContext,
     },
@@ -358,6 +359,7 @@ impl Collection {
         match scan {
             Scan::Source {
                 source,
+                original_source,
                 playlist,
                 context,
             } => {
@@ -366,11 +368,18 @@ impl Collection {
                     .and_then(|x| x.parent_if_file().ok())
                     .unwrap_or_else(StrictPath::cwd);
 
-                match source.fill_placeholders(&basis) {
+                let filled = source.fill_placeholders(&basis);
+                let original_source = original_source.unwrap_or(source);
+
+                match filled {
                     Source::Path { path } => {
                         if path.is_file() {
                             log::debug!("Source is file: {path:?}");
-                            vec![Scan::Identify { path, source, context }]
+                            vec![Scan::Identify {
+                                path,
+                                source: original_source,
+                                context,
+                            }]
                         } else if path.is_dir() {
                             log::debug!("Source is directory: {path:?}");
                             path.joined("*")
@@ -381,7 +390,7 @@ impl Collection {
                                     log::debug!("Found file from directory: {file:?} <- {path:?}");
                                     Scan::Identify {
                                         path: file,
-                                        source: source.clone(),
+                                        source: original_source.clone(),
                                         context,
                                     }
                                 })
@@ -393,6 +402,7 @@ impl Collection {
                                     log::debug!("Found target from symlink: {target:?} <- {path:?}");
                                     vec![Scan::Source {
                                         source: Source::new_path(target),
+                                        original_source: Some(original_source),
                                         playlist,
                                         context,
                                     }]
@@ -414,6 +424,7 @@ impl Collection {
                             log::debug!("Found file from glob: {file:?} <- {pattern}");
                             Scan::Source {
                                 source: Source::new_path(file),
+                                original_source: Some(original_source.clone()),
                                 playlist: playlist.clone(),
                                 context,
                             }

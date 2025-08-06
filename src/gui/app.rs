@@ -383,6 +383,7 @@ impl App {
                 match tokio::task::spawn_blocking(move || {
                     media::Collection::find(media::Scan::Source {
                         source,
+                        original_source: None,
                         playlist,
                         context,
                     })
