@@ -1,4 +1,8 @@
-#![allow(clippy::too_many_arguments, clippy::to_string_trait_impl)]
+#![allow(
+    clippy::too_many_arguments,
+    clippy::to_string_trait_impl,
+    mismatched_lifetime_syntaxes
+)]
 
 mod cli;
 mod gui;
