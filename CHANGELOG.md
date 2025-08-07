@@ -1,4 +1,4 @@
-## Unreleased
+## v0.3.0 (2025-08-06)
 
 * Added:
   * There is now a "synchronize" toggle (link icon in the top bar),

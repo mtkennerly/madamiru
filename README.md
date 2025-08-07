@@ -42,8 +42,8 @@ Note:
 Detailed help documentation is available for several topics.
 
 ### General
+* [Keyboard controls](/docs/help/keyboard-controls.md)
 * [Media sources](/docs/help/media-sources.md)
-<!-- * [Keyboard controls](/docs/help/keyboard-controls.md) -->
 
 ### Interfaces
 * [Application folder](/docs/help/application-folder.md)

@@ -229,7 +229,7 @@ def release_flatpak(ctx, target="/git/com.mtkennerly.madamiru"):
 
 
 @task
-def release_winget(ctx, target="/git/_forks/winget-pkgs"):
+def release_winget(ctx, target="/git/_forks/winget-pkgs", edit=False):
     target = Path(target)
     version = get_version()
     changelog = textwrap.indent(latest_changelog(), "  ")
@@ -244,6 +244,9 @@ def release_winget(ctx, target="/git/_forks/winget-pkgs"):
         spec_content = spec.read_bytes().decode("utf-8")
         spec_content = spec_content.replace("Moniker: madamiru", f"Moniker: madamiru\nReleaseNotes: |-\n{changelog}\nReleaseNotesUrl: https://github.com/mtkennerly/madamiru/releases/tag/v{version}")
         spec.write_bytes(spec_content.encode("utf-8"))
+
+        if edit:
+            ctx.run(f'code --wait {spec}')
 
         ctx.run(f"winget validate --manifest manifests/m/mtkennerly/madamiru/{version}")
         ctx.run("git add .")

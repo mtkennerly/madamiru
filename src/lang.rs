@@ -70,8 +70,8 @@ impl Language {
             Self::English => 100,
             Self::French => 2,
             Self::German => 2,
-            Self::Polish => 87,
-            Self::PortugueseBrazilian => 100,
+            Self::Polish => 85,
+            Self::PortugueseBrazilian => 98,
         }
     }
 }
