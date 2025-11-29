@@ -25,7 +25,7 @@ jobs:
             artifact-file: madamiru
             tar: true
           - os: macos-14
-            rust-target: x86_64-apple-darwin
+            rust-target: aarch64-apple-darwin
             artifact-name: mac
             artifact-file: madamiru
             tar: true
