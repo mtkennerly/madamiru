@@ -1,3 +1,9 @@
+## Unreleased
+
+* Changed:
+  * The standalone Mac release is now compiled on Mac OS 14 instead of Mac OS 13
+    because of [a change by GitHub](https://github.com/actions/runner-images/issues/13046).
+
 ## v0.3.0 (2025-08-06)
 
 * Added:
