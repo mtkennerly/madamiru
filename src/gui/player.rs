@@ -2,10 +2,10 @@ use std::time::Duration;
 
 use iced::{
     alignment, padding,
-    widget::{horizontal_space, mouse_area, vertical_space, Image, Responsive, Svg},
+    widget::{mouse_area, space, Image, Responsive, Svg},
     Alignment, Length,
 };
-use iced_gif::gif;
+use iced_moving_picture::gif;
 
 #[cfg(feature = "video")]
 #[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
@@ -49,7 +49,7 @@ fn timestamps<'a>(current: Duration, total: Duration) -> Element<'a> {
 
     Row::new()
         .push(text(current))
-        .push(horizontal_space())
+        .push(space::horizontal())
         .push(text(total))
         .into()
 }
@@ -1487,7 +1487,7 @@ impl Player {
 
                 let top_controls = overlay.top_controls.then_some(
                     Container::new(
-                        Row::new().push(horizontal_space()).push(
+                        Row::new().push(space::horizontal()).push(
                             button::icon(Icon::Close)
                                 .on_press(Message::Player {
                                     grid_id,
@@ -1503,8 +1503,8 @@ impl Player {
 
                 Stack::new()
                     .push(body)
-                    .push_maybe(controls_background)
-                    .push_maybe(top_controls)
+                    .push(controls_background)
+                    .push(top_controls)
                     .into()
             }
             Self::Error {
@@ -1536,7 +1536,7 @@ impl Player {
                                     })
                                     .tooltip(media.path().render()),
                             )
-                            .push(horizontal_space())
+                            .push(space::horizontal())
                             .push(
                                 button::icon(Icon::Close)
                                     .on_press(Message::Player {
@@ -1572,9 +1572,9 @@ impl Player {
 
                 Stack::new()
                     .push(body)
-                    .push_maybe(controls_background)
-                    .push_maybe(top_controls)
-                    .push_maybe(center_controls)
+                    .push(controls_background)
+                    .push(top_controls)
+                    .push(center_controls)
                     .into()
             }
             Self::Image {
@@ -1618,7 +1618,7 @@ impl Player {
                                     })
                                     .tooltip(media.path().render()),
                             )
-                            .push(horizontal_space())
+                            .push(space::horizontal())
                             .push(
                                 button::icon(Icon::Refresh)
                                     .on_press(Message::Player {
@@ -1695,8 +1695,8 @@ impl Player {
                     Container::new(
                         Column::new()
                             .padding(padding::left(10).right(10).bottom(5))
-                            .push(vertical_space())
-                            .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
+                            .push(space::vertical())
+                            .push(overlay.timestamps.then_some(timestamps(*position, *duration)))
                             .push(Container::new(
                                 iced::widget::slider(0.0..=duration.as_secs_f64(), position.as_secs_f64(), move |x| {
                                     Message::Player {
@@ -1719,10 +1719,10 @@ impl Player {
 
                 Stack::new()
                     .push(body)
-                    .push_maybe(controls_background)
-                    .push_maybe(oveerlay_top_controls)
-                    .push_maybe(center_controls)
-                    .push_maybe(bottom_controls)
+                    .push(controls_background)
+                    .push(oveerlay_top_controls)
+                    .push(center_controls)
+                    .push(bottom_controls)
                     .into()
             }
             Self::Svg {
@@ -1766,7 +1766,7 @@ impl Player {
                                     })
                                     .tooltip(media.path().render()),
                             )
-                            .push(horizontal_space())
+                            .push(space::horizontal())
                             .push(
                                 button::icon(Icon::Refresh)
                                     .on_press(Message::Player {
@@ -1843,8 +1843,8 @@ impl Player {
                     Container::new(
                         Column::new()
                             .padding(padding::left(10).right(10).bottom(5))
-                            .push(vertical_space())
-                            .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
+                            .push(space::vertical())
+                            .push(overlay.timestamps.then_some(timestamps(*position, *duration)))
                             .push(Container::new(
                                 iced::widget::slider(0.0..=duration.as_secs_f64(), position.as_secs_f64(), move |x| {
                                     Message::Player {
@@ -1867,10 +1867,10 @@ impl Player {
 
                 Stack::new()
                     .push(body)
-                    .push_maybe(controls_background)
-                    .push_maybe(top_controls)
-                    .push_maybe(center_controls)
-                    .push_maybe(bottom_controls)
+                    .push(controls_background)
+                    .push(top_controls)
+                    .push(center_controls)
+                    .push(bottom_controls)
                     .into()
             }
             Self::Gif {
@@ -1928,7 +1928,7 @@ impl Player {
                                     })
                                     .tooltip(media.path().render()),
                             )
-                            .push(horizontal_space())
+                            .push(space::horizontal())
                             .push(
                                 button::icon(Icon::Refresh)
                                     .on_press(Message::Player {
@@ -2005,8 +2005,8 @@ impl Player {
                     Container::new(
                         Column::new()
                             .padding(padding::left(10).right(10).bottom(5))
-                            .push(vertical_space())
-                            .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
+                            .push(space::vertical())
+                            .push(overlay.timestamps.then_some(timestamps(*position, *duration)))
                             .push(Container::new(
                                 iced::widget::slider(0.0..=duration.as_secs_f64(), position.as_secs_f64(), move |x| {
                                     Message::Player {
@@ -2029,10 +2029,10 @@ impl Player {
 
                 Stack::new()
                     .push(body)
-                    .push_maybe(controls_background)
-                    .push_maybe(top_controls)
-                    .push_maybe(center_controls)
-                    .push_maybe(bottom_controls)
+                    .push(controls_background)
+                    .push(top_controls)
+                    .push(center_controls)
+                    .push(bottom_controls)
                     .into()
             }
             #[cfg(feature = "audio")]
@@ -2072,7 +2072,7 @@ impl Player {
                                     })
                                     .tooltip(media.path().render()),
                             )
-                            .push(horizontal_space())
+                            .push(space::horizontal())
                             .push(
                                 button::icon(Icon::Refresh)
                                     .on_press(Message::Player {
@@ -2151,8 +2151,8 @@ impl Player {
                     Container::new(
                         Column::new()
                             .padding(padding::left(10).right(10).bottom(5))
-                            .push(vertical_space())
-                            .push_maybe(overlay.timestamps.then_some(timestamps(sink.get_pos(), *duration)))
+                            .push(space::vertical())
+                            .push(overlay.timestamps.then_some(timestamps(sink.get_pos(), *duration)))
                             .push(Container::new(
                                 iced::widget::slider(
                                     0.0..=duration.as_secs_f64(),
@@ -2176,11 +2176,11 @@ impl Player {
                 );
 
                 Stack::new()
-                    .push_maybe(body)
-                    .push_maybe(controls_background)
-                    .push_maybe(top_controls)
-                    .push_maybe(center_controls)
-                    .push_maybe(bottom_controls)
+                    .push(body)
+                    .push(controls_background)
+                    .push(top_controls)
+                    .push(center_controls)
+                    .push(bottom_controls)
                     .into()
             }
             #[cfg(feature = "video")]
@@ -2218,7 +2218,7 @@ impl Player {
                                     })
                                     .tooltip(media.path().render()),
                             )
-                            .push(horizontal_space())
+                            .push(space::horizontal())
                             .push(
                                 button::icon(Icon::Refresh)
                                     .on_press(Message::Player {
@@ -2295,8 +2295,8 @@ impl Player {
                     Container::new(
                         Column::new()
                             .padding(padding::left(10).right(10).bottom(5))
-                            .push(vertical_space())
-                            .push_maybe(overlay.timestamps.then_some(timestamps(*position, *duration)))
+                            .push(space::vertical())
+                            .push(overlay.timestamps.then_some(timestamps(*position, *duration)))
                             .push(Container::new(
                                 iced::widget::slider(0.0..=duration.as_secs_f64(), position.as_secs_f64(), move |x| {
                                     Message::Player {
@@ -2319,10 +2319,10 @@ impl Player {
 
                 Stack::new()
                     .push(body)
-                    .push_maybe(controls_background)
-                    .push_maybe(top_controls)
-                    .push_maybe(center_controls)
-                    .push_maybe(bottom_controls)
+                    .push(controls_background)
+                    .push(top_controls)
+                    .push(center_controls)
+                    .push(bottom_controls)
                     .into()
             }
         }

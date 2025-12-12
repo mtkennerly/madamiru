@@ -4,7 +4,7 @@ use iced::{
     alignment,
     keyboard::Modifiers,
     padding,
-    widget::{horizontal_rule, mouse_area, opaque, scrollable},
+    widget::{self, mouse_area, opaque, rule, scrollable},
     Alignment, Length, Task,
 };
 use itertools::Itertools;
@@ -30,10 +30,10 @@ use crate::{
 };
 
 const RELEASE_URL: &str = "https://github.com/mtkennerly/madamiru/releases";
-static SCROLLABLE: LazyLock<scrollable::Id> = LazyLock::new(scrollable::Id::unique);
+static SCROLLABLE: LazyLock<widget::Id> = LazyLock::new(widget::Id::unique);
 
 pub fn scroll_down() -> Task<Message> {
-    scrollable::scroll_by(
+    widget::operation::scroll_by(
         (*SCROLLABLE).clone(),
         scrollable::AbsoluteOffset { x: 0.0, y: f32::MAX },
     )
@@ -546,8 +546,8 @@ impl Modal {
                 .spacing(30)
                 .padding(padding::top(30).bottom(30))
                 .align_x(Alignment::Center)
-                .push_maybe(self.title(config))
-                .push_maybe(
+                .push(self.title(config))
+                .push(
                     self.body(config, histories, modifiers, playlist, collection, active_media)
                         .map(|body| {
                             Container::new(Scrollable::new(body.padding([0, 30])).id((*SCROLLABLE).clone()))
@@ -701,7 +701,8 @@ impl Modal {
         Stack::new()
             .push({
                 let mut area = mouse_area(
-                    Container::new(Space::new(Length::Fill, Length::Fill)).class(style::Container::ModalBackground),
+                    Container::new(Space::new().width(Length::Fill).height(Length::Fill))
+                        .class(style::Container::ModalBackground),
                 );
 
                 match self.variant() {
@@ -750,7 +751,7 @@ impl GridTab {
             .push(button::bare(label).on_press(Message::Modal {
                 event: Event::SelectedGridTab { tab: *self },
             }))
-            .push_maybe((*self == selected).then_some(horizontal_rule(2)))
+            .push((*self == selected).then_some(rule::horizontal(2)))
             .into()
     }
 }

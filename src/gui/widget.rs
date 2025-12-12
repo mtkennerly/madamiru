@@ -24,8 +24,13 @@ pub type Undoable<'a, F> = crate::gui::undoable::Undoable<'a, Message, Theme, Re
 
 pub use w::Space;
 
-pub fn checkbox<'a>(label: impl Into<String>, is_checked: bool, f: impl Fn(bool) -> Message + 'a) -> Checkbox<'a> {
-    Checkbox::new(label, is_checked)
+pub fn checkbox<'a>(
+    label: impl w::text::IntoFragment<'a>,
+    is_checked: bool,
+    f: impl Fn(bool) -> Message + 'a,
+) -> Checkbox<'a> {
+    Checkbox::new(is_checked)
+        .label(label)
         .on_toggle(f)
         .size(20)
         .text_shaping(w::text::Shaping::Advanced)

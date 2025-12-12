@@ -137,8 +137,8 @@ impl App {
         let mut commands = vec![
             iced::font::load(std::borrow::Cow::Borrowed(crate::gui::font::TEXT_DATA)).map(|_| Message::Ignore),
             iced::font::load(std::borrow::Cow::Borrowed(crate::gui::font::ICONS_DATA)).map(|_| Message::Ignore),
-            iced::window::get_oldest().and_then(iced::window::gain_focus),
-            iced::window::get_oldest().and_then(|id| iced::window::resize(id, iced::Size::new(930.0, 600.0))),
+            iced::window::oldest().and_then(iced::window::gain_focus),
+            iced::window::oldest().and_then(|id| iced::window::resize(id, iced::Size::new(930.0, 600.0))),
         ];
 
         if config.release.check && cache.should_check_app_update() {
@@ -789,9 +789,9 @@ impl App {
                         Key::Named(key::Named::Tab) => {
                             if !self.modals.is_empty() {
                                 if modifiers.shift() {
-                                    iced::widget::focus_previous()
+                                    iced::widget::operation::focus_previous()
                                 } else {
-                                    iced::widget::focus_next()
+                                    iced::widget::operation::focus_next()
                                 }
                             } else {
                                 self.selection.cycle(self.selectables(), modifiers.shift());
@@ -1084,7 +1084,7 @@ impl App {
                             histories.sources.push(TextHistory::path(&path));
                             settings.sources.push(media::Source::new_path(path));
                             Task::batch([
-                                iced::window::get_oldest().and_then(iced::window::gain_focus),
+                                iced::window::oldest().and_then(iced::window::gain_focus),
                                 modal::scroll_down(),
                             ])
                         }
@@ -1097,12 +1097,12 @@ impl App {
 
                                 self.show_modal(Modal::new_grid_settings(*grid_id, settings));
                                 Task::batch([
-                                    iced::window::get_oldest().and_then(iced::window::gain_focus),
+                                    iced::window::oldest().and_then(iced::window::gain_focus),
                                     modal::scroll_down(),
                                 ])
                             } else {
                                 self.dragged_files.insert(path);
-                                iced::window::get_oldest().and_then(iced::window::gain_focus)
+                                iced::window::oldest().and_then(iced::window::gain_focus)
                             }
                         }
                     }
@@ -1447,7 +1447,7 @@ impl App {
                                 .enabled(self.playlist_dirty || self.playlist_path.is_some())
                                 .padding(4),
                         )
-                        .push_maybe(STEAM_DECK.then(|| {
+                        .push(STEAM_DECK.then(|| {
                             button::menu(Icon::LogOut, lang::action::exit_app())
                                 .on_press(Message::menu(Message::Exit { force: false }))
                                 .padding(4)
@@ -1588,7 +1588,7 @@ impl App {
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .push(content)
-                .push_maybe(self.modals.last().map(|modal| {
+                .push(self.modals.last().map(|modal| {
                     modal.view(
                         viewport,
                         &self.config,

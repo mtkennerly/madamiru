@@ -2,7 +2,7 @@ use std::{collections::HashSet, time::Duration};
 
 use iced::{
     alignment, padding,
-    widget::{pane_grid, vertical_rule},
+    widget::{pane_grid, rule},
     Length,
 };
 
@@ -559,14 +559,14 @@ impl Grid {
 
         Stack::new()
             .push(body)
-            .push_maybe(
+            .push(
                 dragging_file.then_some(
                     Container::new("")
                         .center(Length::Fill)
                         .class(style::Container::FileDrag),
                 ),
             )
-            .push_maybe(
+            .push(
                 dragging_file.then_some(
                     Container::new(
                         button::max_icon(Icon::PlaylistAdd).on_press(Message::FileDragDropGridSelected(grid_id)),
@@ -582,7 +582,7 @@ impl Grid {
 
         Row::new()
             .align_y(alignment::Vertical::Center)
-            .push_maybe(self.all_muted().filter(|_| show_player_controls).map(|all_muted| {
+            .push(self.all_muted().filter(|_| show_player_controls).map(|all_muted| {
                 button::mini_icon(if all_muted { Icon::Mute } else { Icon::VolumeHigh })
                     .on_press(Message::Pane {
                         event: PaneEvent::SetMute {
@@ -597,7 +597,7 @@ impl Grid {
                         lang::action::mute()
                     })
             }))
-            .push_maybe(self.all_paused().filter(|_| show_player_controls).map(|all_paused| {
+            .push(self.all_paused().filter(|_| show_player_controls).map(|all_paused| {
                 button::mini_icon(if all_paused { Icon::Play } else { Icon::Pause })
                     .on_press(Message::Pane {
                         event: PaneEvent::SetPause {
@@ -612,7 +612,7 @@ impl Grid {
                         lang::action::pause()
                     })
             }))
-            .push_maybe((show_player_controls && self.can_jump()).then(|| {
+            .push((show_player_controls && self.can_jump()).then(|| {
                 button::mini_icon(Icon::TimerRefresh)
                     .on_press(Message::Pane {
                         event: PaneEvent::SeekRandom { grid_id },
@@ -620,7 +620,7 @@ impl Grid {
                     .obscured(obscured)
                     .tooltip(lang::action::jump_position())
             }))
-            .push_maybe(show_player_controls.then(|| {
+            .push(show_player_controls.then(|| {
                 button::mini_icon(Icon::Refresh)
                     .on_press(Message::Pane {
                         event: PaneEvent::Refresh { grid_id },
@@ -628,8 +628,8 @@ impl Grid {
                     .obscured(obscured)
                     .tooltip(lang::action::shuffle())
             }))
-            .push_maybe(show_player_controls.then(|| {
-                Container::new(vertical_rule(2))
+            .push(show_player_controls.then(|| {
+                Container::new(rule::vertical(2))
                     .height(10)
                     .padding(padding::left(5).right(5))
             }))
