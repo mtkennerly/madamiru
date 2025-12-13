@@ -46,13 +46,14 @@
     </keywords>
     <screenshots>
         <screenshot type="default">
-            <image type="source">https://raw.githubusercontent.com/mtkennerly/madamiru/v0.3.0/docs/sample-gui.png</image>
+            <image type="source">https://raw.githubusercontent.com/mtkennerly/madamiru/v0.4.0/docs/sample-gui.png</image>
             <caption>Graphical user interface</caption>
         </screenshot>
     </screenshots>
     <content_rating type="oars-1.1" />
     <launchable type="desktop-id">com.mtkennerly.madamiru.desktop</launchable>
     <releases>
+        <release version="0.4.0" date="2025-12-12"/>
         <release version="0.3.0" date="2025-08-06"/>
         <release version="0.2.1" date="2025-07-22"/>
         <release version="0.2.0" date="2025-03-26"/>

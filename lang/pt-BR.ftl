@@ -10,7 +10,7 @@ thing-items-per-line = Itens por linha
 thing-key-shift = Deslocar
 thing-language = Idioma
 thing-layout = Layout
-thing-media = Media
+thing-media = Mídia
 thing-orientation = Orientação
 # Path to a file/folder on the system.
 thing-path = Caminho
@@ -27,7 +27,7 @@ action-close = Fechar
 action-confirm = Confirmar
 action-confirm-when-discarding-unsaved-playlist = Confirmar quando descartar a playlist não salva
 action-crop = Recortar
-action-desynchronize = Desynchronize
+action-desynchronize = Dessincronizar
 action-exit-app = Sair da aplicação
 action-jump-position = Pular para a posição aleatória
 action-mute = Mutar
@@ -50,7 +50,7 @@ action-split-horizontally = Dividir horizontalmente
 action-split-vertically = Dividir verticalmente
 action-start-new-playlist = Iniciar nova lista de reprodução
 action-stretch = Estender
-action-synchronize = Synchronize
+action-synchronize = Sincronize
 action-unmute = Desativar mudo
 action-view-releases = Ver versões
 # This refers to the dark-colored theme.
