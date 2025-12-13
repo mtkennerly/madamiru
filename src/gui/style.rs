@@ -327,7 +327,6 @@ impl scrollable::Catalog for Theme {
 
     fn style(&self, _class: &Self::Class<'_>, status: scrollable::Status) -> scrollable::Style {
         let active = scrollable::Style {
-            // MTK
             auto_scroll: scrollable::AutoScroll {
                 background: self.background.into(),
                 border: Border::default(),
@@ -343,7 +342,6 @@ impl scrollable::Catalog for Theme {
                     radius: 5.0.into(),
                 },
                 scroller: scrollable::Scroller {
-                    // MTK
                     background: self.text.alpha(0.7).into(),
                     border: Border {
                         color: Color::TRANSPARENT,
@@ -360,7 +358,6 @@ impl scrollable::Catalog for Theme {
                     radius: 5.0.into(),
                 },
                 scroller: scrollable::Scroller {
-                    // MTK
                     background: self.text.alpha(0.7).into(),
                     border: Border {
                         color: Color::TRANSPARENT,
