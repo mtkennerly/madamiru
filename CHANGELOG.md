@@ -1,5 +1,7 @@
 ## Unreleased
 
+* Added:
+  * Support for animated PNG images.
 * Fixed:
   * Text can now be entered using input method editors.
 * Changed:

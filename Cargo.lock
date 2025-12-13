@@ -2546,9 +2546,9 @@ dependencies = [
 
 [[package]]
 name = "iced_moving_picture"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecab80de778aa6276bc506df7541f7db758fff5d75a867e3ff8ab3b43e93e5cb"
+checksum = "5a058d0a3f6d4195fea964c68947e87ade42b1c3842f4a836c1fbecf5969a4fd"
 dependencies = [
  "async-fs",
  "iced_futures",
@@ -3241,6 +3241,7 @@ dependencies = [
  "log",
  "mime_guess",
  "opener",
+ "png 0.18.0",
  "pretty_assertions",
  "rand",
  "realia",

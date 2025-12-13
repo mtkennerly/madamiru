@@ -1,11 +1,11 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use iced::{
     alignment, padding,
     widget::{mouse_area, space, Image, Responsive, Svg},
     Alignment, Length,
 };
-use iced_moving_picture::gif;
+use iced_moving_picture::{apng, gif};
 
 #[cfg(feature = "video")]
 #[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
@@ -220,7 +220,7 @@ pub enum Error {
     #[cfg(feature = "audio")]
     Audio(String),
     Image(String),
-    Io(std::io::Error),
+    Io(Arc<std::io::Error>),
     Path(crate::path::StrictPathError),
     #[cfg(feature = "video")]
     Url,
@@ -246,6 +246,12 @@ impl Error {
 
 impl From<std::io::Error> for Error {
     fn from(value: std::io::Error) -> Self {
+        Self::Io(Arc::new(value))
+    }
+}
+
+impl From<Arc<std::io::Error>> for Error {
+    fn from(value: Arc<std::io::Error>) -> Self {
         Self::Io(value)
     }
 }
@@ -268,6 +274,15 @@ impl From<gif::Error> for Error {
         match value {
             gif::Error::Image(error) => Self::Image(error.to_string()),
             gif::Error::Io(error) => Self::Io(error),
+        }
+    }
+}
+
+impl From<apng::Error> for Error {
+    fn from(value: apng::Error) -> Self {
+        match value {
+            apng::Error::Image(error) => Self::Image(error.to_string()),
+            apng::Error::Io(error) => Self::Io(error),
         }
     }
 }
@@ -386,6 +401,19 @@ pub enum Player {
         hovered: bool,
         need_play_on_focus: bool,
     },
+    Apng {
+        media: Media,
+        frames: apng::Frames,
+        handle: iced::widget::image::Handle,
+        position: Duration,
+        duration: Duration,
+        paused: bool,
+        muted: bool,
+        looping: bool,
+        dragging: bool,
+        hovered: bool,
+        need_play_on_focus: bool,
+    },
     #[cfg(feature = "audio")]
     Audio {
         media: Media,
@@ -482,6 +510,26 @@ impl Player {
                     hovered: false,
                 }),
             },
+            Media::Apng { path } => match Self::load_apng(path) {
+                Ok((frames, handle)) => Ok(Self::Apng {
+                    media: media.clone(),
+                    frames,
+                    handle,
+                    position: Duration::ZERO,
+                    duration: Duration::from_secs(playback.image_duration.get() as u64),
+                    paused: playback.paused,
+                    muted: playback.muted,
+                    looping: false,
+                    dragging: false,
+                    hovered: false,
+                    need_play_on_focus: false,
+                }),
+                Err(e) => Err(Self::Error {
+                    media: media.clone(),
+                    message: e.message(),
+                    hovered: false,
+                }),
+            },
             #[cfg(feature = "audio")]
             Media::Audio { path } => match Self::load_audio(path, playback, Duration::from_millis(0)) {
                 Ok((stream, sink, duration)) => Ok(Self::Audio {
@@ -549,6 +597,13 @@ impl Player {
     fn load_gif(source: &StrictPath) -> Result<(gif::Frames, iced::widget::image::Handle), Error> {
         let bytes = source.try_read_bytes()?;
         let frames = gif::Frames::from_bytes(bytes.clone())?;
+        let handle = iced::widget::image::Handle::from_bytes(bytes);
+        Ok((frames, handle))
+    }
+
+    fn load_apng(source: &StrictPath) -> Result<(apng::Frames, iced::widget::image::Handle), Error> {
+        let bytes = source.try_read_bytes()?;
+        let frames = apng::Frames::from_bytes(bytes.clone())?;
         let handle = iced::widget::image::Handle::from_bytes(bytes);
         Ok((frames, handle))
     }
@@ -631,6 +686,9 @@ impl Player {
             Self::Gif { position, .. } => {
                 *position = Duration::ZERO;
             }
+            Self::Apng { position, .. } => {
+                *position = Duration::ZERO;
+            }
             #[cfg(feature = "audio")]
             Self::Audio { sink, paused, .. } => {
                 let _ = sink.try_seek(Duration::ZERO);
@@ -659,6 +717,7 @@ impl Player {
             Self::Image { media, .. } => Some(media),
             Self::Svg { media, .. } => Some(media),
             Self::Gif { media, .. } => Some(media),
+            Self::Apng { media, .. } => Some(media),
             #[cfg(feature = "audio")]
             Self::Audio { media, .. } => Some(media),
             #[cfg(feature = "video")]
@@ -673,6 +732,7 @@ impl Player {
             Self::Image { .. } => Category::Image,
             Self::Svg { .. } => Category::Image,
             Self::Gif { .. } => Category::Image,
+            Self::Apng { .. } => Category::Image,
             #[cfg(feature = "audio")]
             Self::Audio { .. } => Category::Audio,
             #[cfg(feature = "video")]
@@ -687,6 +747,7 @@ impl Player {
             Self::Image { .. } => false,
             Self::Svg { .. } => false,
             Self::Gif { .. } => false,
+            Self::Apng { .. } => false,
             #[cfg(feature = "audio")]
             Self::Audio { .. } => false,
             #[cfg(feature = "video")]
@@ -701,6 +762,7 @@ impl Player {
             Self::Image { paused, .. } => Some(*paused),
             Self::Svg { paused, .. } => Some(*paused),
             Self::Gif { paused, .. } => Some(*paused),
+            Self::Apng { paused, .. } => Some(*paused),
             #[cfg(feature = "audio")]
             Self::Audio { paused, .. } => Some(*paused),
             #[cfg(feature = "video")]
@@ -715,6 +777,7 @@ impl Player {
             Self::Image { muted, .. } => Some(*muted),
             Self::Svg { muted, .. } => Some(*muted),
             Self::Gif { muted, .. } => Some(*muted),
+            Self::Apng { muted, .. } => Some(*muted),
             #[cfg(feature = "audio")]
             Self::Audio { sink, .. } => Some(sink.volume() == 0.0),
             #[cfg(feature = "video")]
@@ -729,6 +792,7 @@ impl Player {
             Self::Image { .. } => false,
             Self::Svg { .. } => false,
             Self::Gif { .. } => false,
+            Self::Apng { .. } => false,
             #[cfg(feature = "audio")]
             Self::Audio { .. } => true,
             #[cfg(feature = "video")]
@@ -743,6 +807,7 @@ impl Player {
             Self::Image { hovered, .. } => *hovered,
             Self::Svg { hovered, .. } => *hovered,
             Self::Gif { hovered, .. } => *hovered,
+            Self::Apng { hovered, .. } => *hovered,
             #[cfg(feature = "audio")]
             Self::Audio { hovered, .. } => *hovered,
             #[cfg(feature = "video")]
@@ -765,6 +830,9 @@ impl Player {
                 *hovered = flag;
             }
             Self::Gif { hovered, .. } => {
+                *hovered = flag;
+            }
+            Self::Apng { hovered, .. } => {
                 *hovered = flag;
             }
             #[cfg(feature = "audio")]
@@ -829,6 +897,29 @@ impl Player {
                 }
             }
             Self::Gif {
+                position,
+                duration,
+                paused,
+                looping,
+                dragging,
+                ..
+            } => {
+                if !*paused && !*dragging {
+                    *position += elapsed;
+                }
+
+                if *position >= *duration {
+                    if *looping {
+                        *position = Duration::ZERO;
+                        None
+                    } else {
+                        Some(Update::EndOfStream)
+                    }
+                } else {
+                    None
+                }
+            }
+            Self::Apng {
                 position,
                 duration,
                 paused,
@@ -937,7 +1028,7 @@ impl Player {
                 bottom_controls: false,
                 timestamps: false,
             },
-            Self::Image { .. } | Self::Svg { .. } | Self::Gif { .. } => Overlay {
+            Self::Image { .. } | Self::Svg { .. } | Self::Gif { .. } | Self::Apng { .. } => Overlay {
                 show,
                 center_controls: show && viewport.height > 100.0 && viewport.width > 150.0,
                 top_controls: show && viewport.width > 100.0,
@@ -1228,6 +1319,77 @@ impl Player {
                     None
                 }
             },
+            Self::Apng {
+                position,
+                duration,
+                paused,
+                muted,
+                looping,
+                dragging,
+                hovered,
+                need_play_on_focus,
+                ..
+            } => match event {
+                Event::SetPause(flag) => {
+                    *paused = flag;
+                    Some(Update::PauseChanged(flag))
+                }
+                Event::SetLoop(flag) => {
+                    *looping = flag;
+                    None
+                }
+                Event::SetMute(flag) => {
+                    *muted = flag;
+                    Some(Update::MuteChanged)
+                }
+                Event::SetVolume(_) => None,
+                Event::Seek(offset) => {
+                    *dragging = true;
+                    *position = offset.min(*duration);
+                    Update::relative_position_changed(*position, *duration)
+                }
+                Event::SeekRelative(offset) => {
+                    *position = Duration::from_secs_f64(duration.as_secs_f64() * offset);
+                    None
+                }
+                Event::SeekStop => {
+                    *dragging = false;
+                    None
+                }
+                Event::SeekRandom => None,
+                Event::SeekRandomRelative(_) => None,
+                Event::Step(step) => {
+                    *position = step.compute(*position, *duration, IMAGE_STEP);
+                    Some(Update::Step(step))
+                }
+                Event::EndOfStream => Some(Update::EndOfStream),
+                Event::NewFrame => None,
+                Event::MouseEnter => {
+                    *hovered = true;
+                    None
+                }
+                Event::MouseExit => {
+                    *hovered = false;
+                    None
+                }
+                Event::Refresh => Some(Update::Refresh),
+                Event::Close => Some(Update::Close),
+                Event::WindowFocused => {
+                    if *need_play_on_focus {
+                        *paused = false;
+                        *need_play_on_focus = false;
+                    }
+                    None
+                }
+                Event::WindowUnfocused => {
+                    if playback.pause_on_unfocus {
+                        *paused = true;
+                        *need_play_on_focus = true;
+                    }
+                    None
+                }
+            },
+
             #[cfg(feature = "audio")]
             Self::Audio {
                 sink,
@@ -1899,6 +2061,168 @@ impl Player {
                     } else {
                         Container::new(
                             gif(frames)
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .content_fit(content_fit.into()),
+                        )
+                    };
+
+                    media
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center)
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                };
+
+                let controls_background = overlay.show.then_some(
+                    Container::new("")
+                        .center(Length::Fill)
+                        .class(style::Container::ModalBackground),
+                );
+
+                let top_controls = overlay.top_controls.then_some(
+                    Container::new(
+                        Row::new()
+                            .push(
+                                button::icon(Icon::Image)
+                                    .on_press(Message::OpenDir {
+                                        path: media.path().clone(),
+                                    })
+                                    .tooltip(media.path().render()),
+                            )
+                            .push(space::horizontal())
+                            .push(
+                                button::icon(Icon::Refresh)
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Refresh,
+                                    })
+                                    .tooltip(lang::action::shuffle()),
+                            )
+                            .push(
+                                button::icon(Icon::Close)
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Close,
+                                    })
+                                    .tooltip(lang::action::close()),
+                            ),
+                    )
+                    .align_top(Length::Fill)
+                    .width(Length::Fill),
+                );
+
+                let center_controls = overlay.center_controls.then_some(
+                    Container::new(
+                        Row::new()
+                            .spacing(5)
+                            .align_y(alignment::Vertical::Center)
+                            .padding(padding::all(10.0))
+                            .push(
+                                button::icon(if *muted { Icon::Mute } else { Icon::VolumeHigh })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetMute(!*muted),
+                                    })
+                                    .tooltip(if *muted {
+                                        lang::action::unmute()
+                                    } else {
+                                        lang::action::mute()
+                                    }),
+                            )
+                            .push(
+                                button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetPause(!*paused),
+                                    })
+                                    .tooltip(if *paused {
+                                        lang::action::play()
+                                    } else {
+                                        lang::action::pause()
+                                    }),
+                            )
+                            .push(
+                                button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
+                                    .on_press(Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::SetLoop(!*looping),
+                                    })
+                                    .tooltip(if *looping {
+                                        lang::tell::player_will_loop()
+                                    } else {
+                                        lang::tell::player_will_shuffle()
+                                    }),
+                            ),
+                    )
+                    .center(Length::Fill),
+                );
+
+                let bottom_controls = overlay.bottom_controls.then_some(
+                    Container::new(
+                        Column::new()
+                            .padding(padding::left(10).right(10).bottom(5))
+                            .push(space::vertical())
+                            .push(overlay.timestamps.then_some(timestamps(*position, *duration)))
+                            .push(Container::new(
+                                iced::widget::slider(0.0..=duration.as_secs_f64(), position.as_secs_f64(), move |x| {
+                                    Message::Player {
+                                        grid_id,
+                                        player_id,
+                                        event: Event::Seek(Duration::from_secs_f64(x)),
+                                    }
+                                })
+                                .step(0.1)
+                                .on_release(Message::Player {
+                                    grid_id,
+                                    player_id,
+                                    event: Event::SeekStop,
+                                }),
+                            )),
+                    )
+                    .align_bottom(Length::Fill)
+                    .center_x(Length::Fill),
+                );
+
+                Stack::new()
+                    .push(body)
+                    .push(controls_background)
+                    .push(top_controls)
+                    .push(center_controls)
+                    .push(bottom_controls)
+                    .into()
+            }
+            Self::Apng {
+                media,
+                frames,
+                handle,
+                position,
+                duration,
+                paused,
+                muted,
+                looping,
+                dragging,
+                hovered,
+                ..
+            } => {
+                let overlay = self.overlay(viewport, obscured, *hovered || selected || *dragging);
+
+                let body = {
+                    let media = if *paused {
+                        Container::new(
+                            Image::new(handle)
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .content_fit(content_fit.into()),
+                        )
+                    } else {
+                        Container::new(
+                            apng(frames)
                                 .width(Length::Fill)
                                 .height(Length::Fill)
                                 .content_fit(content_fit.into()),

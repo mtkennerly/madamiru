@@ -25,7 +25,7 @@ globset = "0.4.16"
 gstreamer = { version = "0.23.5", optional = true }
 gstreamer-app = { version = "0.23.5", optional = true }
 iced = { version = "0.14.0", features = ["advanced", "advanced-shaping", "crisp", "image", "lazy", "svg", "tiny-skia", "tokio", "wayland", "wgpu", "x11"], default-features = false }
-iced_moving_picture = "0.1.0"
+iced_moving_picture = "0.2.0"
 iced_video_player = { version = ">=0.5.0", git = "https://github.com/jazzfool/iced_video_player.git", rev = "bb5d9b5013b37e5a829996e92ee804b119677e2a", optional = true }
 image = { version = "0.25.6", features = ["ico"], default-features = false }
 infer = "0.19.0"
@@ -33,6 +33,7 @@ intl-memoizer = "0.5.2"
 itertools = "0.14.0"
 log = "0.4.27"
 mime_guess = "2.0.5"
+png = "0.18.0"
 opener = "0.7.2"
 rand = "0.9.0"
 realia = "0.2.0"

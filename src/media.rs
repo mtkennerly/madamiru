@@ -206,6 +206,9 @@ pub enum Media {
     Gif {
         path: StrictPath,
     },
+    Apng {
+        path: StrictPath,
+    },
     #[cfg(feature = "audio")]
     Audio {
         path: StrictPath,
@@ -222,6 +225,7 @@ impl Media {
             Self::Image { .. } => Category::Image,
             Self::Svg { .. } => Category::Image,
             Self::Gif { .. } => Category::Image,
+            Self::Apng { .. } => Category::Image,
             #[cfg(feature = "audio")]
             Self::Audio { .. } => Category::Audio,
             #[cfg(feature = "video")]
@@ -234,6 +238,7 @@ impl Media {
             Self::Image { path } => path,
             Self::Svg { path } => path,
             Self::Gif { path } => path,
+            Self::Apng { path } => path,
             #[cfg(feature = "audio")]
             Self::Audio { path } => path,
             #[cfg(feature = "video")]
@@ -299,10 +304,21 @@ impl Media {
                 "audio/mpeg" | "audio/m4a" | "audio/x-flac" | "audio/x-wav" => Some(Self::Audio {
                     path: path.normalized(),
                 }),
-                "image/bmp" | "image/jpeg" | "image/png" | "image/tiff" | "image/vnd.microsoft.icon" | "image/webp" => {
+                "image/bmp" | "image/jpeg" | "image/tiff" | "image/vnd.microsoft.icon" | "image/webp" => {
                     Some(Self::Image {
                         path: path.normalized(),
                     })
+                }
+                "image/png" => {
+                    if is_animated_png(path) {
+                        Some(Self::Apng {
+                            path: path.normalized(),
+                        })
+                    } else {
+                        Some(Self::Image {
+                            path: path.normalized(),
+                        })
+                    }
                 }
                 "image/gif" => Some(Self::Gif {
                     path: path.normalized(),
@@ -469,6 +485,30 @@ impl Collection {
             .unique()
             .collect()
     }
+}
+
+fn is_animated_png(path: &StrictPath) -> bool {
+    let reader = match path.open_buffered() {
+        Ok(handle) => handle,
+        Err(e) => {
+            log::error!("Unable to open PNG: {e:?}");
+            return false;
+        }
+    };
+
+    let decoder = png::Decoder::new(reader);
+
+    let reader = match decoder.read_info() {
+        Ok(reader) => reader,
+        Err(e) => {
+            log::error!("Unable to decode PNG: {e:?}");
+            return false;
+        }
+    };
+
+    let info = reader.info();
+
+    info.is_animated()
 }
 
 #[cfg(test)]

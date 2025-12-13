@@ -6,7 +6,7 @@ that can automatically shuffle multiple videos, images, and songs at once in a g
 * Customizable layout with multiple groups of dynamically selected media
 * Video formats: AVI, M4V, MKV, MOV, MP4, WebM,
   plus any others supported by [GStreamer](https://gstreamer.freedesktop.org)
-* Image formats: BMP, GIF, ICO, JPEG, PNG, TIFF, SVG, WebP
+* Image formats: BMP, GIF, ICO, JPEG, PNG/APNG, TIFF, SVG, WebP
 * Audio formats: FLAC, M4A, MP3, WAV
 * Subtitles are supported within MKV (but not as separate files)
 
