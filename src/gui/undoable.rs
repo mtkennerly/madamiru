@@ -1,12 +1,12 @@
 use iced::{
+    Element, Length, Rectangle,
     advanced::{
-        layout, renderer,
+        Clipboard, Layout, Shell, Widget, layout, renderer,
         widget::{Operation, Tree},
-        Clipboard, Layout, Shell, Widget,
     },
     event::Event,
     keyboard::Key,
-    mouse, overlay, Element, Length, Rectangle,
+    mouse, overlay,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

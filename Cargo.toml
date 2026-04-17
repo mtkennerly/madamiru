@@ -2,7 +2,7 @@
 name = "madamiru"
 version = "0.4.1"
 authors = ["mtkennerly <mtkennerly@gmail.com>"]
-edition = "2021"
+edition = "2024"
 description = "Dynamic multi-multimedia player"
 repository = "https://github.com/mtkennerly/madamiru"
 readme = "README.md"
@@ -40,7 +40,7 @@ regex = "1.11.1"
 reqwest = { version = "0.12.15", features = ["blocking", "gzip", "rustls-tls"], default-features = false }
 rfd = { version = "0.15.3", features = ["gtk3"], default-features = false }
 rodio = { version = "0.20.1", features = ["symphonia-aac", "symphonia-aiff", "symphonia-alac", "symphonia-flac", "symphonia-isomp4", "symphonia-mp3", "symphonia-vorbis", "symphonia-wav"], default-features = false, optional = true }
-schemars = { version = "0.8.22", features = ["chrono"] }
+schemars = { version = "1.2.1", features = ["chrono04"] }
 semver = { version = "1.0.26", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"

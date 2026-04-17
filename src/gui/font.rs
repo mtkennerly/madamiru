@@ -1,4 +1,4 @@
-use iced::{font, Font};
+use iced::{Font, font};
 
 pub const TEXT_DATA: &[u8] = include_bytes!("../../assets/NotoSans-Regular.ttf");
 pub const TEXT: Font = Font {

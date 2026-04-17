@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    borrow::Cow,
+    sync::{Arc, Mutex},
+};
 
 use itertools::Itertools;
 use std::sync::LazyLock;
@@ -212,17 +215,17 @@ impl StrictPath {
                     }
                 }
                 Component::Unix(UComponent::CurDir) | Component::Windows(WComponent::CurDir) => {
-                    if i == 0 {
-                        if let Some(basis) = &self.basis {
-                            analysis = Self::new(basis.clone()).analyze();
-                        }
+                    if i == 0
+                        && let Some(basis) = &self.basis
+                    {
+                        analysis = Self::new(basis.clone()).analyze();
                     }
                 }
                 Component::Unix(UComponent::ParentDir) | Component::Windows(WComponent::ParentDir) => {
-                    if i == 0 {
-                        if let Some(basis) = &self.basis {
-                            analysis = Self::new(basis.clone()).analyze();
-                        }
+                    if i == 0
+                        && let Some(basis) = &self.basis
+                    {
+                        analysis = Self::new(basis.clone()).analyze();
                     }
                     analysis.parts.pop();
                 }
@@ -498,7 +501,7 @@ impl StrictPath {
         }
 
         let mut tail = vec![];
-        for pair in us.parts.into_iter().zip_longest(find.parts.into_iter()) {
+        for pair in us.parts.into_iter().zip_longest(find.parts) {
             match pair {
                 itertools::EitherOrBoth::Both(old, find) => {
                     if old != find {
@@ -821,16 +824,12 @@ impl<'de> serde::Deserialize<'de> for StrictPath {
 }
 
 impl schemars::JsonSchema for StrictPath {
-    fn schema_name() -> String {
-        "FilePath".to_string()
+    fn schema_name() -> Cow<'static, str> {
+        Cow::Borrowed("FilePath")
     }
 
-    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
-        String::json_schema(gen)
-    }
-
-    fn is_referenceable() -> bool {
-        true
+    fn json_schema(generator: &mut schemars::generate::SchemaGenerator) -> schemars::Schema {
+        String::json_schema(generator)
     }
 }
 

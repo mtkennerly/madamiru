@@ -4,8 +4,8 @@ use std::{
 };
 
 use iced::{
-    widget::{pane_grid, text_input},
     Length,
+    widget::{pane_grid, text_input},
 };
 
 use crate::{
@@ -316,11 +316,7 @@ impl Selection {
     }
 
     pub fn player_for_grid(&self, grid: grid::Id) -> Option<player::Id> {
-        if self.grid == Some(grid) {
-            self.player
-        } else {
-            None
-        }
+        if self.grid == Some(grid) { self.player } else { None }
     }
 
     pub fn clear(&mut self) {

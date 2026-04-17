@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use iced::{keyboard, widget::pane_grid, Length, Subscription, Task};
+use iced::{Length, Subscription, Task, keyboard, widget::pane_grid};
 use itertools::Itertools;
 
 use crate::{
@@ -23,10 +23,10 @@ use crate::{
     path::StrictPath,
     prelude::{Change, Error, STEAM_DECK},
     resource::{
+        ResourceFile, SaveableResourceFile,
         cache::Cache,
         config::{self, Config},
         playlist::{self, Playlist},
-        ResourceFile, SaveableResourceFile,
     },
 };
 
@@ -527,11 +527,11 @@ impl App {
             self.config.playback.paused = paused;
         }
 
-        if let Some(muted) = self.all_muted() {
-            if self.config.playback.muted != muted {
-                self.config.playback.muted = muted;
-                self.save_config();
-            }
+        if let Some(muted) = self.all_muted()
+            && self.config.playback.muted != muted
+        {
+            self.config.playback.muted = muted;
+            self.save_config();
         }
     }
 
@@ -598,10 +598,10 @@ impl App {
                 self.update_playback();
                 self.selection.ensure_valid_in_grid(self.selectables_in_grid());
 
-                if let Some(grid) = self.grids.get(grid_id) {
-                    if grid.is_idle() {
-                        self.show_modal(Modal::new_grid_settings(grid_id, grid.settings()));
-                    }
+                if let Some(grid) = self.grids.get(grid_id)
+                    && grid.is_idle()
+                {
+                    self.show_modal(Modal::new_grid_settings(grid_id, grid.settings()));
                 };
             }
         }
@@ -782,7 +782,7 @@ impl App {
                 Task::none()
             }
             Message::KeyboardEvent(event) => {
-                use iced::keyboard::{self, key, Key, Modifiers};
+                use iced::keyboard::{self, Key, Modifiers, key};
 
                 match event {
                     keyboard::Event::KeyPressed { key, modifiers, .. } => match key {
@@ -1007,33 +1007,33 @@ impl App {
                 Task::none()
             }
             Message::Modal { event } => {
-                if let Some(modal) = self.modals.last_mut() {
-                    if let Some(update) = modal.update(event) {
-                        match update {
-                            modal::Update::SavedGridSettings { grid_id, settings } => {
-                                let context = media::RefreshContext::Edit;
-                                self.modals.pop();
-                                let sources = settings.sources.clone();
-                                if let Some(grid) = self.grids.get_mut(grid_id) {
-                                    match grid.set_settings(settings) {
-                                        Change::Same => {}
-                                        Change::Different => {
-                                            self.playlist_dirty = true;
-                                        }
+                if let Some(modal) = self.modals.last_mut()
+                    && let Some(update) = modal.update(event)
+                {
+                    match update {
+                        modal::Update::SavedGridSettings { grid_id, settings } => {
+                            let context = media::RefreshContext::Edit;
+                            self.modals.pop();
+                            let sources = settings.sources.clone();
+                            if let Some(grid) = self.grids.get_mut(grid_id) {
+                                match grid.set_settings(settings) {
+                                    Change::Same => {}
+                                    Change::Different => {
+                                        self.playlist_dirty = true;
                                     }
                                 }
-                                self.refresh(context);
-                                return Self::find_media(sources, context, self.playlist_path.clone());
                             }
-                            modal::Update::PlayMedia { grid_id, media } => {
-                                if let Some(grid) = self.grids.get_mut(grid_id) {
-                                    grid.add_player_with_media(media, &mut self.media, &self.config.playback);
-                                    self.playlist_dirty = true;
-                                }
+                            self.refresh(context);
+                            return Self::find_media(sources, context, self.playlist_path.clone());
+                        }
+                        modal::Update::PlayMedia { grid_id, media } => {
+                            if let Some(grid) = self.grids.get_mut(grid_id) {
+                                grid.add_player_with_media(media, &mut self.media, &self.config.playback);
+                                self.playlist_dirty = true;
                             }
-                            modal::Update::Task(task) => {
-                                return task;
-                            }
+                        }
+                        modal::Update::Task(task) => {
+                            return task;
                         }
                     }
                 }

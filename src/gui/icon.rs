@@ -1,8 +1,8 @@
-use iced::{alignment, Length};
+use iced::{Length, alignment};
 
 use crate::gui::{
     font,
-    widget::{text, Text},
+    widget::{Text, text},
 };
 
 pub enum Icon {

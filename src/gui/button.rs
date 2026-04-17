@@ -1,7 +1,6 @@
 use iced::{
-    alignment, keyboard,
+    Padding, alignment, keyboard,
     widget::{text::IntoFragment, tooltip},
-    Padding,
 };
 
 use crate::{
@@ -9,7 +8,7 @@ use crate::{
         common::{BrowseFileSubject, BrowseSubject, EditAction, Message},
         icon::Icon,
         style,
-        widget::{text, Button, Container, Element, Row, Tooltip},
+        widget::{Button, Container, Element, Row, Tooltip, text},
     },
     lang,
     path::StrictPath,

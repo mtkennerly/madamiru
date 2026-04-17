@@ -1,9 +1,8 @@
 use std::{sync::Arc, time::Duration};
 
 use iced::{
-    alignment, padding,
-    widget::{mouse_area, space, Image, Responsive, Svg},
-    Alignment, Length,
+    Alignment, Length, alignment, padding,
+    widget::{Image, Responsive, Svg, mouse_area, space},
 };
 use iced_moving_picture::{apng, gif};
 
@@ -17,7 +16,7 @@ use crate::{
         grid,
         icon::Icon,
         style,
-        widget::{text, Column, Container, Element, Row, Stack},
+        widget::{Column, Container, Element, Row, Stack, text},
     },
     lang,
     media::Media,
@@ -528,11 +527,7 @@ impl Player {
 
         self.set_hovered(hovered);
 
-        if error {
-            Err(())
-        } else {
-            Ok(())
-        }
+        if error { Err(()) } else { Ok(()) }
     }
 
     pub fn go_idle(&mut self) {

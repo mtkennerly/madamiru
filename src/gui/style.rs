@@ -1,7 +1,7 @@
 use iced::{
+    Background, Border, Color, Shadow, Vector,
     border::Radius,
     widget::{button, checkbox, container, pane_grid, pick_list, rule, scrollable, slider, svg, text_input},
-    Background, Border, Color, Shadow, Vector,
 };
 
 use crate::resource::config;

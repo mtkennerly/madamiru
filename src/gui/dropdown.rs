@@ -5,15 +5,16 @@
 // * Invoke nested overlays.
 
 use iced::{
+    Element, Event, Length, Point, Rectangle, Size, Vector,
     advanced::{
+        Clipboard, Layout, Shell, Widget,
         layout::{Limits, Node},
         overlay, renderer,
         widget::{Operation, Tree},
-        Clipboard, Layout, Shell, Widget,
     },
     keyboard::{self, key::Named},
     mouse::{self, Cursor},
-    touch, Element, Event, Length, Point, Rectangle, Size, Vector,
+    touch,
 };
 
 /// Customizable drop down menu widget
@@ -305,21 +306,21 @@ where
     ) {
         if let Some(on_dismiss) = self.on_dismiss {
             match &event {
-                Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) => {
-                    if key == &keyboard::Key::Named(Named::Escape) {
-                        shell.publish(on_dismiss.clone());
-                        shell.capture_event();
-                        return;
-                    }
+                Event::Keyboard(keyboard::Event::KeyPressed { key, .. })
+                    if key == &keyboard::Key::Named(Named::Escape) =>
+                {
+                    shell.publish(on_dismiss.clone());
+                    shell.capture_event();
+                    return;
                 }
 
                 Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left | mouse::Button::Right))
-                | Event::Touch(touch::Event::FingerPressed { .. }) => {
-                    if !cursor.is_over(layout.bounds()) && !cursor.is_over(self.underlay_bounds) {
-                        shell.publish(on_dismiss.clone());
-                        shell.capture_event();
-                        return;
-                    }
+                | Event::Touch(touch::Event::FingerPressed { .. })
+                    if !cursor.is_over(layout.bounds()) && !cursor.is_over(self.underlay_bounds) =>
+                {
+                    shell.publish(on_dismiss.clone());
+                    shell.capture_event();
+                    return;
                 }
 
                 _ => {}

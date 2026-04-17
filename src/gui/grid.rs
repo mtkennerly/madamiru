@@ -1,9 +1,8 @@
 use std::{collections::HashSet, time::Duration};
 
 use iced::{
-    alignment, padding,
+    Length, alignment, padding,
     widget::{pane_grid, rule},
-    Length,
 };
 
 use crate::{

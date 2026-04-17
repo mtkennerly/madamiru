@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use fluent::{bundle::FluentBundle, FluentArgs, FluentResource};
+use fluent::{FluentArgs, FluentResource, bundle::FluentBundle};
 use intl_memoizer::concurrent::IntlLangMemoizer;
 use regex::Regex;
 use std::sync::LazyLock;

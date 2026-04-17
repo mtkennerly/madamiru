@@ -7,7 +7,7 @@ use crate::{
     lang, media,
     path::StrictPath,
     prelude::Error,
-    resource::{cache::Cache, config::Config, playlist::Playlist, ResourceFile},
+    resource::{ResourceFile, cache::Cache, config::Config, playlist::Playlist},
 };
 
 pub fn parse_sources(sources: Vec<StrictPath>) -> Vec<media::Source> {
@@ -29,11 +29,7 @@ pub fn parse_sources(sources: Vec<StrictPath>) -> Vec<media::Source> {
                 .filter_map(|raw| (!raw.trim().is_empty()).then(|| media::Source::new_path(StrictPath::new(raw))))
                 .collect();
             log::debug!("Sources from stdin: {:?}", &sources);
-            if sources.is_empty() {
-                vec![]
-            } else {
-                sources
-            }
+            if sources.is_empty() { vec![] } else { sources }
         }
     }
 }

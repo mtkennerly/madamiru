@@ -1,6 +1,6 @@
 use crate::{
     prelude::CANONICAL_VERSION,
-    resource::{config::Config, ResourceFile, SaveableResourceFile},
+    resource::{ResourceFile, SaveableResourceFile, config::Config},
 };
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

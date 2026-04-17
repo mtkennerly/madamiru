@@ -37,10 +37,10 @@ impl Playlist {
     pub fn save_to(&self, path: &StrictPath) -> Result<(), Error> {
         let new_content = self.serialize();
 
-        if let Ok(old_content) = Self::load_raw(path) {
-            if old_content == new_content {
-                return Ok(());
-            }
+        if let Ok(old_content) = Self::load_raw(path)
+            && old_content == new_content
+        {
+            return Ok(());
         }
 
         path.create_parent_dir()

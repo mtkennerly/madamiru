@@ -18,7 +18,7 @@ mod testing;
 
 use crate::{
     gui::Flags,
-    prelude::{app_dir, CONFIG_DIR, VERSION},
+    prelude::{CONFIG_DIR, VERSION, app_dir},
 };
 
 /// The logger handle must be retained until the application closes.
@@ -80,7 +80,10 @@ fn prepare_panic_hook(handle: Option<flexi_logger::LoggerHandle>) {
 
 fn prepare_winit() {
     if std::env::var("WGPU_POWER_PREF").is_err() {
-        std::env::set_var("WGPU_POWER_PREF", "high");
+        // This is safe because we call it before we start any other threads.
+        unsafe {
+            std::env::set_var("WGPU_POWER_PREF", "high");
+        }
     }
 }
 
@@ -132,7 +135,7 @@ fn prepare_winit() {
 unsafe fn detach_console() {
     use windows::Win32::{
         Foundation::HANDLE,
-        System::Console::{FreeConsole, SetStdHandle, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE},
+        System::Console::{FreeConsole, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, SetStdHandle},
     };
 
     fn tell(msg: &str) {
@@ -140,19 +143,19 @@ unsafe fn detach_console() {
         log::error!("{msg}");
     }
 
-    if FreeConsole().is_err() {
+    if unsafe { FreeConsole() }.is_err() {
         tell("Unable to detach the console");
         std::process::exit(1);
     }
-    if SetStdHandle(STD_INPUT_HANDLE, HANDLE::default()).is_err() {
+    if unsafe { SetStdHandle(STD_INPUT_HANDLE, HANDLE::default()) }.is_err() {
         tell("Unable to reset stdin handle");
         std::process::exit(1);
     }
-    if SetStdHandle(STD_OUTPUT_HANDLE, HANDLE::default()).is_err() {
+    if unsafe { SetStdHandle(STD_OUTPUT_HANDLE, HANDLE::default()) }.is_err() {
         tell("Unable to reset stdout handle");
         std::process::exit(1);
     }
-    if SetStdHandle(STD_ERROR_HANDLE, HANDLE::default()).is_err() {
+    if unsafe { SetStdHandle(STD_ERROR_HANDLE, HANDLE::default()) }.is_err() {
         tell("Unable to reset stderr handle");
         std::process::exit(1);
     }

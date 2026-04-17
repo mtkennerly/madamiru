@@ -1,11 +1,10 @@
 use std::{collections::HashSet, num::NonZeroUsize, sync::LazyLock};
 
 use iced::{
-    alignment,
+    Alignment, Length, Task, alignment,
     keyboard::Modifiers,
     padding,
     widget::{self, mouse_area, opaque, rule, scrollable},
-    Alignment, Length, Task,
 };
 use itertools::Itertools;
 
@@ -17,7 +16,7 @@ use crate::{
         icon::Icon,
         shortcuts::{Shortcut, TextHistories, TextHistory},
         style,
-        widget::{checkbox, pick_list, text, Column, Container, Element, Row, Scrollable, Space, Stack},
+        widget::{Column, Container, Element, Row, Scrollable, Space, Stack, checkbox, pick_list, text},
     },
     lang::{self, Language},
     media::{self, Media},
@@ -657,10 +656,10 @@ impl Modal {
                 }
                 Event::EditedGridOrientationLimit { raw_limit } => {
                     histories.orientation_limit.push(&raw_limit);
-                    if settings.orientation_limit.is_fixed() {
-                        if let Ok(limit) = raw_limit.parse::<NonZeroUsize>() {
-                            settings.orientation_limit = playlist::OrientationLimit::Fixed(limit);
-                        }
+                    if settings.orientation_limit.is_fixed()
+                        && let Ok(limit) = raw_limit.parse::<NonZeroUsize>()
+                    {
+                        settings.orientation_limit = playlist::OrientationLimit::Fixed(limit);
                     }
                     None
                 }

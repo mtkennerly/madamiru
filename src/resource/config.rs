@@ -2,7 +2,7 @@ use std::num::NonZeroUsize;
 
 use crate::{
     lang::{self, Language},
-    prelude::{app_dir, Error, StrictPath},
+    prelude::{Error, StrictPath, app_dir},
     resource::{ResourceFile, SaveableResourceFile},
 };
 

@@ -2,7 +2,7 @@ pub mod cache;
 pub mod config;
 pub mod playlist;
 
-use crate::prelude::{app_dir, AnyError, StrictPath};
+use crate::prelude::{AnyError, StrictPath, app_dir};
 
 pub trait ResourceFile
 where
@@ -52,10 +52,10 @@ where
     fn save(&self) {
         let new_content = serde_yaml::to_string(&self).unwrap();
 
-        if let Ok(old_content) = Self::load_raw(&Self::path()) {
-            if old_content == new_content {
-                return;
-            }
+        if let Ok(old_content) = Self::load_raw(&Self::path())
+            && old_content == new_content
+        {
+            return;
         }
 
         if Self::path().create_parent_dir().is_ok() {
