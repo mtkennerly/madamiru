@@ -111,7 +111,7 @@ impl std::hash::Hash for StrictPath {
 
 impl std::fmt::Debug for StrictPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "StrictPath {{ raw: {:?}, basis: {:?} }}", &self.raw, &self.basis)
+        write!(f, "StrictPath {{ raw: {:?}, basis: {:?} }}", self.raw, self.basis)
     }
 }
 
@@ -151,7 +151,7 @@ impl StrictPath {
 
     pub fn as_std_path_buf(&self) -> Result<std::path::PathBuf, std::io::Error> {
         Ok(std::path::PathBuf::from(&self.interpret().map_err(|_| {
-            std::io::Error::other(format!("Cannot interpret path: {:?}", &self))
+            std::io::Error::other(format!("Cannot interpret path: {:?}", self))
         })?))
     }
 
@@ -454,7 +454,7 @@ impl StrictPath {
 
     pub fn joined(&self, other: &str) -> Self {
         Self {
-            raw: format!("{}/{}", &self.raw, other).replace('\\', "/"),
+            raw: format!("{}/{}", self.raw, other).replace('\\', "/"),
             basis: self.basis.clone(),
             canonical: Arc::new(Mutex::new(None)),
         }

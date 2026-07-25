@@ -292,7 +292,7 @@ impl Modal {
                                         iced::widget::slider(0.01..=1.0, config.playback.volume, |volume| {
                                             Message::SetVolume { volume }
                                         })
-                                        .step(0.01)
+                                        .step(0.01_f32)
                                         .width(150),
                                     )
                                     .push(

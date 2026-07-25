@@ -28,7 +28,7 @@ pub fn parse_sources(sources: Vec<StrictPath>) -> Vec<media::Source> {
                 .map_while(Result::ok)
                 .filter_map(|raw| (!raw.trim().is_empty()).then(|| media::Source::new_path(StrictPath::new(raw))))
                 .collect();
-            log::debug!("Sources from stdin: {:?}", &sources);
+            log::debug!("Sources from stdin: {:?}", sources);
             if sources.is_empty() { vec![] } else { sources }
         }
     }

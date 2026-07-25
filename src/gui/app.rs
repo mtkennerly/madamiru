@@ -106,7 +106,7 @@ impl App {
             match result {
                 Ok(_) => Message::Ignore,
                 Err(e) => {
-                    log::error!("Unable to open URL: `{}` - {}", &url2, e);
+                    log::error!("Unable to open URL: `{}` - {}", url2, e);
                     Message::OpenUrlFailure { url: url2 }
                 }
             }

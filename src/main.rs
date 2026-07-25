@@ -41,7 +41,7 @@ fn prepare_logging() -> Result<flexi_logger::LoggerHandle, flexi_logger::FlexiLo
                 now.format("%Y-%m-%dT%H:%M:%S%.3fZ"),
                 record.level(),
                 record.module_path().unwrap_or("<unnamed>"),
-                &record.args(),
+                record.args(),
             )
         })
         .start()
