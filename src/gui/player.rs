@@ -1366,10 +1366,10 @@ impl Player {
                     None
                 }
                 Event::SetMute(flag) => {
-                    video.set_muted(flag);
                     if !flag {
                         video.set_volume(playback.volume as f64);
                     }
+                    video.set_muted(flag);
                     Some(Update::MuteChanged)
                 }
                 Event::SetVolume(volume) => {
