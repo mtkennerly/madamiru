@@ -1,3 +1,9 @@
+## Unreleased
+
+* Fixed:
+  * Unmuting videos did not work consistently on some systems.
+    ([Contributed by thearialume](https://github.com/mtkennerly/madamiru/pull/13))
+
 ## v0.4.1 (2025-12-14)
 
 * Fixed:
