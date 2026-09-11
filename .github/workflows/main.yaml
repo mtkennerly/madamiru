@@ -41,9 +41,9 @@ jobs:
         with:
           env-var: MADAMIRU_VERSION
           args: --style semver
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable-${{ matrix.rust-target }}
+      - run: |
+          rustup toolchain install stable-${{ matrix.rust-target }} --force-non-host
+          rustup default stable-${{ matrix.rust-target }} --force-non-host
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.os }}-${{ matrix.rust-target }}
