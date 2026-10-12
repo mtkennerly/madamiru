@@ -14,6 +14,7 @@ pub enum Event {
     ImageDurationRaw(String),
     PauseWhenWindowLosesFocus(bool),
     ConfirmWhenDiscardingUnsavedPlaylist(bool),
+    ShowFullscreenControls(bool),
     ShowMediaBorders(bool),
     MediaPadding(u8),
     GridPadding(u8),
@@ -70,6 +71,7 @@ pub struct View {
     pub language: Language,
     pub theme: Theme,
     pub confirm_discard_playlist: bool,
+    pub show_fullscreen_controls: bool,
     pub show_media_borders: bool,
     pub media_padding: u8,
     pub grid_padding: u8,
@@ -82,6 +84,7 @@ impl Default for View {
             language: Default::default(),
             theme: Default::default(),
             confirm_discard_playlist: true,
+            show_fullscreen_controls: false,
             show_media_borders: true,
             media_padding: 5,
             grid_padding: 5,
@@ -213,6 +216,7 @@ mod tests {
                     theme: Theme::Light,
                     confirm_discard_playlist: false,
                     show_media_borders: true,
+                    show_fullscreen_controls: false,
                     media_padding: 5,
                     grid_padding: 5,
                     group_padding: 5,
@@ -241,6 +245,7 @@ view:
   language: en-US
   theme: dark
   confirm_discard_playlist: true
+  show_fullscreen_controls: false
   show_media_borders: true
   media_padding: 5
   grid_padding: 5

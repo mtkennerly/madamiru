@@ -91,6 +91,9 @@ pub enum Message {
     FileDragDropGridSelected(grid::Id),
     WindowFocused,
     WindowUnfocused,
+    CheckWindowMode,
+    StoreWindowMode(iced::window::Mode),
+    FlipWindowMode(iced::window::Mode),
     Pane {
         event: PaneEvent,
     },

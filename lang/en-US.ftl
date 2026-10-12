@@ -49,6 +49,7 @@ action-scale = Scale
 action-scale-down = Scale down
 action-select-folder = Select folder
 action-select-file = Select file
+action-show-fullscreen-controls = Show fullscreen controls
 action-show-media-borders = Show media borders
 action-shuffle = Shuffle
 action-split-horizontally = Split horizontally

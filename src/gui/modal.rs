@@ -266,6 +266,13 @@ impl Modal {
                                     },
                                 ))
                                 .push(checkbox(
+                                    lang::action::show_fullscreen_controls(),
+                                    config.view.show_fullscreen_controls,
+                                    |value| Message::Config {
+                                        event: config::Event::ShowFullscreenControls(value),
+                                    },
+                                ))
+                                .push(checkbox(
                                     lang::action::show_media_borders(),
                                     config.view.show_media_borders,
                                     |value| Message::Config {

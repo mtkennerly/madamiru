@@ -1,6 +1,7 @@
 ## Unreleased
 
 * Added:
+  * Fullscreen mode (press `F` or `F11`).
   * Option to disable border around each media.
   * Options to customize the amount of padding in the application.
 * Fixed:

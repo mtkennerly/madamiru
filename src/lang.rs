@@ -401,6 +401,10 @@ pub mod action {
         translate("action-select-file")
     }
 
+    pub fn show_fullscreen_controls() -> String {
+        translate("action-show-fullscreen-controls")
+    }
+
     pub fn show_media_borders() -> String {
         translate("action-show-media-borders")
     }

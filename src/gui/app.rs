@@ -56,6 +56,7 @@ pub struct App {
     selection: Selection,
     #[cfg_attr(not(feature = "audio"), allow(unused))]
     default_audio_output_device: Option<String>,
+    window_mode: iced::window::Mode,
 }
 
 impl App {
@@ -219,6 +220,7 @@ impl App {
                 default_audio_output_device: Self::get_audio_device(),
                 #[cfg(not(feature = "audio"))]
                 default_audio_output_device: None,
+                window_mode: iced::window::Mode::Windowed,
             },
             Task::batch(commands),
         )
@@ -289,6 +291,19 @@ impl App {
         for (_grid_id, grid) in self.grids.iter_mut() {
             grid.update_all_players(player::Event::SetPause(paused), &mut self.media, &self.config.playback);
         }
+    }
+
+    fn set_window_mode(&mut self, mode: iced::window::Mode) -> Task<Message> {
+        self.window_mode = mode;
+        iced::window::oldest()
+            .and_then(move |id| iced::window::set_mode::<()>(id, mode))
+            .map(|_| Message::Ignore)
+    }
+
+    fn flip_window_mode(&self) -> Task<Message> {
+        iced::window::oldest()
+            .and_then(iced::window::mode)
+            .map(Message::FlipWindowMode)
     }
 
     fn generate_event_in_selection(
@@ -685,6 +700,9 @@ impl App {
                     config::Event::ConfirmWhenDiscardingUnsavedPlaylist(value) => {
                         self.config.view.confirm_discard_playlist = value;
                     }
+                    config::Event::ShowFullscreenControls(value) => {
+                        self.config.view.show_fullscreen_controls = value;
+                    }
                     config::Event::ShowMediaBorders(value) => {
                         self.config.view.show_media_borders = value;
                     }
@@ -817,6 +835,8 @@ impl App {
                                 self.dragged_files.clear();
                             } else if self.selection.is_any_selected() {
                                 self.selection.clear();
+                            } else if self.window_mode == iced::window::Mode::Fullscreen {
+                                return self.set_window_mode(iced::window::Mode::Windowed);
                             }
                             Task::none()
                         }
@@ -871,12 +891,14 @@ impl App {
                                 Task::none()
                             }
                         }
+                        Key::Named(key::Named::F11) => self.flip_window_mode(),
                         Key::Character(c) => {
                             let command = modifiers == Modifiers::COMMAND;
                             let command_shift = modifiers == Modifiers::COMMAND | Modifiers::SHIFT;
 
                             if self.modals.is_empty() {
                                 match c.as_str() {
+                                    "F" | "f" => self.flip_window_mode(),
                                     "J" | "j" => self.generate_event_in_selection(
                                         |_| Some(Message::SeekRandom),
                                         |grid_id, _| Some(PaneEvent::SeekRandom { grid_id }),
@@ -1144,6 +1166,24 @@ impl App {
                 }
                 Task::none()
             }
+            Message::CheckWindowMode => iced::window::oldest()
+                .and_then(iced::window::mode)
+                .map(Message::StoreWindowMode),
+            Message::StoreWindowMode(mode) => {
+                self.window_mode = mode;
+                Task::none()
+            }
+            Message::FlipWindowMode(mode) => {
+                use iced::window;
+
+                let mode = match mode {
+                    window::Mode::Windowed => window::Mode::Fullscreen,
+                    window::Mode::Fullscreen => window::Mode::Windowed,
+                    window::Mode::Hidden => window::Mode::Windowed,
+                };
+
+                self.set_window_mode(mode)
+            }
             Message::Pane { event } => {
                 match event {
                     PaneEvent::Drag(event) => match event {
@@ -1404,6 +1444,7 @@ impl App {
                 iced::Event::Window(iced::window::Event::FileDropped(path)) => {
                     Some(Message::FileDragDrop(StrictPath::from(path)))
                 }
+                iced::Event::Window(iced::window::Event::Resized(_)) => Some(Message::CheckWindowMode),
                 iced::Event::Window(iced::window::Event::Focused) => Some(Message::WindowFocused),
                 iced::Event::Window(iced::window::Event::Unfocused) => Some(Message::WindowUnfocused),
                 _ => None,
@@ -1430,126 +1471,134 @@ impl App {
         let dragging_file = !self.dragged_files.is_empty();
         let obscured = !self.modals.is_empty();
 
+        let show_controls = match self.window_mode {
+            iced::window::Mode::Windowed => true,
+            iced::window::Mode::Fullscreen => self.config.view.show_fullscreen_controls,
+            iced::window::Mode::Hidden => true,
+        };
+
         Responsive::new(move |viewport| {
-            let left_controls = DropDown::new(
-                button::icon(Icon::Menu)
-                    .on_press(Message::ShowMenu { show: None })
-                    .obscured(obscured),
-                Container::new(
-                    Column::new()
-                        .push(
-                            button::menu(Icon::FolderOpen, lang::action::open_playlist())
-                                .on_press(Message::menu(Message::PlaylistSelect { force: false }))
-                                .padding(4),
-                        )
-                        .push(
-                            button::menu(Icon::Save, lang::action::save_playlist())
-                                .on_press(Message::menu(Message::PlaylistSave))
-                                .enabled(self.playlist_dirty && self.playlist_path.is_some())
-                                .padding(4),
-                        )
-                        .push(
-                            button::menu(Icon::SaveAs, lang::action::save_playlist_as_new_file())
-                                .on_press(Message::menu(Message::PlaylistSaveAs))
-                                .padding(4),
-                        )
-                        .push(
-                            button::menu(Icon::PlaylistRemove, lang::action::start_new_playlist())
-                                .on_press(Message::menu(Message::PlaylistReset { force: false }))
-                                .enabled(self.playlist_dirty || self.playlist_path.is_some())
-                                .padding(4),
-                        )
-                        .push(STEAM_DECK.then(|| {
-                            button::menu(Icon::LogOut, lang::action::exit_app())
-                                .on_press(Message::menu(Message::Exit { force: false }))
-                                .padding(4)
-                        }))
-                        .padding(4),
+            let controls = show_controls.then(|| {
+                let left_controls = DropDown::new(
+                    button::icon(Icon::Menu)
+                        .on_press(Message::ShowMenu { show: None })
+                        .obscured(obscured),
+                    Container::new(
+                        Column::new()
+                            .push(
+                                button::menu(Icon::FolderOpen, lang::action::open_playlist())
+                                    .on_press(Message::menu(Message::PlaylistSelect { force: false }))
+                                    .padding(4),
+                            )
+                            .push(
+                                button::menu(Icon::Save, lang::action::save_playlist())
+                                    .on_press(Message::menu(Message::PlaylistSave))
+                                    .enabled(self.playlist_dirty && self.playlist_path.is_some())
+                                    .padding(4),
+                            )
+                            .push(
+                                button::menu(Icon::SaveAs, lang::action::save_playlist_as_new_file())
+                                    .on_press(Message::menu(Message::PlaylistSaveAs))
+                                    .padding(4),
+                            )
+                            .push(
+                                button::menu(Icon::PlaylistRemove, lang::action::start_new_playlist())
+                                    .on_press(Message::menu(Message::PlaylistReset { force: false }))
+                                    .enabled(self.playlist_dirty || self.playlist_path.is_some())
+                                    .padding(4),
+                            )
+                            .push(STEAM_DECK.then(|| {
+                                button::menu(Icon::LogOut, lang::action::exit_app())
+                                    .on_press(Message::menu(Message::Exit { force: false }))
+                                    .padding(4)
+                            }))
+                            .padding(4),
+                    )
+                    .class(style::Container::Tooltip),
+                    self.viewing_menu,
                 )
-                .class(style::Container::Tooltip),
-                self.viewing_menu,
-            )
-            .on_dismiss(Message::ShowMenu { show: Some(false) });
+                .on_dismiss(Message::ShowMenu { show: Some(false) });
 
-            let right_controls = Row::new().push(
-                button::icon(Icon::Settings)
-                    .on_press(Message::ShowSettings)
-                    .obscured(obscured)
-                    .tooltip_below(lang::thing::settings()),
-            );
+                let right_controls = Row::new().push(
+                    button::icon(Icon::Settings)
+                        .on_press(Message::ShowSettings)
+                        .obscured(obscured)
+                        .tooltip_below(lang::thing::settings()),
+                );
 
-            let center_controls = Container::new(
-                Row::new()
-                    .push(
-                        button::icon(if self.config.playback.synchronized {
-                            Icon::Link
-                        } else {
-                            Icon::Unlink
-                        })
-                        .on_press(Message::SetSynchronized(!self.config.playback.synchronized))
-                        .obscured(obscured)
-                        .tooltip_below(if self.config.playback.synchronized {
-                            lang::action::desynchronize()
-                        } else {
-                            lang::action::synchronize()
-                        }),
-                    )
-                    .push(
-                        button::icon(if self.config.playback.muted {
-                            Icon::Mute
-                        } else {
-                            Icon::VolumeHigh
-                        })
-                        .on_press(Message::SetMute(!self.config.playback.muted))
-                        .obscured(obscured)
-                        .tooltip_below(if self.config.playback.muted {
-                            lang::action::unmute()
-                        } else {
-                            lang::action::mute()
-                        }),
-                    )
-                    .push(
-                        button::icon(if self.config.playback.paused {
-                            Icon::Play
-                        } else {
-                            Icon::Pause
-                        })
-                        .on_press(Message::SetPause(!self.config.playback.paused))
-                        .obscured(obscured)
-                        .tooltip_below(if self.config.playback.paused {
-                            lang::action::play()
-                        } else {
-                            lang::action::pause()
-                        }),
-                    )
-                    .push(
-                        button::icon(Icon::TimerRefresh)
-                            .on_press(Message::SeekRandom)
-                            .enabled(!self.all_idle() && self.can_jump())
+                let center_controls = Container::new(
+                    Row::new()
+                        .push(
+                            button::icon(if self.config.playback.synchronized {
+                                Icon::Link
+                            } else {
+                                Icon::Unlink
+                            })
+                            .on_press(Message::SetSynchronized(!self.config.playback.synchronized))
                             .obscured(obscured)
-                            .tooltip_below(lang::action::jump_position()),
-                    )
-                    .push(
-                        button::icon(Icon::Refresh)
-                            .on_press(Message::Refresh)
-                            .enabled(!self.all_idle())
+                            .tooltip_below(if self.config.playback.synchronized {
+                                lang::action::desynchronize()
+                            } else {
+                                lang::action::synchronize()
+                            }),
+                        )
+                        .push(
+                            button::icon(if self.config.playback.muted {
+                                Icon::Mute
+                            } else {
+                                Icon::VolumeHigh
+                            })
+                            .on_press(Message::SetMute(!self.config.playback.muted))
                             .obscured(obscured)
-                            .tooltip_below(lang::action::shuffle()),
-                    ),
-            )
-            .class(style::Container::Control);
+                            .tooltip_below(if self.config.playback.muted {
+                                lang::action::unmute()
+                            } else {
+                                lang::action::mute()
+                            }),
+                        )
+                        .push(
+                            button::icon(if self.config.playback.paused {
+                                Icon::Play
+                            } else {
+                                Icon::Pause
+                            })
+                            .on_press(Message::SetPause(!self.config.playback.paused))
+                            .obscured(obscured)
+                            .tooltip_below(if self.config.playback.paused {
+                                lang::action::play()
+                            } else {
+                                lang::action::pause()
+                            }),
+                        )
+                        .push(
+                            button::icon(Icon::TimerRefresh)
+                                .on_press(Message::SeekRandom)
+                                .enabled(!self.all_idle() && self.can_jump())
+                                .obscured(obscured)
+                                .tooltip_below(lang::action::jump_position()),
+                        )
+                        .push(
+                            button::icon(Icon::Refresh)
+                                .on_press(Message::Refresh)
+                                .enabled(!self.all_idle())
+                                .obscured(obscured)
+                                .tooltip_below(lang::action::shuffle()),
+                        ),
+                )
+                .class(style::Container::Control);
 
-            let controls = Container::new(
-                Stack::new()
-                    .push(Container::new(left_controls).align_left(Length::Fill))
-                    .push(Container::new(right_controls).align_right(Length::Fill))
-                    .push(Container::new(center_controls).center(Length::Fill)),
-            )
-            .padding(Padding::new(5.0).bottom(0.0));
+                Container::new(
+                    Stack::new()
+                        .push(Container::new(left_controls).align_left(Length::Fill))
+                        .push(Container::new(right_controls).align_right(Length::Fill))
+                        .push(Container::new(center_controls).center(Length::Fill)),
+                )
+                .padding(Padding::new(5.0).bottom(0.0))
+            });
 
             let grids = PaneGrid::new(&self.grids, |grid_id, grid, _maximized| {
                 let selected = self.selection.is_grid_only_selected(grid_id);
-                pane_grid::Content::new(
+                let content = pane_grid::Content::new(
                     Container::new(grid.view(
                         grid_id,
                         selected,
@@ -1560,33 +1609,38 @@ impl App {
                     ))
                     .padding(self.config.view.grid_padding as u16)
                     .class(style::Container::PlayerGroup { selected }),
-                )
-                .title_bar({
-                    let mut bar = pane_grid::TitleBar::new(" ")
-                        .class(style::Container::PlayerGroupTitle)
-                        .controls(pane_grid::Controls::dynamic(
-                            grid.controls(grid_id, obscured, self.grids.len() > 1),
-                            DropDown::new(
-                                button::mini_icon(Icon::MoreVert)
-                                    .on_press(Message::Pane {
-                                        event: PaneEvent::ShowControls { grid_id },
-                                    })
-                                    .obscured(obscured),
-                                Container::new(grid.controls(grid_id, obscured, self.grids.len() > 1))
-                                    .class(style::Container::PlayerGroupControls),
-                                self.viewing_pane_controls.is_some_and(|x| x == grid_id),
-                            )
-                            .on_dismiss(Message::Pane {
-                                event: PaneEvent::CloseControls,
-                            }),
-                        ));
+                );
 
-                    if grid.is_idle() {
-                        bar = bar.always_show_controls();
-                    }
+                if show_controls {
+                    content.title_bar({
+                        let mut bar = pane_grid::TitleBar::new(" ")
+                            .class(style::Container::PlayerGroupTitle)
+                            .controls(pane_grid::Controls::dynamic(
+                                grid.controls(grid_id, obscured, self.grids.len() > 1),
+                                DropDown::new(
+                                    button::mini_icon(Icon::MoreVert)
+                                        .on_press(Message::Pane {
+                                            event: PaneEvent::ShowControls { grid_id },
+                                        })
+                                        .obscured(obscured),
+                                    Container::new(grid.controls(grid_id, obscured, self.grids.len() > 1))
+                                        .class(style::Container::PlayerGroupControls),
+                                    self.viewing_pane_controls.is_some_and(|x| x == grid_id),
+                                )
+                                .on_dismiss(Message::Pane {
+                                    event: PaneEvent::CloseControls,
+                                }),
+                            ));
 
-                    bar
-                })
+                        if grid.is_idle() {
+                            bar = bar.always_show_controls();
+                        }
+
+                        bar
+                    })
+                } else {
+                    content
+                }
             })
             .spacing(self.config.view.group_padding as u32)
             .on_drag(|event| Message::Pane {
