@@ -264,9 +264,79 @@ impl Modal {
                                     |value| Message::Config {
                                         event: config::Event::ConfirmWhenDiscardingUnsavedPlaylist(value),
                                     },
-                                )),
+                                ))
+                                .push(checkbox(
+                                    lang::action::show_media_borders(),
+                                    config.view.show_media_borders,
+                                    |value| Message::Config {
+                                        event: config::Event::ShowMediaBorders(value),
+                                    },
+                                ))
+                                .push(
+                                    Row::new()
+                                        .spacing(10)
+                                        .push(
+                                            Column::new()
+                                                .spacing(10)
+                                                .push(text(lang::field(&lang::thing::media_padding())))
+                                                .push(text(lang::field(&lang::thing::grid_padding())))
+                                                .push(text(lang::field(&lang::thing::group_padding()))),
+                                        )
+                                        .push(
+                                            Column::new()
+                                                .spacing(10)
+                                                .push(
+                                                    Row::new()
+                                                        .spacing(10)
+                                                        .push(
+                                                            iced::widget::slider(
+                                                                0..=10,
+                                                                config.view.media_padding,
+                                                                |value| Message::Config {
+                                                                    event: config::Event::MediaPadding(value),
+                                                                },
+                                                            )
+                                                            .step(1)
+                                                            .width(150),
+                                                        )
+                                                        .push(text(config.view.media_padding)),
+                                                )
+                                                .push(
+                                                    Row::new()
+                                                        .spacing(10)
+                                                        .push(
+                                                            iced::widget::slider(
+                                                                0..=10,
+                                                                config.view.grid_padding,
+                                                                |value| Message::Config {
+                                                                    event: config::Event::GridPadding(value),
+                                                                },
+                                                            )
+                                                            .step(1)
+                                                            .width(150),
+                                                        )
+                                                        .push(text(config.view.grid_padding)),
+                                                )
+                                                .push(
+                                                    Row::new()
+                                                        .spacing(10)
+                                                        .push(
+                                                            iced::widget::slider(
+                                                                0..=10,
+                                                                config.view.group_padding,
+                                                                |value| Message::Config {
+                                                                    event: config::Event::GroupPadding(value),
+                                                                },
+                                                            )
+                                                            .step(1)
+                                                            .width(150),
+                                                        )
+                                                        .push(text(config.view.group_padding)),
+                                                ),
+                                        ),
+                                ),
                         )
-                        .class(style::Container::Player { selected: false }),
+                        .class(style::Container::Control),
                     )
                     .push(text(lang::field(&lang::thing::audio())))
                     .push(
@@ -302,7 +372,7 @@ impl Modal {
                                     ),
                             ),
                         )
-                        .class(style::Container::Player { selected: false }),
+                        .class(style::Container::Control),
                     )
                     .push(text(lang::field(&lang::thing::image())))
                     .push(
@@ -315,7 +385,7 @@ impl Modal {
                                     .push(UndoSubject::ImageDuration.view_with(histories)),
                             ),
                         )
-                        .class(style::Container::Player { selected: false }),
+                        .class(style::Container::Control),
                     );
             }
             Self::GridSettings {

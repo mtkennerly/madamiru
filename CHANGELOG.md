@@ -1,5 +1,8 @@
 ## Unreleased
 
+* Added:
+  * Option to disable border around each media.
+  * Options to customize the amount of padding in the application.
 * Fixed:
   * Unmuting videos did not work consistently on some systems.
     ([Contributed by thearialume](https://github.com/mtkennerly/madamiru/pull/13))

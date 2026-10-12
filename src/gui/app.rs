@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use iced::{Length, Subscription, Task, keyboard, widget::pane_grid};
+use iced::{Length, Padding, Subscription, Task, keyboard, widget::pane_grid};
 use itertools::Itertools;
 
 use crate::{
@@ -234,7 +234,7 @@ impl App {
     }
 
     pub fn theme(&self) -> crate::gui::style::Theme {
-        crate::gui::style::Theme::from(self.config.view.theme)
+        crate::gui::style::Theme::new(&self.config.view)
     }
 
     fn refresh(&mut self, context: media::RefreshContext) {
@@ -684,6 +684,18 @@ impl App {
                     }
                     config::Event::ConfirmWhenDiscardingUnsavedPlaylist(value) => {
                         self.config.view.confirm_discard_playlist = value;
+                    }
+                    config::Event::ShowMediaBorders(value) => {
+                        self.config.view.show_media_borders = value;
+                    }
+                    config::Event::MediaPadding(value) => {
+                        self.config.view.media_padding = value;
+                    }
+                    config::Event::GridPadding(value) => {
+                        self.config.view.grid_padding = value;
+                    }
+                    config::Event::GroupPadding(value) => {
+                        self.config.view.group_padding = value;
                     }
                 }
                 self.save_config();
@@ -1452,7 +1464,6 @@ impl App {
                                 .on_press(Message::menu(Message::Exit { force: false }))
                                 .padding(4)
                         }))
-                        // .spacing(10)
                         .padding(4),
                 )
                 .class(style::Container::Tooltip),
@@ -1526,12 +1537,15 @@ impl App {
                             .tooltip_below(lang::action::shuffle()),
                     ),
             )
-            .class(style::Container::Player { selected: false });
+            .class(style::Container::Control);
 
-            let controls = Stack::new()
-                .push(Container::new(left_controls).align_left(Length::Fill))
-                .push(Container::new(right_controls).align_right(Length::Fill))
-                .push(Container::new(center_controls).center(Length::Fill));
+            let controls = Container::new(
+                Stack::new()
+                    .push(Container::new(left_controls).align_left(Length::Fill))
+                    .push(Container::new(right_controls).align_right(Length::Fill))
+                    .push(Container::new(center_controls).center(Length::Fill)),
+            )
+            .padding(Padding::new(5.0).bottom(0.0));
 
             let grids = PaneGrid::new(&self.grids, |grid_id, grid, _maximized| {
                 let selected = self.selection.is_grid_only_selected(grid_id);
@@ -1542,8 +1556,9 @@ impl App {
                         self.selection.player_for_grid(grid_id),
                         obscured,
                         dragging_file,
+                        &self.config.view,
                     ))
-                    .padding(5)
+                    .padding(self.config.view.grid_padding as u16)
                     .class(style::Container::PlayerGroup { selected }),
                 )
                 .title_bar({
@@ -1573,7 +1588,7 @@ impl App {
                     bar
                 })
             })
-            .spacing(5)
+            .spacing(self.config.view.group_padding as u32)
             .on_drag(|event| Message::Pane {
                 event: PaneEvent::Drag(event),
             })
@@ -1581,8 +1596,16 @@ impl App {
                 event: PaneEvent::Resize(event),
             });
 
-            let content =
-                Container::new(Column::new().spacing(5).push(controls).push(grids)).class(style::Container::Primary);
+            let content = Container::new(
+                Column::new().spacing(5).push(controls).push(
+                    Container::new(grids).padding(
+                        Padding::new(0.0)
+                            .bottom(self.config.view.group_padding as u32)
+                            .horizontal(self.config.view.group_padding as u32),
+                    ),
+                ),
+            )
+            .class(style::Container::Primary);
 
             let stack = Stack::new()
                 .width(Length::Fill)
@@ -1603,11 +1626,7 @@ impl App {
                     )
                 }));
 
-            Container::new(stack)
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .padding(5.0)
-                .into()
+            Container::new(stack).width(Length::Fill).height(Length::Fill).into()
         })
         .into()
     }

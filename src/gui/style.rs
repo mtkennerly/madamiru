@@ -25,7 +25,7 @@ impl ColorExt for Color {
 
 #[derive(Debug, Clone)]
 pub struct Theme {
-    source: config::Theme,
+    source: config::View,
     background: Color,
     field: Color,
     text: Color,
@@ -36,34 +36,35 @@ pub struct Theme {
     disabled: Color,
 }
 
-impl Default for Theme {
-    fn default() -> Self {
-        Self::from(config::Theme::Light)
-    }
-}
+impl Theme {
+    pub fn new(config: &config::View) -> Self {
+        let light = Self {
+            source: config.clone(),
+            background: Color::WHITE,
+            field: rgb8!(230, 230, 230),
+            text: Color::BLACK,
+            text_button: Color::WHITE,
+            text_selection: Color::from_rgb(0.8, 0.8, 1.0),
+            positive: rgb8!(28, 107, 223),
+            negative: rgb8!(255, 0, 0),
+            disabled: rgb8!(169, 169, 169),
+        };
 
-impl From<config::Theme> for Theme {
-    fn from(source: config::Theme) -> Self {
-        match source {
-            config::Theme::Light => Self {
-                source,
-                background: Color::WHITE,
-                field: rgb8!(230, 230, 230),
-                text: Color::BLACK,
-                text_button: Color::WHITE,
-                text_selection: Color::from_rgb(0.8, 0.8, 1.0),
-                positive: rgb8!(28, 107, 223),
-                negative: rgb8!(255, 0, 0),
-                disabled: rgb8!(169, 169, 169),
-            },
+        match config.theme {
+            config::Theme::Light => light,
             config::Theme::Dark => Self {
-                source,
                 background: rgb8!(41, 41, 41),
                 field: rgb8!(74, 74, 74),
                 text: Color::WHITE,
-                ..Self::from(config::Theme::Light)
+                ..light
             },
         }
+    }
+}
+
+impl Default for Theme {
+    fn default() -> Self {
+        Self::new(&config::View::default())
     }
 }
 
@@ -73,7 +74,7 @@ impl iced::theme::Base for Theme {
     }
 
     fn mode(&self) -> iced::theme::Mode {
-        match self.source {
+        match self.source.theme {
             config::Theme::Light => iced::theme::Mode::Light,
             config::Theme::Dark => iced::theme::Mode::Dark,
         }
@@ -91,7 +92,7 @@ impl iced::theme::Base for Theme {
     }
 
     fn name(&self) -> &str {
-        match self.source {
+        match self.source.theme {
             config::Theme::Light => "light",
             config::Theme::Dark => "dark",
         }
@@ -227,6 +228,7 @@ impl button::Catalog for Theme {
 pub enum Container {
     #[default]
     Wrapper,
+    Control,
     Primary,
     ModalForeground,
     ModalBackground,
@@ -252,6 +254,7 @@ impl container::Catalog for Theme {
         container::Style {
             background: Some(match class {
                 Container::Wrapper => Color::TRANSPARENT.into(),
+                Container::Control => self.field.alpha(0.15).into(),
                 Container::Player { .. } => self.field.alpha(0.15).into(),
                 Container::PlayerGroup { .. } => self.field.alpha(0.3).into(),
                 Container::PlayerGroupControls => self.field.into(),
@@ -264,6 +267,7 @@ impl container::Catalog for Theme {
             border: Border {
                 color: match class {
                     Container::Wrapper => Color::TRANSPARENT,
+                    Container::Control => self.field.alpha(0.8),
                     Container::Player { selected } => {
                         if *selected {
                             self.positive.alpha(0.8)
@@ -284,7 +288,14 @@ impl container::Catalog for Theme {
                     _ => self.text,
                 },
                 width: match class {
-                    Container::Player { .. }
+                    Container::Player { .. } => {
+                        if self.source.show_media_borders {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    Container::Control
                     | Container::PlayerGroup { .. }
                     | Container::PlayerGroupControls
                     | Container::PlayerGroupTitle
@@ -292,10 +303,16 @@ impl container::Catalog for Theme {
                     _ => 0.0,
                 },
                 radius: match class {
-                    Container::ModalForeground | Container::Player { .. } | Container::PlayerGroupControls => {
-                        10.0.into()
+                    Container::Control => 10.0.into(),
+                    Container::ModalForeground | Container::PlayerGroupControls => 10.0.into(),
+                    Container::Player { .. } => {
+                        if self.source.show_media_borders {
+                            10.0.into()
+                        } else {
+                            0.0.into()
+                        }
                     }
-                    Container::PlayerGroup { .. } => Radius::new(10.0).top(0.0),
+                    Container::PlayerGroup { .. } => Radius::new(0.0),
                     Container::PlayerGroupTitle => Radius::new(10.0).bottom(0.0),
                     Container::ModalBackground => 5.0.into(),
                     Container::Tooltip => 20.0.into(),

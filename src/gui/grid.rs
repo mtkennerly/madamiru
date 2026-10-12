@@ -18,7 +18,7 @@ use crate::{
     media::{self, Media},
     prelude::Change,
     resource::{
-        config::Playback,
+        config::{self, Playback},
         playlist::{ContentFit, Orientation, OrientationLimit},
     },
 };
@@ -492,11 +492,14 @@ impl Grid {
         selected_player: Option<player::Id>,
         obscured: bool,
         dragging_file: bool,
+        view_config: &config::View,
     ) -> Element {
         let obscured = obscured || dragging_file;
+        let spacing = view_config.media_padding as u32;
+        let padding = view_config.media_padding as u16;
 
-        let mut row = Row::new().spacing(5);
-        let mut column = Column::new().spacing(5);
+        let mut row = Row::new().spacing(spacing);
+        let mut column = Column::new().spacing(spacing);
         let mut count = 0;
         let limit = match self.orientation_limit {
             OrientationLimit::Automatic => self.calculate_row_limit(),
@@ -513,7 +516,7 @@ impl Grid {
                 obscured,
                 self.content_fit,
             ))
-            .padding(5)
+            .padding(padding)
             .class(style::Container::Player {
                 selected: selected_player,
             });
@@ -533,11 +536,11 @@ impl Grid {
                 match self.orientation {
                     Orientation::Horizontal => {
                         column = column.push(row);
-                        row = Row::new().spacing(5);
+                        row = Row::new().spacing(spacing);
                     }
                     Orientation::Vertical => {
                         row = row.push(column);
-                        column = Column::new().spacing(5);
+                        column = Column::new().spacing(spacing);
                     }
                 }
             }
@@ -552,7 +555,7 @@ impl Grid {
             body = Container::new("")
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .padding(5)
+                .padding(padding)
                 .class(style::Container::Player { selected: false });
         }
 

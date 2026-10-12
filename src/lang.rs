@@ -237,6 +237,14 @@ pub mod thing {
         translate("thing-glob")
     }
 
+    pub fn grid_padding() -> String {
+        translate("thing-grid-padding")
+    }
+
+    pub fn group_padding() -> String {
+        translate("thing-group-padding")
+    }
+
     pub fn image() -> String {
         translate("thing-image")
     }
@@ -255,6 +263,10 @@ pub mod thing {
 
     pub fn media() -> String {
         translate("thing-media")
+    }
+
+    pub fn media_padding() -> String {
+        translate("thing-media-padding")
     }
 
     pub fn orientation() -> String {
@@ -387,6 +399,10 @@ pub mod action {
 
     pub fn select_file() -> String {
         translate("action-select-file")
+    }
+
+    pub fn show_media_borders() -> String {
+        translate("action-show-media-borders")
     }
 
     pub fn shuffle() -> String {

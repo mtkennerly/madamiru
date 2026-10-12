@@ -14,6 +14,10 @@ pub enum Event {
     ImageDurationRaw(String),
     PauseWhenWindowLosesFocus(bool),
     ConfirmWhenDiscardingUnsavedPlaylist(bool),
+    ShowMediaBorders(bool),
+    MediaPadding(u8),
+    GridPadding(u8),
+    GroupPadding(u8),
 }
 
 /// Settings for `config.yaml`
@@ -66,6 +70,10 @@ pub struct View {
     pub language: Language,
     pub theme: Theme,
     pub confirm_discard_playlist: bool,
+    pub show_media_borders: bool,
+    pub media_padding: u8,
+    pub grid_padding: u8,
+    pub group_padding: u8,
 }
 
 impl Default for View {
@@ -74,6 +82,10 @@ impl Default for View {
             language: Default::default(),
             theme: Default::default(),
             confirm_discard_playlist: true,
+            show_media_borders: true,
+            media_padding: 5,
+            grid_padding: 5,
+            group_padding: 5,
         }
     }
 }
@@ -199,7 +211,11 @@ mod tests {
                 view: View {
                     language: Language::English,
                     theme: Theme::Light,
-                    confirm_discard_playlist: false
+                    confirm_discard_playlist: false,
+                    show_media_borders: true,
+                    media_padding: 5,
+                    grid_padding: 5,
+                    group_padding: 5,
                 },
                 playback: Playback {
                     paused: false,
