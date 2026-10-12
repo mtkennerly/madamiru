@@ -241,6 +241,10 @@ view:
   language: en-US
   theme: dark
   confirm_discard_playlist: true
+  show_media_borders: true
+  media_padding: 5
+  grid_padding: 5
+  group_padding: 5
 playback:
   muted: false
   volume: 1.0
