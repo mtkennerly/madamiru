@@ -1,10 +1,11 @@
 ---
-$schema: "http://json-schema.org/draft-07/schema#"
+$schema: "https://json-schema.org/draft/2020-12/schema"
 title: Playlist
 description: Settings for a playlist
 type: object
 properties:
   layout:
+    $ref: "#/$defs/Layout"
     default:
       group:
         content_fit: scale
@@ -12,70 +13,61 @@ properties:
         orientation: horizontal
         orientation_limit: automatic
         sources: []
-    allOf:
-      - $ref: "#/definitions/Layout"
-definitions:
+$defs:
   ContentFit:
     oneOf:
-      - description: "Scale the media up or down to fill as much of the available space as possible while maintaining the media's aspect ratio."
+      - description: "Scale the media up or down to fill as much of the available space as possible\nwhile maintaining the media's aspect ratio."
         type: string
-        enum:
-          - scale
-      - description: "Scale the media down to fill as much of the available space as possible while maintaining the media's aspect ratio. Don't scale up if it's smaller than the available space."
+        const: scale
+      - description: "Scale the media down to fill as much of the available space as possible\nwhile maintaining the media's aspect ratio.\nDon't scale up if it's smaller than the available space."
         type: string
-        enum:
-          - scale_down
-      - description: "Crop the media to fill all of the available space. Maintain the aspect ratio, cutting off parts of the media as needed to fit."
+        const: scale_down
+      - description: "Crop the media to fill all of the available space.\nMaintain the aspect ratio, cutting off parts of the media as needed to fit."
         type: string
-        enum:
-          - crop
-      - description: "Stretch the media to fill all of the available space. Preserve the whole media, disregarding the aspect ratio."
+        const: crop
+      - description: "Stretch the media to fill all of the available space.\nPreserve the whole media, disregarding the aspect ratio."
         type: string
-        enum:
-          - stretch
+        const: stretch
   FilePath:
     type: string
   Group:
     type: object
     properties:
       content_fit:
+        $ref: "#/$defs/ContentFit"
         default: scale
-        allOf:
-          - $ref: "#/definitions/ContentFit"
       max_media:
-        default: 1
         type: integer
         format: uint
-        minimum: 0.0
+        default: 1
+        minimum: 0
       orientation:
+        $ref: "#/$defs/Orientation"
         default: horizontal
-        allOf:
-          - $ref: "#/definitions/Orientation"
       orientation_limit:
+        $ref: "#/$defs/OrientationLimit"
         default: automatic
-        allOf:
-          - $ref: "#/definitions/OrientationLimit"
       sources:
-        default: []
         type: array
+        default: []
         items:
-          $ref: "#/definitions/Source"
+          $ref: "#/$defs/Source"
   Layout:
     oneOf:
       - type: object
-        required:
-          - split
         properties:
           split:
-            $ref: "#/definitions/Split"
+            $ref: "#/$defs/Split"
         additionalProperties: false
-      - type: object
         required:
-          - group
+          - split
+      - type: object
         properties:
           group:
-            $ref: "#/definitions/Group"
+            $ref: "#/$defs/Group"
         additionalProperties: false
+        required:
+          - group
   Orientation:
     type: string
     enum:
@@ -87,48 +79,48 @@ definitions:
         enum:
           - automatic
       - type: object
-        required:
-          - fixed
         properties:
           fixed:
             type: integer
             format: uint
-            minimum: 1.0
+            minimum: 1
         additionalProperties: false
+        required:
+          - fixed
   Source:
     oneOf:
       - type: object
-        required:
-          - path
         properties:
           path:
             type: object
-            required:
-              - path
             properties:
               path:
-                $ref: "#/definitions/FilePath"
+                $ref: "#/$defs/FilePath"
+            required:
+              - path
         additionalProperties: false
-      - type: object
         required:
-          - glob
+          - path
+      - type: object
         properties:
           glob:
             type: object
-            required:
-              - pattern
             properties:
               pattern:
                 type: string
+            required:
+              - pattern
         additionalProperties: false
+        required:
+          - glob
   Split:
     type: object
     properties:
       axis:
+        $ref: "#/$defs/SplitAxis"
         default: horizontal
-        allOf:
-          - $ref: "#/definitions/SplitAxis"
       first:
+        $ref: "#/$defs/Layout"
         default:
           group:
             content_fit: scale
@@ -136,13 +128,12 @@ definitions:
             orientation: horizontal
             orientation_limit: automatic
             sources: []
-        allOf:
-          - $ref: "#/definitions/Layout"
       ratio:
-        default: 0.5
         type: number
         format: float
+        default: 0.5
       second:
+        $ref: "#/$defs/Layout"
         default:
           group:
             content_fit: scale
@@ -150,8 +141,6 @@ definitions:
             orientation: horizontal
             orientation_limit: automatic
             sources: []
-        allOf:
-          - $ref: "#/definitions/Layout"
   SplitAxis:
     type: string
     enum:

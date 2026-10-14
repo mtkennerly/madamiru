@@ -1,6 +1,6 @@
 [package]
 name = "madamiru"
-version = "0.4.1"
+version = "0.5.0"
 authors = ["mtkennerly <mtkennerly@gmail.com>"]
 edition = "2024"
 description = "Dynamic multi-multimedia player"

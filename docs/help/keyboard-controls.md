@@ -20,9 +20,7 @@
 | save playlist               | ctrl+S            |                |
 | save playlist as new file   | ctrl-shift+S      |                |
 | reset playlist              | ctrl+N            |                |
-<!--
 | toggle fullscreen           | F, F11            |                |
--->
 
 ## Modal screens
 | action                     | shortcut             |

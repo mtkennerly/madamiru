@@ -1,4 +1,4 @@
-## Unreleased
+## v0.5.0 (2026-10-14)
 
 * Added:
   * Fullscreen mode (press `F` or `F11`).

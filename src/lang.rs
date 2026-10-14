@@ -33,12 +33,17 @@ pub enum Language {
     /// Brazilian Portuguese
     #[serde(rename = "pt-BR")]
     PortugueseBrazilian,
+
+    /// Spanish
+    #[serde(rename = "es-ES")]
+    Spanish,
 }
 
 impl Language {
     pub const ALL: &'static [Self] = &[
         Self::German,
         Self::English,
+        Self::Spanish,
         Self::French,
         Self::Polish,
         Self::PortugueseBrazilian,
@@ -51,6 +56,7 @@ impl Language {
             Self::German => "de-DE",
             Self::Polish => "pl-PL",
             Self::PortugueseBrazilian => "pt-BR",
+            Self::Spanish => "es-ES",
         };
         id.parse().unwrap()
     }
@@ -62,6 +68,7 @@ impl Language {
             Self::German => "Deutsch",
             Self::Polish => "Polski",
             Self::PortugueseBrazilian => "Português brasileiro",
+            Self::Spanish => "Español",
         }
     }
 
@@ -70,8 +77,9 @@ impl Language {
             Self::English => 100,
             Self::French => 2,
             Self::German => 2,
-            Self::Polish => 100,
-            Self::PortugueseBrazilian => 100,
+            Self::Polish => 93,
+            Self::PortugueseBrazilian => 93,
+            Self::Spanish => 93,
         }
     }
 }
@@ -110,6 +118,7 @@ fn set_language(language: Language) {
         Language::German => include_str!("../lang/de-DE.ftl"),
         Language::Polish => include_str!("../lang/pl-PL.ftl"),
         Language::PortugueseBrazilian => include_str!("../lang/pt-BR.ftl"),
+        Language::Spanish => include_str!("../lang/es-ES.ftl"),
     }
     .to_owned();
 
