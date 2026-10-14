@@ -208,7 +208,7 @@ def release(ctx):
 
 
 @task
-def release_flatpak(ctx, target="/git/com.mtkennerly.madamiru"):
+def release_flatpak(ctx, target="/dev/com.mtkennerly.madamiru"):
     target = Path(target)
     spec = target / "com.mtkennerly.madamiru.yaml"
     version = get_version()
@@ -229,7 +229,7 @@ def release_flatpak(ctx, target="/git/com.mtkennerly.madamiru"):
 
 
 @task
-def release_winget(ctx, target="/git/_forks/winget-pkgs", edit=False):
+def release_winget(ctx, target="/dev/_forks/winget-pkgs", edit=False):
     target = Path(target)
     version = get_version()
     changelog = textwrap.indent(latest_changelog(), "  ")
