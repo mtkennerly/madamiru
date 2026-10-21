@@ -20,12 +20,10 @@ You can install Madamiru one of these ways:
   * To install: `winget install -e --id mtkennerly.madamiru`
   * To update: `winget upgrade -e --id mtkennerly.madamiru`
 
-<!--
 * On Windows, you can use [Scoop](https://scoop.sh).
 
   * To install: `scoop bucket add extras && scoop install madamiru`
   * To update: `scoop update && scoop update madamiru`
--->
 
 * For Linux, Madamiru is available on [Flathub](https://flathub.org/apps/details/com.mtkennerly.madamiru).
   Note that it has limited file system access by default (`~`, `/media`, `/run/media`).
