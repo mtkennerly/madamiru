@@ -24,7 +24,7 @@ jobs:
             artifact-name: linux
             artifact-file: madamiru
             tar: true
-          - os: macos-14
+          - os: macos-latest
             rust-target: aarch64-apple-darwin
             artifact-name: mac
             artifact-file: madamiru
@@ -80,7 +80,7 @@ jobs:
         os:
           - windows-latest
           - ubuntu-22.04
-          - macos-14
+          - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
