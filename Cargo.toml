@@ -37,7 +37,7 @@ png = "0.18.0"
 opener = "0.7.2"
 rand = "0.9.0"
 regex = "1.11.1"
-reqwest = { version = "0.12.15", features = ["blocking", "gzip", "rustls-tls"], default-features = false }
+reqwest = { version = "0.13.5", features = ["blocking", "gzip", "rustls"], default-features = false }
 rfd = { version = "0.15.3", features = ["gtk3"], default-features = false }
 rodio = { version = "0.20.1", features = ["symphonia-aac", "symphonia-aiff", "symphonia-alac", "symphonia-flac", "symphonia-isomp4", "symphonia-mp3", "symphonia-vorbis", "symphonia-wav"], default-features = false, optional = true }
 schemars = { version = "1.2.1", features = ["chrono04"] }
