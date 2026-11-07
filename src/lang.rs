@@ -26,6 +26,10 @@ pub enum Language {
     #[serde(rename = "de-DE")]
     German,
 
+    /// Italian
+    #[serde(rename = "it-IT")]
+    Italian,
+
     /// Polish
     #[serde(rename = "pl-PL")]
     Polish,
@@ -45,6 +49,7 @@ impl Language {
         Self::English,
         Self::Spanish,
         Self::French,
+        Self::Italian,
         Self::Polish,
         Self::PortugueseBrazilian,
     ];
@@ -54,6 +59,7 @@ impl Language {
             Self::English => "en-US",
             Self::French => "fr-FR",
             Self::German => "de-DE",
+            Self::Italian => "it-IT",
             Self::Polish => "pl-PL",
             Self::PortugueseBrazilian => "pt-BR",
             Self::Spanish => "es-ES",
@@ -66,6 +72,7 @@ impl Language {
             Self::English => "English",
             Self::French => "Français",
             Self::German => "Deutsch",
+            Self::Italian => "Italiano",
             Self::Polish => "Polski",
             Self::PortugueseBrazilian => "Português brasileiro",
             Self::Spanish => "Español",
@@ -77,6 +84,7 @@ impl Language {
             Self::English => 100,
             Self::French => 2,
             Self::German => 2,
+            Self::Italian => 100,
             Self::Polish => 93,
             Self::PortugueseBrazilian => 93,
             Self::Spanish => 93,
@@ -116,6 +124,7 @@ fn set_language(language: Language) {
         Language::English => include_str!("../lang/en-US.ftl"),
         Language::French => include_str!("../lang/fr-FR.ftl"),
         Language::German => include_str!("../lang/de-DE.ftl"),
+        Language::Italian => include_str!("../lang/it-IT.ftl"),
         Language::Polish => include_str!("../lang/pl-PL.ftl"),
         Language::PortugueseBrazilian => include_str!("../lang/pt-BR.ftl"),
         Language::Spanish => include_str!("../lang/es-ES.ftl"),

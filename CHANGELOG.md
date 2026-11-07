@@ -1,3 +1,9 @@
+## Unreleased
+
+* Added:
+  * Updated translations, including support for Italian.
+    (Thanks to contributors on the [Crowdin project](https://crowdin.com/project/madamiru))
+
 ## v0.5.0 (2026-10-14)
 
 * Added:

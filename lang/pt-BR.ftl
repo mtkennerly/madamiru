@@ -5,12 +5,15 @@ thing-content-fit = Ajuste de conteúdo
 thing-error = Erro
 # https://en.wikipedia.org/wiki/Glob_(programming)
 thing-glob = Glob
+thing-grid-padding = Grid padding
+thing-group-padding = Group padding
 thing-image = Imagem
 thing-items-per-line = Itens por linha
 thing-key-shift = Deslocar
 thing-language = Idioma
 thing-layout = Layout
 thing-media = Mídia
+thing-media-padding = Media padding
 thing-orientation = Orientação
 # Path to a file/folder on the system.
 thing-path = Caminho
@@ -45,6 +48,8 @@ action-scale = Escala
 action-scale-down = Diminuir
 action-select-folder = Selecionar pastas
 action-select-file = Selecione um arquivo
+action-show-fullscreen-controls = Show fullscreen controls
+action-show-media-borders = Show media borders
 action-shuffle = Embaralhar
 action-split-horizontally = Dividir horizontalmente
 action-split-vertically = Dividir verticalmente
