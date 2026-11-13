@@ -297,6 +297,7 @@ pub enum Player {
         dragging: bool,
         hovered: bool,
         need_play_on_focus: bool,
+        finished: std::sync::Arc<std::sync::atomic::AtomicBool>,
     },
     #[cfg(feature = "video")]
     Video {
@@ -402,7 +403,7 @@ impl Player {
             },
             #[cfg(feature = "audio")]
             Media::Audio { path } => match Self::load_audio(path, playback, Duration::from_millis(0)) {
-                Ok((stream, sink, duration)) => Ok(Self::Audio {
+                Ok((stream, sink, duration, finished)) => Ok(Self::Audio {
                     media: media.clone(),
                     stream,
                     sink,
@@ -412,6 +413,7 @@ impl Player {
                     dragging: false,
                     hovered: false,
                     need_play_on_focus: false,
+                    finished,
                 }),
                 Err(e) => Err(Self::Error {
                     media: media.clone(),
@@ -483,10 +485,19 @@ impl Player {
         source: &StrictPath,
         playback: &Playback,
         position: Duration,
-    ) -> Result<(rodio::MixerDeviceSink, rodio::Player, Duration), Error> {
+    ) -> Result<
+        (
+            rodio::MixerDeviceSink,
+            rodio::Player,
+            Duration,
+            std::sync::Arc<std::sync::atomic::AtomicBool>,
+        ),
+        Error,
+    > {
         use rodio::Source;
 
-        let stream = rodio::DeviceSinkBuilder::open_default_sink().map_err(|e| Error::Audio(e.to_string()))?;
+        let mut stream = rodio::DeviceSinkBuilder::open_default_sink().map_err(|e| Error::Audio(e.to_string()))?;
+        stream.log_on_drop(false);
         let sink = rodio::Player::connect_new(stream.mixer());
 
         if playback.paused {
@@ -510,14 +521,14 @@ impl Player {
             }
         };
 
-        let source = audio::CustomSymphoniaSource::open(file.as_path())?.track_position();
+        let (source, finished) = audio::KeepAlive::new(audio::CustomSymphoniaSource::open(file.as_path())?);
 
         let Some(duration) = source.total_duration() else {
             return Err(Error::Audio(lang::tell::unable_to_determine_media_duration()));
         };
         sink.append(source);
 
-        Ok((stream, sink, duration))
+        Ok((stream, sink, duration, finished))
     }
 
     pub fn swap_media(&mut self, media: &Media, playback: &Playback) -> Result<(), ()> {
@@ -818,9 +829,16 @@ impl Player {
                 sink,
                 duration,
                 looping,
+                paused,
+                finished,
                 ..
             } => {
-                if sink.get_pos() >= *duration {
+                use std::sync::atomic;
+
+                if sink.get_pos() >= *duration
+                    || (!*paused && sink.empty())
+                    || (finished.load(atomic::Ordering::Relaxed))
+                {
                     if *looping {
                         let _ = sink.try_seek(Duration::from_millis(0));
                         sink.play();
@@ -855,13 +873,14 @@ impl Player {
             dragging,
             hovered,
             need_play_on_focus,
+            finished: _,
         } = self
         {
             let playback = playback.with_paused(*paused).with_muted(sink.volume() == 0.0);
             let position = sink.get_pos();
 
             *self = match Self::load_audio(media.path(), &playback, position) {
-                Ok((stream, sink, duration)) => Self::Audio {
+                Ok((stream, sink, duration, finished)) => Self::Audio {
                     media: media.clone(),
                     stream,
                     sink,
@@ -871,6 +890,7 @@ impl Player {
                     dragging: *dragging,
                     hovered: *hovered,
                     need_play_on_focus: *need_play_on_focus,
+                    finished,
                 },
                 Err(e) => Self::Error {
                     media: media.clone(),
