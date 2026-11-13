@@ -181,7 +181,7 @@ pub enum Event {
 
 impl Event {
     pub fn seek_random_relative() -> Self {
-        use rand::Rng;
+        use rand::RngExt;
         let position = rand::rng().random_range(0.0..0.95);
         Self::SeekRandomRelative(position)
     }
@@ -1333,7 +1333,7 @@ impl Player {
                     None
                 }
                 Event::SeekRandom => {
-                    use rand::Rng;
+                    use rand::RngExt;
                     let position = Duration::from_secs_f64(rand::rng().random_range(0.0..duration.as_secs_f64()));
                     let _ = sink.try_seek(position);
                     Update::relative_position_changed(position, *duration)
@@ -1422,7 +1422,7 @@ impl Player {
                     None
                 }
                 Event::SeekRandom => {
-                    use rand::Rng;
+                    use rand::RngExt;
                     *position = Duration::from_secs_f64(rand::rng().random_range(0.0..duration.as_secs_f64()));
                     let _ = video.seek(*position, VIDEO_SEEK_ACCURATE);
                     Update::relative_position_changed(*position, *duration)
