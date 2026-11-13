@@ -301,7 +301,7 @@ impl Media {
 
             match mime {
                 #[cfg(feature = "audio")]
-                "audio/mpeg" | "audio/m4a" | "audio/x-flac" | "audio/x-wav" => Some(Self::Audio {
+                "audio/mpeg" | "audio/m4a" | "audio/opus" | "audio/x-flac" | "audio/x-wav" => Some(Self::Audio {
                     path: path.normalized(),
                 }),
                 "image/bmp" | "image/jpeg" | "image/tiff" | "image/vnd.microsoft.icon" | "image/webp" => {

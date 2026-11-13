@@ -509,9 +509,9 @@ impl App {
 
     #[cfg(feature = "audio")]
     fn get_audio_device() -> Option<String> {
-        use rodio::cpal::traits::{DeviceTrait, HostTrait};
+        use rodio::cpal::traits::HostTrait;
         let host = rodio::cpal::default_host();
-        host.default_output_device().and_then(|d| d.name().ok())
+        host.default_output_device().map(|d| d.to_string())
     }
 
     /// Rodio/CPAL don't automatically follow changes to the default output device,

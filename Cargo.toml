@@ -10,7 +10,7 @@ license = "MIT"
 
 [features]
 default = ["audio", "video"]
-audio = ["dep:rodio"]
+audio = ["dep:rodio", "dep:symphonia", "dep:symphonia-adapter-libopus"]
 video = ["dep:gstreamer", "dep:gstreamer-app", "dep:iced_video_player"]
 
 [dependencies]
@@ -39,12 +39,14 @@ rand = "0.9.0"
 regex = "1.11.1"
 reqwest = { version = "0.13.5", features = ["blocking", "gzip", "rustls"], default-features = false }
 rfd = { version = "0.15.3", features = ["gtk3"], default-features = false }
-rodio = { version = "0.20.1", features = ["symphonia-aac", "symphonia-aiff", "symphonia-alac", "symphonia-flac", "symphonia-isomp4", "symphonia-mp3", "symphonia-vorbis", "symphonia-wav"], default-features = false, optional = true }
+rodio = { version = "0.23.0", features = ["playback", "symphonia-all"], default-features = false, optional = true }
 schemars = { version = "1.2.1", features = ["chrono04"] }
 semver = { version = "1.0.26", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 serde_yaml = "0.8.26"
+symphonia = { version = "0.5.5", default-features = false, features = ["all"], optional = true }
+symphonia-adapter-libopus = { version = "0.2.9", optional = true }
 tokio = { version = "1.44.1", features = ["macros", "time"] }
 tree_magic_mini = "3.1.6"
 typed-path = "0.10.0"

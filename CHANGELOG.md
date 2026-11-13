@@ -1,6 +1,7 @@
 ## Unreleased
 
 * Added:
+  * Support for Opus audio files.
   * Updated translations, including support for Italian.
     (Thanks to contributors on the [Crowdin project](https://crowdin.com/project/madamiru))
 

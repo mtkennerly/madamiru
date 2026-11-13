@@ -1,3 +1,6 @@
+#[cfg(feature = "audio")]
+mod audio;
+
 use std::{sync::Arc, time::Duration};
 
 use iced::{
@@ -286,8 +289,8 @@ pub enum Player {
         media: Media,
         // We must hold the stream for as long as the sink.
         #[allow(unused)]
-        stream: rodio::OutputStream,
-        sink: rodio::Sink,
+        stream: rodio::MixerDeviceSink,
+        sink: rodio::Player,
         duration: Duration,
         paused: bool,
         looping: bool,
@@ -480,11 +483,11 @@ impl Player {
         source: &StrictPath,
         playback: &Playback,
         position: Duration,
-    ) -> Result<(rodio::OutputStream, rodio::Sink, Duration), Error> {
+    ) -> Result<(rodio::MixerDeviceSink, rodio::Player, Duration), Error> {
         use rodio::Source;
 
-        let (stream, stream_handle) = rodio::OutputStream::try_default().map_err(|e| Error::Audio(e.to_string()))?;
-        let sink = rodio::Sink::try_new(&stream_handle).map_err(|e| Error::Audio(e.to_string()))?;
+        let stream = rodio::DeviceSinkBuilder::open_default_sink().map_err(|e| Error::Audio(e.to_string()))?;
+        let sink = rodio::Player::connect_new(stream.mixer());
 
         if playback.paused {
             sink.pause();
@@ -500,10 +503,15 @@ impl Player {
 
         let _ = sink.try_seek(position);
 
-        let file = source.open_buffered()?;
-        let source = rodio::Decoder::new(file)
-            .map_err(|e| Error::Audio(e.to_string()))?
-            .track_position();
+        let file = match source.as_std_path_buf() {
+            Ok(x) => x,
+            Err(e) => {
+                return Err(Error::Audio(e.to_string()));
+            }
+        };
+
+        let source = audio::CustomSymphoniaSource::open(file.as_path())?.track_position();
+
         let Some(duration) = source.total_duration() else {
             return Err(Error::Audio(lang::tell::unable_to_determine_media_duration()));
         };
