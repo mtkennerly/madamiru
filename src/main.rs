@@ -1,6 +1,7 @@
 #![allow(
     clippy::too_many_arguments,
     clippy::to_string_trait_impl,
+    clippy::type_complexity,
     mismatched_lifetime_syntaxes
 )]
 

@@ -1993,19 +1993,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b656e6c51ccf5966543712f56bf6235494a7cf341206b3ccb336d1586f0e01fd"
 
 [[package]]
-name = "globset"
-version = "0.4.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f98b0d85522dc0a824cfebbc9594ff4a9b289c568bea0370319dfbdf20ccdd2d"
-dependencies = [
- "aho-corasick",
- "bstr",
- "log",
- "regex-automata",
- "regex-syntax",
-]
-
-[[package]]
 name = "glow"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3241,7 +3228,6 @@ dependencies = [
  "flexi_logger",
  "fluent",
  "globetter",
- "globset",
  "gstreamer",
  "gstreamer-app",
  "iced",
