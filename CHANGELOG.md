@@ -4,6 +4,9 @@
   * Support for Opus audio files.
   * Updated translations, including support for Italian.
     (Thanks to contributors on the [Crowdin project](https://crowdin.com/project/madamiru))
+* Fixed:
+  * M4A audio files could be misinterpreted as video,
+    resulting in a "failed to get media capabilities" error from GStreamer.
 
 ## v0.5.0 (2026-10-14)
 

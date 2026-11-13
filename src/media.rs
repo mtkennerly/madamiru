@@ -281,8 +281,10 @@ impl Media {
         mime.and_then(|mime| {
             let mime = mime.essence();
 
+            let extension = path.file_extension().map(|x| x.to_lowercase());
+
             #[cfg(feature = "video")]
-            if mime.starts_with("video/") {
+            if mime.starts_with("video/") && extension.as_ref().is_none_or(|ext| ext != "m4a") {
                 // The exact formats supported will depend on the user's GStreamer plugins,
                 // so just go ahead and try it. Some that work by default on Windows:
                 // * video/mp4
@@ -297,11 +299,13 @@ impl Media {
                 });
             }
 
-            let extension = path.file_extension().map(|x| x.to_lowercase());
-
             match mime {
                 #[cfg(feature = "audio")]
                 "audio/mpeg" | "audio/m4a" | "audio/opus" | "audio/x-flac" | "audio/x-wav" => Some(Self::Audio {
+                    path: path.normalized(),
+                }),
+                #[cfg(feature = "audio")]
+                "video/mp4" if extension.as_ref().is_some_and(|ext| ext == "m4a") => Some(Self::Audio {
                     path: path.normalized(),
                 }),
                 "image/bmp" | "image/jpeg" | "image/tiff" | "image/vnd.microsoft.icon" | "image/webp" => {
@@ -326,7 +330,7 @@ impl Media {
                 "image/svg+xml" => Some(Self::Svg {
                     path: path.normalized(),
                 }),
-                "text/xml" if extension.is_some_and(|ext| ext == "svg") => Some(Self::Svg {
+                "text/xml" if extension.as_ref().is_some_and(|ext| ext == "svg") => Some(Self::Svg {
                     path: path.normalized(),
                 }),
                 _ => None,
