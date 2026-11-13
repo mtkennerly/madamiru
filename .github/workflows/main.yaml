@@ -42,8 +42,7 @@ jobs:
           env-var: MADAMIRU_VERSION
           args: --style semver
       - run: |
-          rustup toolchain install stable-${{ matrix.rust-target }} --force-non-host
-          rustup default stable-${{ matrix.rust-target }} --force-non-host
+          rustup target add ${{ matrix.rust-target }}
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.os }}-${{ matrix.rust-target }}
@@ -58,21 +57,23 @@ jobs:
         uses: blinemedical/setup-gstreamer@v1
         with:
           version: '1.22.12'
-      - run: cargo build --release
+      - run: cargo build --release --target ${{ matrix.rust-target }}
+        env:
+          PKG_CONFIG_ALLOW_CROSS_i686_pc_windows_msvc: 1
       - if: ${{ matrix.tar }}
         run: |
-          cd target/release
+          cd target/${{ matrix.rust-target }}/release
           tar --create --gzip --file=madamiru-v${{ env.MADAMIRU_VERSION }}-${{ matrix.artifact-name }}.tar.gz ${{ matrix.artifact-file }}
       - if: ${{ matrix.tar }}
         uses: actions/upload-artifact@v7
         with:
           name: madamiru-v${{ env.MADAMIRU_VERSION }}-${{ matrix.artifact-name }}
-          path: target/release/madamiru-v${{ env.MADAMIRU_VERSION }}-${{ matrix.artifact-name }}.tar.gz
+          path: target/${{ matrix.rust-target }}/release/madamiru-v${{ env.MADAMIRU_VERSION }}-${{ matrix.artifact-name }}.tar.gz
       - if: ${{ !matrix.tar }}
         uses: actions/upload-artifact@v7
         with:
           name: madamiru-v${{ env.MADAMIRU_VERSION }}-${{ matrix.artifact-name }}
-          path: target/release/${{ matrix.artifact-file }}
+          path: target/${{ matrix.rust-target }}/release/${{ matrix.artifact-file }}
 
   test:
     strategy:
