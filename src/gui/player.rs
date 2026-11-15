@@ -7,7 +7,7 @@ use iced::{
     Alignment, Length, alignment, padding,
     widget::{Image, Responsive, Svg, mouse_area, space},
 };
-use iced_moving_picture::{apng, gif};
+use iced_moving_picture::moving_picture;
 
 #[cfg(feature = "video")]
 use gstreamer::prelude::ElementExtManual;
@@ -139,20 +139,11 @@ impl From<iced_video_player::Error> for Error {
     }
 }
 
-impl From<gif::Error> for Error {
-    fn from(value: gif::Error) -> Self {
+impl From<moving_picture::Error> for Error {
+    fn from(value: moving_picture::Error) -> Self {
         match value {
-            gif::Error::Image(error) => Self::Image(error.to_string()),
-            gif::Error::Io(error) => Self::Io(error),
-        }
-    }
-}
-
-impl From<apng::Error> for Error {
-    fn from(value: apng::Error) -> Self {
-        match value {
-            apng::Error::Image(error) => Self::Image(error.to_string()),
-            apng::Error::Io(error) => Self::Io(error),
+            moving_picture::Error::Image(error) => Self::Image(error.to_string()),
+            moving_picture::Error::Io(error) => Self::Io(error),
         }
     }
 }
@@ -258,22 +249,9 @@ pub enum Player {
         hovered: bool,
         need_play_on_focus: bool,
     },
-    Gif {
+    MovingPicture {
         media: Media,
-        frames: gif::Frames,
-        handle: iced::widget::image::Handle,
-        position: Duration,
-        duration: Duration,
-        paused: bool,
-        muted: bool,
-        looping: bool,
-        dragging: bool,
-        hovered: bool,
-        need_play_on_focus: bool,
-    },
-    Apng {
-        media: Media,
-        frames: apng::Frames,
+        frames: moving_picture::Frames,
         handle: iced::widget::image::Handle,
         position: Duration,
         duration: Duration,
@@ -361,8 +339,8 @@ impl Player {
                     hovered: false,
                 }),
             },
-            Media::Gif { path } => match Self::load_gif(path) {
-                Ok((frames, handle)) => Ok(Self::Gif {
+            Media::Gif { path } => match Self::load_moving_picture(path, moving_picture::Kind::Gif) {
+                Ok((frames, handle)) => Ok(Self::MovingPicture {
                     media: media.clone(),
                     frames,
                     handle,
@@ -381,8 +359,8 @@ impl Player {
                     hovered: false,
                 }),
             },
-            Media::Apng { path } => match Self::load_apng(path) {
-                Ok((frames, handle)) => Ok(Self::Apng {
+            Media::Apng { path } => match Self::load_moving_picture(path, moving_picture::Kind::Apng) {
+                Ok((frames, handle)) => Ok(Self::MovingPicture {
                     media: media.clone(),
                     frames,
                     handle,
@@ -466,16 +444,9 @@ impl Player {
         Ok(iced::widget::svg::Handle::from_memory(bytes))
     }
 
-    fn load_gif(source: &StrictPath) -> Result<(gif::Frames, iced::widget::image::Handle), Error> {
+    fn load_moving_picture(source: &StrictPath, kind: moving_picture::Kind) -> Result<(moving_picture::Frames, iced::widget::image::Handle), Error> {
         let bytes = source.try_read_bytes()?;
-        let frames = gif::Frames::from_bytes(bytes.clone())?;
-        let handle = iced::widget::image::Handle::from_bytes(bytes);
-        Ok((frames, handle))
-    }
-
-    fn load_apng(source: &StrictPath) -> Result<(apng::Frames, iced::widget::image::Handle), Error> {
-        let bytes = source.try_read_bytes()?;
-        let frames = apng::Frames::from_bytes(bytes.clone())?;
+        let frames = moving_picture::Frames::from_bytes(bytes.clone(), kind)?;
         let handle = iced::widget::image::Handle::from_bytes(bytes);
         Ok((frames, handle))
     }
@@ -565,10 +536,7 @@ impl Player {
             Self::Svg { position, .. } => {
                 *position = Duration::ZERO;
             }
-            Self::Gif { position, .. } => {
-                *position = Duration::ZERO;
-            }
-            Self::Apng { position, .. } => {
+            Self::MovingPicture { position, .. } => {
                 *position = Duration::ZERO;
             }
             #[cfg(feature = "audio")]
@@ -598,8 +566,7 @@ impl Player {
             Self::Error { media, .. } => Some(media),
             Self::Image { media, .. } => Some(media),
             Self::Svg { media, .. } => Some(media),
-            Self::Gif { media, .. } => Some(media),
-            Self::Apng { media, .. } => Some(media),
+            Self::MovingPicture { media, .. } => Some(media),
             #[cfg(feature = "audio")]
             Self::Audio { media, .. } => Some(media),
             #[cfg(feature = "video")]
@@ -613,8 +580,7 @@ impl Player {
             Self::Error { .. } => Category::Other,
             Self::Image { .. } => Category::Image,
             Self::Svg { .. } => Category::Image,
-            Self::Gif { .. } => Category::Image,
-            Self::Apng { .. } => Category::Image,
+            Self::MovingPicture { .. } => Category::Image,
             #[cfg(feature = "audio")]
             Self::Audio { .. } => Category::Audio,
             #[cfg(feature = "video")]
@@ -628,8 +594,7 @@ impl Player {
             Self::Error { .. } => true,
             Self::Image { .. } => false,
             Self::Svg { .. } => false,
-            Self::Gif { .. } => false,
-            Self::Apng { .. } => false,
+            Self::MovingPicture { .. } => false,
             #[cfg(feature = "audio")]
             Self::Audio { .. } => false,
             #[cfg(feature = "video")]
@@ -643,8 +608,7 @@ impl Player {
             Self::Error { .. } => None,
             Self::Image { paused, .. } => Some(*paused),
             Self::Svg { paused, .. } => Some(*paused),
-            Self::Gif { paused, .. } => Some(*paused),
-            Self::Apng { paused, .. } => Some(*paused),
+            Self::MovingPicture { paused, .. } => Some(*paused),
             #[cfg(feature = "audio")]
             Self::Audio { paused, .. } => Some(*paused),
             #[cfg(feature = "video")]
@@ -658,8 +622,7 @@ impl Player {
             Self::Error { .. } => None,
             Self::Image { muted, .. } => Some(*muted),
             Self::Svg { muted, .. } => Some(*muted),
-            Self::Gif { muted, .. } => Some(*muted),
-            Self::Apng { muted, .. } => Some(*muted),
+            Self::MovingPicture { muted, .. } => Some(*muted),
             #[cfg(feature = "audio")]
             Self::Audio { sink, .. } => Some(sink.volume() == 0.0),
             #[cfg(feature = "video")]
@@ -673,8 +636,7 @@ impl Player {
             Self::Error { .. } => false,
             Self::Image { .. } => false,
             Self::Svg { .. } => false,
-            Self::Gif { .. } => false,
-            Self::Apng { .. } => false,
+            Self::MovingPicture { .. } => false,
             #[cfg(feature = "audio")]
             Self::Audio { .. } => true,
             #[cfg(feature = "video")]
@@ -688,8 +650,7 @@ impl Player {
             Self::Error { hovered, .. } => *hovered,
             Self::Image { hovered, .. } => *hovered,
             Self::Svg { hovered, .. } => *hovered,
-            Self::Gif { hovered, .. } => *hovered,
-            Self::Apng { hovered, .. } => *hovered,
+            Self::MovingPicture { hovered, .. } => *hovered,
             #[cfg(feature = "audio")]
             Self::Audio { hovered, .. } => *hovered,
             #[cfg(feature = "video")]
@@ -711,10 +672,7 @@ impl Player {
             Self::Svg { hovered, .. } => {
                 *hovered = flag;
             }
-            Self::Gif { hovered, .. } => {
-                *hovered = flag;
-            }
-            Self::Apng { hovered, .. } => {
+            Self::MovingPicture { hovered, .. } => {
                 *hovered = flag;
             }
             #[cfg(feature = "audio")]
@@ -778,30 +736,7 @@ impl Player {
                     None
                 }
             }
-            Self::Gif {
-                position,
-                duration,
-                paused,
-                looping,
-                dragging,
-                ..
-            } => {
-                if !*paused && !*dragging {
-                    *position += elapsed;
-                }
-
-                if *position >= *duration {
-                    if *looping {
-                        *position = Duration::ZERO;
-                        None
-                    } else {
-                        Some(Update::EndOfStream)
-                    }
-                } else {
-                    None
-                }
-            }
-            Self::Apng {
+            Self::MovingPicture {
                 position,
                 duration,
                 paused,
@@ -919,7 +854,7 @@ impl Player {
                 bottom_controls: false,
                 timestamps: false,
             },
-            Self::Image { .. } | Self::Svg { .. } | Self::Gif { .. } | Self::Apng { .. } => Overlay {
+            Self::Image { .. } | Self::Svg { .. } | Self::MovingPicture { .. } => Overlay {
                 show,
                 center_controls: show && viewport.height > 100.0 && viewport.width > 150.0,
                 top_controls: show && viewport.width > 100.0,
@@ -1140,7 +1075,7 @@ impl Player {
                     None
                 }
             },
-            Self::Gif {
+            Self::MovingPicture {
                 position,
                 duration,
                 paused,
@@ -1210,77 +1145,6 @@ impl Player {
                     None
                 }
             },
-            Self::Apng {
-                position,
-                duration,
-                paused,
-                muted,
-                looping,
-                dragging,
-                hovered,
-                need_play_on_focus,
-                ..
-            } => match event {
-                Event::SetPause(flag) => {
-                    *paused = flag;
-                    Some(Update::PauseChanged(flag))
-                }
-                Event::SetLoop(flag) => {
-                    *looping = flag;
-                    None
-                }
-                Event::SetMute(flag) => {
-                    *muted = flag;
-                    Some(Update::MuteChanged)
-                }
-                Event::SetVolume(_) => None,
-                Event::Seek(offset) => {
-                    *dragging = true;
-                    *position = offset.min(*duration);
-                    Update::relative_position_changed(*position, *duration)
-                }
-                Event::SeekRelative(offset) => {
-                    *position = Duration::from_secs_f64(duration.as_secs_f64() * offset);
-                    None
-                }
-                Event::SeekStop => {
-                    *dragging = false;
-                    None
-                }
-                Event::SeekRandom => None,
-                Event::SeekRandomRelative(_) => None,
-                Event::Step(step) => {
-                    *position = step.compute(*position, *duration, IMAGE_STEP);
-                    Some(Update::Step(step))
-                }
-                Event::EndOfStream => Some(Update::EndOfStream),
-                Event::NewFrame => None,
-                Event::MouseEnter => {
-                    *hovered = true;
-                    None
-                }
-                Event::MouseExit => {
-                    *hovered = false;
-                    None
-                }
-                Event::Refresh => Some(Update::Refresh),
-                Event::Close => Some(Update::Close),
-                Event::WindowFocused => {
-                    if *need_play_on_focus {
-                        *paused = false;
-                        *need_play_on_focus = false;
-                    }
-                    None
-                }
-                Event::WindowUnfocused => {
-                    if playback.pause_on_unfocus {
-                        *paused = true;
-                        *need_play_on_focus = true;
-                    }
-                    None
-                }
-            },
-
             #[cfg(feature = "audio")]
             Self::Audio {
                 sink,
@@ -1926,7 +1790,7 @@ impl Player {
                     .push(bottom_controls)
                     .into()
             }
-            Self::Gif {
+            Self::MovingPicture {
                 media,
                 frames,
                 handle,
@@ -1951,169 +1815,7 @@ impl Player {
                         )
                     } else {
                         Container::new(
-                            gif(frames)
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .content_fit(content_fit.into()),
-                        )
-                    };
-
-                    media
-                        .align_x(Alignment::Center)
-                        .align_y(Alignment::Center)
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                };
-
-                let controls_background = overlay.show.then_some(
-                    Container::new("")
-                        .center(Length::Fill)
-                        .class(style::Container::ModalBackground),
-                );
-
-                let top_controls = overlay.top_controls.then_some(
-                    Container::new(
-                        Row::new()
-                            .push(
-                                button::icon(Icon::Image)
-                                    .on_press(Message::OpenDir {
-                                        path: media.path().clone(),
-                                    })
-                                    .tooltip(media.path().render()),
-                            )
-                            .push(space::horizontal())
-                            .push(
-                                button::icon(Icon::Refresh)
-                                    .on_press(Message::Player {
-                                        grid_id,
-                                        player_id,
-                                        event: Event::Refresh,
-                                    })
-                                    .tooltip(lang::action::shuffle()),
-                            )
-                            .push(
-                                button::icon(Icon::Close)
-                                    .on_press(Message::Player {
-                                        grid_id,
-                                        player_id,
-                                        event: Event::Close,
-                                    })
-                                    .tooltip(lang::action::close()),
-                            ),
-                    )
-                    .align_top(Length::Fill)
-                    .width(Length::Fill),
-                );
-
-                let center_controls = overlay.center_controls.then_some(
-                    Container::new(
-                        Row::new()
-                            .spacing(5)
-                            .align_y(alignment::Vertical::Center)
-                            .padding(padding::all(10.0))
-                            .push(
-                                button::icon(if *muted { Icon::Mute } else { Icon::VolumeHigh })
-                                    .on_press(Message::Player {
-                                        grid_id,
-                                        player_id,
-                                        event: Event::SetMute(!*muted),
-                                    })
-                                    .tooltip(if *muted {
-                                        lang::action::unmute()
-                                    } else {
-                                        lang::action::mute()
-                                    }),
-                            )
-                            .push(
-                                button::big_icon(if *paused { Icon::Play } else { Icon::Pause })
-                                    .on_press(Message::Player {
-                                        grid_id,
-                                        player_id,
-                                        event: Event::SetPause(!*paused),
-                                    })
-                                    .tooltip(if *paused {
-                                        lang::action::play()
-                                    } else {
-                                        lang::action::pause()
-                                    }),
-                            )
-                            .push(
-                                button::icon(if *looping { Icon::Loop } else { Icon::Shuffle })
-                                    .on_press(Message::Player {
-                                        grid_id,
-                                        player_id,
-                                        event: Event::SetLoop(!*looping),
-                                    })
-                                    .tooltip(if *looping {
-                                        lang::tell::player_will_loop()
-                                    } else {
-                                        lang::tell::player_will_shuffle()
-                                    }),
-                            ),
-                    )
-                    .center(Length::Fill),
-                );
-
-                let bottom_controls = overlay.bottom_controls.then_some(
-                    Container::new(
-                        Column::new()
-                            .padding(padding::left(10).right(10).bottom(5))
-                            .push(space::vertical())
-                            .push(overlay.timestamps.then_some(timestamps(*position, *duration)))
-                            .push(Container::new(
-                                iced::widget::slider(0.0..=duration.as_secs_f64(), position.as_secs_f64(), move |x| {
-                                    Message::Player {
-                                        grid_id,
-                                        player_id,
-                                        event: Event::Seek(Duration::from_secs_f64(x)),
-                                    }
-                                })
-                                .step(0.1)
-                                .on_release(Message::Player {
-                                    grid_id,
-                                    player_id,
-                                    event: Event::SeekStop,
-                                }),
-                            )),
-                    )
-                    .align_bottom(Length::Fill)
-                    .center_x(Length::Fill),
-                );
-
-                Stack::new()
-                    .push(body)
-                    .push(controls_background)
-                    .push(top_controls)
-                    .push(center_controls)
-                    .push(bottom_controls)
-                    .into()
-            }
-            Self::Apng {
-                media,
-                frames,
-                handle,
-                position,
-                duration,
-                paused,
-                muted,
-                looping,
-                dragging,
-                hovered,
-                ..
-            } => {
-                let overlay = self.overlay(viewport, obscured, *hovered || selected || *dragging);
-
-                let body = {
-                    let media = if *paused {
-                        Container::new(
-                            Image::new(handle)
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .content_fit(content_fit.into()),
-                        )
-                    } else {
-                        Container::new(
-                            apng(frames)
+                            moving_picture(frames)
                                 .width(Length::Fill)
                                 .height(Length::Fill)
                                 .content_fit(content_fit.into()),

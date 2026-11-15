@@ -24,7 +24,7 @@ globetter = "0.2.0"
 gstreamer = { version = "0.23.7", optional = true }
 gstreamer-app = { version = "0.23.5", optional = true }
 iced = { version = "0.14.0", features = ["advanced", "advanced-shaping", "crisp", "image", "lazy", "svg", "tiny-skia", "tokio", "wayland", "wgpu", "x11"], default-features = false }
-iced_moving_picture = "0.2.0"
+iced_moving_picture = "0.3.1"
 iced_video_player = { version = "0.6.0", optional = true }
 image = { version = "0.25.10", features = ["ico"], default-features = false }
 infer = "0.22.0"
