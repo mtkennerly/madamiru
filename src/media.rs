@@ -196,6 +196,12 @@ pub enum Category {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum AnimatedImage {
+    Apng,
+    Gif,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Media {
     Image {
         path: StrictPath,
@@ -203,11 +209,9 @@ pub enum Media {
     Svg {
         path: StrictPath,
     },
-    Gif {
+    AnimatedImage {
         path: StrictPath,
-    },
-    Apng {
-        path: StrictPath,
+        kind: AnimatedImage,
     },
     #[cfg(feature = "audio")]
     Audio {
@@ -224,8 +228,7 @@ impl Media {
         match self {
             Self::Image { .. } => Category::Image,
             Self::Svg { .. } => Category::Image,
-            Self::Gif { .. } => Category::Image,
-            Self::Apng { .. } => Category::Image,
+            Self::AnimatedImage { .. } => Category::Image,
             #[cfg(feature = "audio")]
             Self::Audio { .. } => Category::Audio,
             #[cfg(feature = "video")]
@@ -237,8 +240,7 @@ impl Media {
         match self {
             Self::Image { path } => path,
             Self::Svg { path } => path,
-            Self::Gif { path } => path,
-            Self::Apng { path } => path,
+            Self::AnimatedImage { path, .. } => path,
             #[cfg(feature = "audio")]
             Self::Audio { path } => path,
             #[cfg(feature = "video")]
@@ -315,8 +317,9 @@ impl Media {
                 }
                 "image/png" => {
                     if is_animated_png(path) {
-                        Some(Self::Apng {
+                        Some(Self::AnimatedImage {
                             path: path.normalized(),
+                            kind: AnimatedImage::Apng,
                         })
                     } else {
                         Some(Self::Image {
@@ -324,8 +327,9 @@ impl Media {
                         })
                     }
                 }
-                "image/gif" => Some(Self::Gif {
+                "image/gif" => Some(Self::AnimatedImage {
                     path: path.normalized(),
+                    kind: AnimatedImage::Gif,
                 }),
                 "image/svg+xml" => Some(Self::Svg {
                     path: path.normalized(),

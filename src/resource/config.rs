@@ -12,6 +12,7 @@ pub enum Event {
     Language(Language),
     CheckRelease(bool),
     ImageDurationRaw(String),
+    MinimumAnimationLoopsRaw(String),
     PauseWhenWindowLosesFocus(bool),
     ConfirmWhenDiscardingUnsavedPlaylist(bool),
     ShowFullscreenControls(bool),
@@ -126,6 +127,8 @@ pub struct Playback {
     pub volume: f32,
     /// How long to show images, in seconds.
     pub image_duration: NonZeroUsize,
+    /// How many times to loop animated images.
+    pub minimum_animation_loops: usize,
     /// Whether to pause when window loses focus.
     pub pause_on_unfocus: bool,
     /// Whether to synchronize play/pause/seek events in media of the same category.
@@ -170,6 +173,7 @@ impl Default for Playback {
             muted: false,
             volume: 1.0,
             image_duration: NonZeroUsize::new(10).unwrap(),
+            minimum_animation_loops: 1,
             pause_on_unfocus: false,
             synchronized: false,
         }
@@ -202,6 +206,7 @@ mod tests {
                   muted: true
                   volume: 0.5
                   image_duration: 2
+                  minimum_animation_loops: 2
                   pause_on_unfocus: true
                   synchronized: true
             "#,
@@ -226,6 +231,7 @@ mod tests {
                     muted: true,
                     volume: 0.5,
                     image_duration: NonZeroUsize::new(2).unwrap(),
+                    minimum_animation_loops: 2,
                     pause_on_unfocus: true,
                     synchronized: true,
                 },
@@ -254,6 +260,7 @@ playback:
   muted: false
   volume: 1.0
   image_duration: 10
+  minimum_animation_loops: 1
   pause_on_unfocus: false
   synchronized: false
 "#

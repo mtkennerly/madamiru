@@ -4,9 +4,13 @@
   * Support for Opus audio files.
   * Updated translations, including support for Italian.
     (Thanks to contributors on the [Crowdin project](https://crowdin.com/project/madamiru))
+  * GIF/APNG: You can now seek and jump through the animation frames.
+  * GIF/APNG: You can now set a minimum number of animation loops.
+    Animated images will play until both the minimum loops and minimum seconds are satisfied.
 * Fixed:
   * M4A audio files could be misinterpreted as video,
     resulting in a "failed to get media capabilities" error from GStreamer.
+  * GIF/APNG: Pausing stays on the current frame instead of resetting to the first frame.
 
 ## v0.5.0 (2026-10-14)
 

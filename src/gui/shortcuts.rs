@@ -94,12 +94,14 @@ impl TextHistory {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct TextHistories {
     pub image_duration: TextHistory,
+    pub minimum_animation_loops: TextHistory,
 }
 
 impl TextHistories {
     pub fn new(config: &Config) -> Self {
         Self {
             image_duration: TextHistory::raw(&config.playback.image_duration.to_string()),
+            minimum_animation_loops: TextHistory::raw(&config.playback.minimum_animation_loops.to_string()),
         }
     }
 }

@@ -674,6 +674,18 @@ impl App {
                         .push(&self.config.playback.image_duration.to_string());
                 }
 
+                if self
+                    .text_histories
+                    .minimum_animation_loops
+                    .current()
+                    .parse::<NonZeroUsize>()
+                    .is_err()
+                {
+                    self.text_histories
+                        .minimum_animation_loops
+                        .push(&self.config.playback.minimum_animation_loops.to_string());
+                }
+
                 Task::none()
             }
             Message::Config { event } => {
@@ -692,6 +704,12 @@ impl App {
                         self.text_histories.image_duration.push(&value.to_string());
                         if let Ok(value) = value.parse::<NonZeroUsize>() {
                             self.config.playback.image_duration = value;
+                        }
+                    }
+                    config::Event::MinimumAnimationLoopsRaw(value) => {
+                        self.text_histories.minimum_animation_loops.push(&value.to_string());
+                        if let Ok(value) = value.parse::<usize>() {
+                            self.config.playback.minimum_animation_loops = value;
                         }
                     }
                     config::Event::PauseWhenWindowLosesFocus(value) => {
@@ -968,6 +986,16 @@ impl App {
                                 .parse::<NonZeroUsize>()
                             {
                                 self.config.playback.image_duration = value;
+                            }
+                        }
+                        UndoSubject::MinimumAnimationLoops => {
+                            if let Ok(value) = self
+                                .text_histories
+                                .minimum_animation_loops
+                                .apply(shortcut)
+                                .parse::<usize>()
+                            {
+                                self.config.playback.minimum_animation_loops = value;
                             }
                         }
                         UndoSubject::Source { .. } => {}

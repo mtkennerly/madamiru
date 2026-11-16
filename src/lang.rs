@@ -287,6 +287,10 @@ pub mod thing {
         translate("thing-media-padding")
     }
 
+    pub fn minimum_animation_loops() -> String {
+        translate("thing-minimum-animation-loops")
+    }
+
     pub fn orientation() -> String {
         translate("thing-orientation")
     }

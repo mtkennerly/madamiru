@@ -211,6 +211,7 @@ pub enum BrowseFileSubject {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UndoSubject {
     ImageDuration,
+    MinimumAnimationLoops,
     Source { index: usize },
     OrientationLimit,
 }
@@ -219,6 +220,7 @@ impl UndoSubject {
     pub fn view_with<'a>(self, histories: &TextHistories) -> Element<'a> {
         match self {
             Self::ImageDuration => self.view(&histories.image_duration.current()),
+            Self::MinimumAnimationLoops => self.view(&histories.minimum_animation_loops.current()),
             Self::Source { .. } => self.view(""),
             Self::OrientationLimit { .. } => self.view(""),
         }
@@ -228,6 +230,9 @@ impl UndoSubject {
         let event: Box<dyn Fn(String) -> Message> = match self {
             UndoSubject::ImageDuration => Box::new(move |value| Message::Config {
                 event: config::Event::ImageDurationRaw(value),
+            }),
+            UndoSubject::MinimumAnimationLoops => Box::new(move |value| Message::Config {
+                event: config::Event::MinimumAnimationLoopsRaw(value),
             }),
             UndoSubject::Source { index } => Box::new(move |value| Message::Modal {
                 event: modal::Event::EditedSource {
@@ -243,12 +248,14 @@ impl UndoSubject {
 
         let icon = match self {
             UndoSubject::ImageDuration => (current.parse::<NonZeroUsize>().is_err()).then_some(ERROR_ICON),
+            UndoSubject::MinimumAnimationLoops => (current.parse::<usize>().is_err()).then_some(ERROR_ICON),
             UndoSubject::Source { .. } => (!path_appears_valid(current)).then_some(ERROR_ICON),
             UndoSubject::OrientationLimit => (current.parse::<NonZeroUsize>().is_err()).then_some(ERROR_ICON),
         };
 
         let width = match self {
             UndoSubject::ImageDuration => Length::Fixed(80.0),
+            UndoSubject::MinimumAnimationLoops => Length::Fixed(80.0),
             UndoSubject::Source { .. } => Length::Fill,
             UndoSubject::OrientationLimit => Length::Fixed(80.0),
         };

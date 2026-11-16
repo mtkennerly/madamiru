@@ -22,7 +22,7 @@ use crate::{
         widget::{Column, Container, Element, Row, Stack, text},
     },
     lang,
-    media::Media,
+    media::{AnimatedImage, Media},
     path::StrictPath,
     prelude::{timestamp_hhmmss, timestamp_mmss},
     resource::{config::Playback, playlist::ContentFit},
@@ -51,6 +51,18 @@ fn timestamps<'a>(current: Duration, total: Duration) -> Element<'a> {
         .push(space::horizontal())
         .push(text(total))
         .into()
+}
+
+fn wrapping_seek(position: Duration, total: Duration) -> Duration {
+    Duration::new(
+        position.as_secs().checked_rem(total.as_secs()).unwrap_or(0),
+        position.subsec_nanos().checked_rem(total.subsec_nanos()).unwrap_or(0),
+    )
+}
+
+fn wrapping_seek_relative(position: Duration, total: Duration, offset: f64) -> Duration {
+    let target = wrapping_seek(position, total);
+    Duration::from_secs_f64(target.as_secs_f64() * offset)
 }
 
 #[cfg(feature = "video")]
@@ -249,10 +261,9 @@ pub enum Player {
         hovered: bool,
         need_play_on_focus: bool,
     },
-    MovingPicture {
+    AnimatedImage {
         media: Media,
         frames: moving_picture::Frames,
-        handle: iced::widget::image::Handle,
         position: Duration,
         duration: Duration,
         paused: bool,
@@ -339,46 +350,38 @@ impl Player {
                     hovered: false,
                 }),
             },
-            Media::Gif { path } => match Self::load_moving_picture(path, moving_picture::Kind::Gif) {
-                Ok((frames, handle)) => Ok(Self::MovingPicture {
-                    media: media.clone(),
-                    frames,
-                    handle,
-                    position: Duration::ZERO,
-                    duration: Duration::from_secs(playback.image_duration.get() as u64),
-                    paused: playback.paused,
-                    muted: playback.muted,
-                    looping: false,
-                    dragging: false,
-                    hovered: false,
-                    need_play_on_focus: false,
-                }),
-                Err(e) => Err(Self::Error {
-                    media: media.clone(),
-                    message: e.message(),
-                    hovered: false,
-                }),
-            },
-            Media::Apng { path } => match Self::load_moving_picture(path, moving_picture::Kind::Apng) {
-                Ok((frames, handle)) => Ok(Self::MovingPicture {
-                    media: media.clone(),
-                    frames,
-                    handle,
-                    position: Duration::ZERO,
-                    duration: Duration::from_secs(playback.image_duration.get() as u64),
-                    paused: playback.paused,
-                    muted: playback.muted,
-                    looping: false,
-                    dragging: false,
-                    hovered: false,
-                    need_play_on_focus: false,
-                }),
-                Err(e) => Err(Self::Error {
-                    media: media.clone(),
-                    message: e.message(),
-                    hovered: false,
-                }),
-            },
+            Media::AnimatedImage { path, kind } => {
+                let kind = match kind {
+                    AnimatedImage::Apng => moving_picture::Kind::Apng,
+                    AnimatedImage::Gif => moving_picture::Kind::Gif,
+                };
+
+                match Self::load_moving_picture(path, kind) {
+                    Ok(frames) => {
+                        let configured = Duration::from_secs(playback.image_duration.get() as u64);
+                        let looped =
+                            frames.duration(moving_picture::DEFAULT_SPEED) * playback.minimum_animation_loops as u32;
+
+                        Ok(Self::AnimatedImage {
+                            media: media.clone(),
+                            frames,
+                            position: Duration::ZERO,
+                            duration: configured.max(looped),
+                            paused: playback.paused,
+                            muted: playback.muted,
+                            looping: false,
+                            dragging: false,
+                            hovered: false,
+                            need_play_on_focus: false,
+                        })
+                    }
+                    Err(e) => Err(Self::Error {
+                        media: media.clone(),
+                        message: e.message(),
+                        hovered: false,
+                    }),
+                }
+            }
             #[cfg(feature = "audio")]
             Media::Audio { path } => match Self::load_audio(path, playback, Duration::from_millis(0)) {
                 Ok((stream, sink, duration, finished)) => Ok(Self::Audio {
@@ -444,11 +447,10 @@ impl Player {
         Ok(iced::widget::svg::Handle::from_memory(bytes))
     }
 
-    fn load_moving_picture(source: &StrictPath, kind: moving_picture::Kind) -> Result<(moving_picture::Frames, iced::widget::image::Handle), Error> {
+    fn load_moving_picture(source: &StrictPath, kind: moving_picture::Kind) -> Result<moving_picture::Frames, Error> {
         let bytes = source.try_read_bytes()?;
         let frames = moving_picture::Frames::from_bytes(bytes.clone(), kind)?;
-        let handle = iced::widget::image::Handle::from_bytes(bytes);
-        Ok((frames, handle))
+        Ok(frames)
     }
 
     #[cfg(feature = "audio")]
@@ -536,7 +538,7 @@ impl Player {
             Self::Svg { position, .. } => {
                 *position = Duration::ZERO;
             }
-            Self::MovingPicture { position, .. } => {
+            Self::AnimatedImage { position, .. } => {
                 *position = Duration::ZERO;
             }
             #[cfg(feature = "audio")]
@@ -566,7 +568,7 @@ impl Player {
             Self::Error { media, .. } => Some(media),
             Self::Image { media, .. } => Some(media),
             Self::Svg { media, .. } => Some(media),
-            Self::MovingPicture { media, .. } => Some(media),
+            Self::AnimatedImage { media, .. } => Some(media),
             #[cfg(feature = "audio")]
             Self::Audio { media, .. } => Some(media),
             #[cfg(feature = "video")]
@@ -580,7 +582,7 @@ impl Player {
             Self::Error { .. } => Category::Other,
             Self::Image { .. } => Category::Image,
             Self::Svg { .. } => Category::Image,
-            Self::MovingPicture { .. } => Category::Image,
+            Self::AnimatedImage { .. } => Category::Image,
             #[cfg(feature = "audio")]
             Self::Audio { .. } => Category::Audio,
             #[cfg(feature = "video")]
@@ -594,7 +596,7 @@ impl Player {
             Self::Error { .. } => true,
             Self::Image { .. } => false,
             Self::Svg { .. } => false,
-            Self::MovingPicture { .. } => false,
+            Self::AnimatedImage { .. } => false,
             #[cfg(feature = "audio")]
             Self::Audio { .. } => false,
             #[cfg(feature = "video")]
@@ -608,7 +610,7 @@ impl Player {
             Self::Error { .. } => None,
             Self::Image { paused, .. } => Some(*paused),
             Self::Svg { paused, .. } => Some(*paused),
-            Self::MovingPicture { paused, .. } => Some(*paused),
+            Self::AnimatedImage { paused, .. } => Some(*paused),
             #[cfg(feature = "audio")]
             Self::Audio { paused, .. } => Some(*paused),
             #[cfg(feature = "video")]
@@ -622,7 +624,7 @@ impl Player {
             Self::Error { .. } => None,
             Self::Image { muted, .. } => Some(*muted),
             Self::Svg { muted, .. } => Some(*muted),
-            Self::MovingPicture { muted, .. } => Some(*muted),
+            Self::AnimatedImage { muted, .. } => Some(*muted),
             #[cfg(feature = "audio")]
             Self::Audio { sink, .. } => Some(sink.volume() == 0.0),
             #[cfg(feature = "video")]
@@ -636,7 +638,7 @@ impl Player {
             Self::Error { .. } => false,
             Self::Image { .. } => false,
             Self::Svg { .. } => false,
-            Self::MovingPicture { .. } => false,
+            Self::AnimatedImage { .. } => false,
             #[cfg(feature = "audio")]
             Self::Audio { .. } => true,
             #[cfg(feature = "video")]
@@ -650,7 +652,7 @@ impl Player {
             Self::Error { hovered, .. } => *hovered,
             Self::Image { hovered, .. } => *hovered,
             Self::Svg { hovered, .. } => *hovered,
-            Self::MovingPicture { hovered, .. } => *hovered,
+            Self::AnimatedImage { hovered, .. } => *hovered,
             #[cfg(feature = "audio")]
             Self::Audio { hovered, .. } => *hovered,
             #[cfg(feature = "video")]
@@ -672,7 +674,7 @@ impl Player {
             Self::Svg { hovered, .. } => {
                 *hovered = flag;
             }
-            Self::MovingPicture { hovered, .. } => {
+            Self::AnimatedImage { hovered, .. } => {
                 *hovered = flag;
             }
             #[cfg(feature = "audio")]
@@ -736,7 +738,7 @@ impl Player {
                     None
                 }
             }
-            Self::MovingPicture {
+            Self::AnimatedImage {
                 position,
                 duration,
                 paused,
@@ -854,7 +856,7 @@ impl Player {
                 bottom_controls: false,
                 timestamps: false,
             },
-            Self::Image { .. } | Self::Svg { .. } | Self::MovingPicture { .. } => Overlay {
+            Self::Image { .. } | Self::Svg { .. } | Self::AnimatedImage { .. } => Overlay {
                 show,
                 center_controls: show && viewport.height > 100.0 && viewport.width > 150.0,
                 top_controls: show && viewport.width > 100.0,
@@ -1075,7 +1077,8 @@ impl Player {
                     None
                 }
             },
-            Self::MovingPicture {
+            Self::AnimatedImage {
+                frames,
                 position,
                 duration,
                 paused,
@@ -1102,20 +1105,40 @@ impl Player {
                 Event::Seek(offset) => {
                     *dragging = true;
                     *position = offset.min(*duration);
+
+                    let target = wrapping_seek(*position, frames.duration(moving_picture::DEFAULT_SPEED));
+                    frames.seek(moving_picture::Position::Time(target));
+
                     Update::relative_position_changed(*position, *duration)
                 }
-                Event::SeekRelative(offset) => {
+                Event::SeekRelative(offset) | Event::SeekRandomRelative(offset) => {
                     *position = Duration::from_secs_f64(duration.as_secs_f64() * offset);
+
+                    let target =
+                        wrapping_seek_relative(*position, frames.duration(moving_picture::DEFAULT_SPEED), offset);
+                    frames.seek(moving_picture::Position::Time(target));
+
                     None
                 }
                 Event::SeekStop => {
                     *dragging = false;
                     None
                 }
-                Event::SeekRandom => None,
-                Event::SeekRandomRelative(_) => None,
+                Event::SeekRandom => {
+                    use rand::RngExt;
+                    *position = Duration::from_secs_f64(rand::rng().random_range(0.0..duration.as_secs_f64()));
+
+                    let target = wrapping_seek(*position, frames.duration(moving_picture::DEFAULT_SPEED));
+                    frames.seek(moving_picture::Position::Time(target));
+
+                    Update::relative_position_changed(*position, *duration)
+                }
                 Event::Step(step) => {
                     *position = step.compute(*position, *duration, IMAGE_STEP);
+
+                    let target = wrapping_seek(*position, frames.duration(moving_picture::DEFAULT_SPEED));
+                    frames.seek(moving_picture::Position::Time(target));
+
                     Some(Update::Step(step))
                 }
                 Event::EndOfStream => Some(Update::EndOfStream),
@@ -1790,10 +1813,9 @@ impl Player {
                     .push(bottom_controls)
                     .into()
             }
-            Self::MovingPicture {
+            Self::AnimatedImage {
                 media,
                 frames,
-                handle,
                 position,
                 duration,
                 paused,
@@ -1806,23 +1828,13 @@ impl Player {
                 let overlay = self.overlay(viewport, obscured, *hovered || selected || *dragging);
 
                 let body = {
-                    let media = if *paused {
-                        Container::new(
-                            Image::new(handle)
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .content_fit(content_fit.into()),
-                        )
-                    } else {
-                        Container::new(
-                            moving_picture(frames)
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .content_fit(content_fit.into()),
-                        )
-                    };
+                    let media = moving_picture(frames)
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .content_fit(content_fit.into())
+                        .paused(*paused);
 
-                    media
+                    Container::new(media)
                         .align_x(Alignment::Center)
                         .align_y(Alignment::Center)
                         .width(Length::Fill)

@@ -384,13 +384,23 @@ impl Modal {
                     .push(text(lang::field(&lang::thing::image())))
                     .push(
                         Container::new(
-                            Column::new().spacing(10).padding(10).push(
-                                Row::new()
-                                    .align_y(Alignment::Center)
-                                    .spacing(20)
-                                    .push(text(lang::field(&lang::action::play_for_this_many_seconds())))
-                                    .push(UndoSubject::ImageDuration.view_with(histories)),
-                            ),
+                            Column::new()
+                                .spacing(10)
+                                .padding(10)
+                                .push(
+                                    Row::new()
+                                        .align_y(Alignment::Center)
+                                        .spacing(20)
+                                        .push(text(lang::field(&lang::action::play_for_this_many_seconds())))
+                                        .push(UndoSubject::ImageDuration.view_with(histories)),
+                                )
+                                .push(
+                                    Row::new()
+                                        .align_y(Alignment::Center)
+                                        .spacing(20)
+                                        .push(text(lang::field(&lang::thing::minimum_animation_loops())))
+                                        .push(UndoSubject::MinimumAnimationLoops.view_with(histories)),
+                                ),
                         )
                         .class(style::Container::Control),
                     );
@@ -649,6 +659,7 @@ impl Modal {
                 settings, histories, ..
             } => match subject {
                 UndoSubject::ImageDuration => false,
+                UndoSubject::MinimumAnimationLoops => false,
                 UndoSubject::Source { index } => {
                     settings.sources[index].reset(histories.sources[index].apply(shortcut));
                     true
