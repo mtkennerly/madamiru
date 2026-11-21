@@ -84,10 +84,10 @@ impl Language {
             Self::English => 100,
             Self::French => 2,
             Self::German => 2,
-            Self::Italian => 100,
-            Self::Polish => 93,
-            Self::PortugueseBrazilian => 93,
-            Self::Spanish => 93,
+            Self::Italian => 98,
+            Self::Polish => 91,
+            Self::PortugueseBrazilian => 91,
+            Self::Spanish => 91,
         }
     }
 }

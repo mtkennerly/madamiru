@@ -14,6 +14,7 @@ thing-language = Język
 thing-layout = Układ
 thing-media = Media
 thing-media-padding = Media padding
+thing-minimum-animation-loops = Minimum animation loops
 thing-orientation = Orientacja
 # Path to a file/folder on the system.
 thing-path = Ścieżka

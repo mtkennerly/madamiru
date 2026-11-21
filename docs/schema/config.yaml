@@ -8,6 +8,7 @@ properties:
     $ref: "#/$defs/Playback"
     default:
       image_duration: 10
+      minimum_animation_loops: 1
       muted: false
       pause_on_unfocus: false
       synchronized: false
@@ -40,12 +41,18 @@ $defs:
       - description: German
         type: string
         const: de-DE
+      - description: Italian
+        type: string
+        const: it-IT
       - description: Polish
         type: string
         const: pl-PL
       - description: Brazilian Portuguese
         type: string
         const: pt-BR
+      - description: Spanish
+        type: string
+        const: es-ES
   Playback:
     type: object
     properties:
@@ -55,6 +62,12 @@ $defs:
         format: uint
         default: 10
         minimum: 1
+      minimum_animation_loops:
+        description: How many times to loop animated images.
+        type: integer
+        format: uint
+        default: 1
+        minimum: 0
       muted:
         description: Whether all players are muted.
         type: boolean
